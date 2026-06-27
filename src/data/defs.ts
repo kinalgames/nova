@@ -185,12 +185,34 @@ export const suggestionDefs: SuggestionDef[] = [
 export interface SideConvDef {
   id: string
   title: string
-  active: boolean
+  demo?: boolean
 }
 
 export const convDefs: SideConvDef[] = [
-  { id: 'c1', title: 'Đối chiếu benchmark đối thủ', active: true },
-  { id: 'c2', title: 'Đoạn mở đầu trang đích', active: false },
-  { id: 'c3', title: 'Lịch nội dung 6 tuần', active: false },
-  { id: 'c4', title: 'Phân tích khảo sát', active: false },
+  { id: 'c1', title: 'Đối chiếu benchmark đối thủ', demo: true },
+  { id: 'c2', title: 'Đoạn mở đầu trang đích' },
+  { id: 'c3', title: 'Lịch nội dung 6 tuần' },
+  { id: 'c4', title: 'Phân tích khảo sát' },
 ]
+
+const M = (who: string, text: string, isNova = false) => ({
+  who,
+  color: isNova ? 'var(--accent)' : 'var(--muted)',
+  text,
+  isNova,
+})
+
+// seeded message history per conversation (the demo c1 renders the scripted
+// tool-trace showcase instead, so it starts empty)
+export const seedThreads: Record<string, ReturnType<typeof M>[]> = {
+  c1: [],
+  c2: [
+    M('MINH', 'Viết giúp mình đoạn mở đầu cho trang đích Aurora.'),
+    M('NOVA', 'Mình mở bằng một câu chốt định vị, rồi ba lợi ích ngắn. Bạn muốn giọng tự tin hay thân thiện?', true),
+  ],
+  c3: [
+    M('MINH', 'Lên lịch nội dung sáu tuần trước ra mắt.'),
+    M('NOVA', 'Mình chia theo ba giai đoạn: Định vị → Sản xuất → Ra mắt, mỗi tuần một chủ đề trục.', true),
+  ],
+  c4: [M('MINH', 'Tóm tắt khảo sát người dùng giúp mình.')],
+}

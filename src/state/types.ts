@@ -46,7 +46,8 @@ export interface SentMsg {
 export interface Conversation {
   id: string
   title: string
-  active: boolean
+  /** the seeded showcase conversation that renders the scripted tool-trace */
+  demo?: boolean
 }
 
 export interface StyleFlags {
@@ -75,8 +76,9 @@ export interface LumenState {
   authView: AuthView
   preview: Preview | null
   respState: RespState
-  freshChat: boolean
   conversations: Conversation[]
+  activeConv: string
+  threads: Record<string, SentMsg[]>
   chatProject: 'Aurora' | 'Chung'
   thinkingLevel: ThinkLevel
   theme: Theme
@@ -86,7 +88,6 @@ export interface LumenState {
   tools: ToolFlags
   draft: string
   q: string
-  sent: SentMsg[]
   typing: boolean
   typingLabel: string
   barOn: boolean

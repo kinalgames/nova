@@ -12,6 +12,7 @@ import {
   convDefs,
   presetDefs,
   provDefs,
+  seedThreads,
   statusMap,
   suggestionDefs,
   type PresetId,
@@ -49,6 +50,8 @@ interface Persisted {
   projPresets?: Record<PresetId, boolean>
   presetDefault?: Record<PresetId, boolean>
   conversations?: LumenState['conversations']
+  activeConv?: string
+  threads?: LumenState['threads']
 }
 
 function loadPersisted(): Persisted {
@@ -77,8 +80,9 @@ function initialState(): LumenState {
     authView: null,
     preview: null,
     respState: 'done',
-    freshChat: false,
     conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
+    activeConv: p.activeConv ?? 'c1',
+    threads: p.threads ?? { ...seedThreads },
     chatProject: 'Aurora',
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
@@ -88,7 +92,6 @@ function initialState(): LumenState {
     tools: p.tools ?? { web: true, fetch: true, files: true, bash: true },
     draft: '',
     q: '',
-    sent: [],
     typing: false,
     typingLabel: 'Nova đang suy nghĩ…',
     barOn: p.barOn ?? true,
@@ -184,6 +187,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       projPresets: s.projPresets,
       presetDefault: s.presetDefault,
       conversations: s.conversations,
+      activeConv: s.activeConv,
+      threads: s.threads,
     }
     try {
       localStorage.setItem(PERSIST_KEY, JSON.stringify(p))
@@ -206,6 +211,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     s.projPresets,
     s.presetDefault,
     s.conversations,
+    s.activeConv,
+    s.threads,
   ])
 
   // resize tracking
@@ -245,7 +252,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [set])
 
   // scroll conversation to bottom when a message is appended
-  const sentLen = s.sent.length
+  const sentLen = (s.threads[s.activeConv] ?? []).length
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [sentLen])
@@ -260,13 +267,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
   const go = useCallback(
-    (view: ViewName) => set({ view, palette: false, drawerOpen: false, freshChat: false }),
+    (view: ViewName) => set({ view, palette: false, drawerOpen: false }),
     [set],
   )
 
   const send = useCallback(() => {
     setS((prev) => {
       const t = (prev.draft || '').trim() || 'Tiếp tục giúp mình phần tiếp theo nhé.'
+      const conv = prev.activeConv
       clearTimeout(t1.current)
       clearTimeout(t2.current)
       clearInterval(tc.current)
@@ -283,15 +291,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       t1.current = setTimeout(() => {
         set((x) => ({
           typingLabel: 'Đang viết câu trả lời…',
-          sent: [...x.sent, { who: 'NOVA', color: 'var(--accent)', text: '', isNova: true }],
+          threads: {
+            ...x.threads,
+            [conv]: [
+              ...(x.threads[conv] ?? []),
+              { who: 'NOVA', color: 'var(--accent)', text: '', isNova: true },
+            ],
+          },
         }))
         let i = 0
         tc.current = setInterval(() => {
           i += 1
           set((x) => {
-            const sent = x.sent.slice()
-            sent[sent.length - 1] = { ...sent[sent.length - 1], text: words.slice(0, i).join(' ') }
-            return { sent }
+            const thread = (x.threads[conv] ?? []).slice()
+            thread[thread.length - 1] = {
+              ...thread[thread.length - 1],
+              text: words.slice(0, i).join(' '),
+            }
+            return { threads: { ...x.threads, [conv]: thread } }
           })
           if (i >= words.length) {
             clearInterval(tc.current)
@@ -303,7 +320,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         view: 'conversation',
-        sent: [...prev.sent, { who: 'MINH', color: 'var(--muted)', text: t, isNova: false }],
+        threads: {
+          ...prev.threads,
+          [conv]: [
+            ...(prev.threads[conv] ?? []),
+            { who: 'MINH', color: 'var(--muted)', text: t, isNova: false },
+          ],
+        },
         draft: '',
         typing: true,
         typingLabel: prev.thinkingLevel === 'off' ? 'Đang viết câu trả lời…' : 'Nova đang suy nghĩ…',
@@ -378,6 +401,8 @@ function deriveValues(
   const isMobile = s.vw < 880
   const isDesktop = !isMobile
   const rs = s.respState
+  const activeThread = s.threads[s.activeConv] ?? []
+  const activeIsDemo = !!s.conversations.find((c) => c.id === s.activeConv)?.demo
 
   const tk: (keyof LumenState['tools'])[] = ['web', 'fetch', 'files', 'bash']
   const toolToggle = (k: keyof LumenState['tools']) => () =>
@@ -493,34 +518,45 @@ function deriveValues(
     fg: p.id === activeProj ? 'var(--text)' : 'var(--text-2)',
     open: () => go('conversation'),
   }))
-  const sideConvs = s.conversations.map((c) => ({
-    id: c.id,
-    title: c.title,
-    dot: c.active ? accent : 'var(--border)',
-    bg: c.active ? 'var(--accent-soft)' : 'transparent',
-    fg: c.active ? 'var(--text)' : 'var(--text-2)',
-    open: () => go('conversation'),
-    rename: () => {
-      const next =
-        typeof window !== 'undefined' && window.prompt
-          ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
-          : null
-      if (next && next.trim())
+  const sideConvs = s.conversations.map((c) => {
+    const isActive = c.id === s.activeConv
+    return {
+      id: c.id,
+      title: c.title,
+      dot: isActive ? accent : 'var(--border)',
+      bg: isActive ? 'var(--accent-soft)' : 'transparent',
+      fg: isActive ? 'var(--text)' : 'var(--text-2)',
+      open: () => set({ activeConv: c.id, view: 'conversation', palette: false, drawerOpen: false }),
+      rename: () => {
+        const next =
+          typeof window !== 'undefined' && window.prompt
+            ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
+            : null
+        if (next && next.trim())
+          set((x) => ({
+            conversations: x.conversations.map((k) =>
+              k.id === c.id ? { ...k, title: next.trim() } : k,
+            ),
+          }))
+      },
+      pin: () =>
         set((x) => ({
-          conversations: x.conversations.map((k) =>
-            k.id === c.id ? { ...k, title: next.trim() } : k,
-          ),
-        }))
-    },
-    pin: () =>
-      set((x) => ({
-        conversations: [
-          ...x.conversations.filter((k) => k.id === c.id),
-          ...x.conversations.filter((k) => k.id !== c.id),
-        ],
-      })),
-    del: () => set((x) => ({ conversations: x.conversations.filter((k) => k.id !== c.id) })),
-  }))
+          conversations: [
+            ...x.conversations.filter((k) => k.id === c.id),
+            ...x.conversations.filter((k) => k.id !== c.id),
+          ],
+        })),
+      del: () =>
+        set((x) => {
+          const conversations = x.conversations.filter((k) => k.id !== c.id)
+          const threads = { ...x.threads }
+          delete threads[c.id]
+          const activeConv =
+            x.activeConv === c.id ? (conversations[0]?.id ?? '') : x.activeConv
+          return { conversations, threads, activeConv }
+        }),
+    }
+  })
 
   const pickProjects = [
     { name: 'Aurora', dot: accent, id: 'Aurora' as const },
@@ -707,11 +743,10 @@ function deriveValues(
     denyTool: () => set({ respState: 'done' }),
     stBgApproval: rs === 'approval' ? 'var(--panel)' : 'transparent',
     stFgApproval: rs === 'approval' ? 'var(--text)' : 'var(--muted)',
-    // empty / demo
-    isEmptyChat: s.freshChat && s.sent.length === 0,
-    // the scripted showcase thread belongs to the seeded conversations only;
-    // a fresh chat shows just the real streamed exchange
-    hasDemo: !s.freshChat,
+    // empty / demo — the scripted showcase thread belongs to the demo
+    // conversation only; every other conversation shows its real thread
+    isEmptyChat: activeThread.length === 0 && !activeIsDemo,
+    hasDemo: activeIsDemo,
     // thinking
     thinkingLevel: s.thinkingLevel,
     thinkLabel:
@@ -811,7 +846,7 @@ function deriveValues(
     toggleBar: () => set((x) => ({ barOn: !x.barOn })),
     draft: s.draft,
     q: s.q,
-    sent: s.sent,
+    sent: activeThread,
     typing: s.typing,
     typingLabel: s.typingLabel,
     activeCount,
@@ -848,13 +883,17 @@ function deriveValues(
     pAssistant: () => go('assistant'),
     pSettings: () => go('settings'),
     pNewChat: () =>
-      set({
-        view: 'conversation',
-        sent: [],
-        freshChat: true,
-        respState: 'done',
-        palette: false,
-        drawerOpen: false,
+      set((x) => {
+        const id = uid()
+        return {
+          view: 'conversation',
+          conversations: [{ id, title: 'Cuộc trò chuyện mới' }, ...x.conversations],
+          threads: { ...x.threads, [id]: [] },
+          activeConv: id,
+          respState: 'done',
+          palette: false,
+          drawerOpen: false,
+        }
       }),
     pQuiet: () => set({ quiet: true, palette: false }),
     openLogin: () => set({ authView: 'login' }),

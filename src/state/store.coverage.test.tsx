@@ -117,7 +117,7 @@ describe('store — palette actions', () => {
     const { result } = setup()
     act(() => result.current.v.pNewChat())
     expect(result.current.s.view).toBe('conversation')
-    expect(result.current.s.sent).toHaveLength(0)
+    expect(result.current.v.sent).toHaveLength(0)
     expect(result.current.v.isEmptyChat).toBe(true)
   })
   it('covers the remaining palette jumps', () => {
@@ -130,6 +130,50 @@ describe('store — palette actions', () => {
     expect(result.current.v.isSettings).toBe(true)
     act(() => result.current.v.pQuiet())
     expect(result.current.s.quiet).toBe(true)
+  })
+})
+
+describe('store — per-conversation threads', () => {
+  it('switching conversations loads that thread; the demo conv flags hasDemo', () => {
+    const { result } = setup()
+    const open = (id: string) => result.current.v.sideConvs.find((c) => c.id === id)!.open()
+    act(() => open('c2'))
+    expect(result.current.s.activeConv).toBe('c2')
+    expect(result.current.v.sent.length).toBeGreaterThan(0)
+    expect(result.current.v.hasDemo).toBe(false)
+    act(() => open('c1'))
+    expect(result.current.v.hasDemo).toBe(true)
+  })
+
+  it('new chat creates an empty conversation; send appends to it only', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    const before = result.current.v.sideConvs.length
+    act(() => result.current.v.pNewChat())
+    expect(result.current.v.sideConvs.length).toBe(before + 1)
+    expect(result.current.v.sent).toHaveLength(0)
+    const id = result.current.s.activeConv
+    act(() => result.current.set({ draft: 'xin chào' }))
+    act(() => result.current.v.send())
+    act(() => vi.advanceTimersByTime(5000))
+    expect(result.current.s.threads[id].length).toBeGreaterThan(1)
+    // the demo conversation's thread is untouched
+    expect(result.current.s.threads.c1).toHaveLength(0)
+  })
+
+  it('deleting the active conversation switches to another', () => {
+    const { result } = setup()
+    expect(result.current.s.activeConv).toBe('c1')
+    act(() => result.current.v.sideConvs.find((c) => c.id === 'c1')!.del())
+    expect(result.current.s.activeConv).not.toBe('c1')
+    expect(result.current.s.conversations.find((c) => c.id === 'c1')).toBeUndefined()
+  })
+
+  it('deleting a non-active conversation keeps the active one', () => {
+    const { result } = setup()
+    act(() => result.current.v.sideConvs.find((c) => c.id === 'c2')!.del())
+    expect(result.current.s.activeConv).toBe('c1')
+    expect(result.current.s.conversations.find((c) => c.id === 'c2')).toBeUndefined()
   })
 })
 
@@ -200,7 +244,7 @@ describe('store — copy & search input', () => {
         preventDefault: () => {},
       } as React.KeyboardEvent),
     )
-    expect(result.current.s.sent.at(-1)?.text).toBe('gửi bằng Enter')
+    expect(result.current.v.sent.at(-1)?.text).toBe('gửi bằng Enter')
   })
 })
 
@@ -257,19 +301,19 @@ describe('store — streaming chat engine', () => {
     act(() => result.current.set({ draft: 'Viết email cho mình' }))
     act(() => result.current.v.send())
     // user message lands immediately; assistant is "thinking"
-    expect(result.current.s.sent.at(-1)?.who).toBe('MINH')
+    expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
     expect(result.current.s.typing).toBe(true)
     // after the thinking pause, an empty Nova bubble appears and starts filling
     act(() => vi.advanceTimersByTime(700))
-    const nova = result.current.s.sent.at(-1)
+    const nova = result.current.v.sent.at(-1)
     expect(nova?.isNova).toBe(true)
     const partial = nova?.text ?? ''
     act(() => vi.advanceTimersByTime(120))
-    expect((result.current.s.sent.at(-1)?.text ?? '').length).toBeGreaterThan(partial.length)
+    expect((result.current.v.sent.at(-1)?.text ?? '').length).toBeGreaterThan(partial.length)
     // streaming completes
     act(() => vi.advanceTimersByTime(5000))
     expect(result.current.s.typing).toBe(false)
-    expect((result.current.s.sent.at(-1)?.text ?? '').length).toBeGreaterThan(0)
+    expect((result.current.v.sent.at(-1)?.text ?? '').length).toBeGreaterThan(0)
   })
 
   it('a fresh chat hides the demo thread and shows the real exchange', () => {
@@ -283,7 +327,7 @@ describe('store — streaming chat engine', () => {
     act(() => vi.advanceTimersByTime(5000))
     expect(result.current.v.isEmptyChat).toBe(false)
     expect(result.current.v.hasDemo).toBe(false)
-    expect(result.current.s.sent.some((m) => m.isNova)).toBe(true)
+    expect(result.current.v.sent.some((m) => m.isNova)).toBe(true)
   })
 })
 

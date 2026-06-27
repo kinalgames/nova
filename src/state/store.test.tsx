@@ -109,23 +109,23 @@ describe('store — composer send', () => {
     act(() => result.current.set({ draft: 'Tóm tắt giúp mình' }))
     act(() => result.current.v.send())
     // user message in flight
-    expect(result.current.s.sent.at(-1)?.who).toBe('MINH')
-    expect(result.current.s.sent.at(-1)?.text).toBe('Tóm tắt giúp mình')
+    expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
+    expect(result.current.v.sent.at(-1)?.text).toBe('Tóm tắt giúp mình')
     expect(result.current.s.typing).toBe(true)
     expect(result.current.s.draft).toBe('')
     // Nova answers after the scripted delay
     act(() => vi.advanceTimersByTime(2000))
     expect(result.current.s.typing).toBe(false)
-    expect(result.current.s.sent.at(-1)?.who).toBe('NOVA')
-    expect(result.current.s.sent.at(-1)?.isNova).toBe(true)
+    expect(result.current.v.sent.at(-1)?.who).toBe('NOVA')
+    expect(result.current.v.sent.at(-1)?.isNova).toBe(true)
   })
 
   it('falls back to a default prompt when the draft is empty', () => {
     vi.useFakeTimers()
     const { result } = setup()
     act(() => result.current.v.send())
-    expect(result.current.s.sent.at(-1)?.who).toBe('MINH')
-    expect(result.current.s.sent.at(-1)?.text).toMatch(/tiếp tục/i)
+    expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
+    expect(result.current.v.sent.at(-1)?.text).toMatch(/tiếp tục/i)
   })
 })
 

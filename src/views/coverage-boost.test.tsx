@@ -9,10 +9,13 @@ describe('conversation — appended messages & typing', () => {
   it('renders sent user + Nova messages and the typing indicator', async () => {
     renderWithStore(<App />, (s) =>
       s.set({
-        sent: [
-          { who: 'MINH', color: 'var(--muted)', text: 'Câu hỏi của mình', isNova: false },
-          { who: 'NOVA', color: 'var(--accent)', text: 'Nova trả lời đây', isNova: true },
-        ],
+        activeConv: 'c1',
+        threads: {
+          c1: [
+            { who: 'MINH', color: 'var(--muted)', text: 'Câu hỏi của mình', isNova: false },
+            { who: 'NOVA', color: 'var(--accent)', text: 'Nova trả lời đây', isNova: true },
+          ],
+        },
         typing: true,
         typingLabel: 'Đang chạy tính toán…',
       }),

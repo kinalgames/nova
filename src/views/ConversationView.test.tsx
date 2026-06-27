@@ -30,7 +30,7 @@ describe('ConversationView — response states', () => {
   })
 
   it('a fresh chat shows the empty state', async () => {
-    renderWithStore(<App />, (s) => s.set({ freshChat: true, sent: [] }))
+    renderWithStore(<App />, (s) => s.v.pNewChat())
     expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()
   })
 })
