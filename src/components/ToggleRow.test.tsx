@@ -27,6 +27,13 @@ describe('<ToggleRow>', () => {
     expect(onToggle).toHaveBeenCalled()
   })
 
+  it('omits the divider when marked as the last row', () => {
+    const { container } = render(
+      <ToggleRow title="Cuối" sub="…" on={false} onToggle={() => {}} last />,
+    )
+    expect(container.querySelector('.border-b')).toBeNull()
+  })
+
   it('has no axe accessibility violations', async () => {
     const { container } = render(
       <ToggleRow title="Chế độ tối" sub="Theo hệ thống" on onToggle={() => {}} />,

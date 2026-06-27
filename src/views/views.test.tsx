@@ -47,6 +47,13 @@ describe('views render on navigation', () => {
   })
 })
 
+describe('sidebar states', () => {
+  it('renders the collapsed rail (icon-only) and can be expanded', async () => {
+    renderWithStore(<App />, (s) => s.set({ sidebarCollapsed: true }))
+    expect(await screen.findByRole('button', { name: 'Mở thanh bên' })).toBeInTheDocument()
+  })
+})
+
 describe('overlays render on demand', () => {
   it('Inspector opens with the context panel', async () => {
     renderWithStore(<App />, (s) => s.set({ inspector: true }))

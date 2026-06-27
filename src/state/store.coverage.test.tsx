@@ -200,6 +200,20 @@ describe('store — model menu & cap menu toggles', () => {
   })
 })
 
+describe('store — think menu & auth toggle branches', () => {
+  it('toggles the thinking menu', () => {
+    const { result } = setup()
+    act(() => result.current.v.toggleThinkMenu())
+    expect(result.current.s.thinkMenu).toBe(true)
+  })
+  it('toggles signup back to login', () => {
+    const { result } = setup()
+    act(() => result.current.set({ authView: 'signup' }))
+    act(() => result.current.v.authToggleAct())
+    expect(result.current.s.authView).toBe('login')
+  })
+})
+
 describe('store — projects + closeMenus', () => {
   it('a project row opens the conversation / its config', () => {
     const { result } = setup()

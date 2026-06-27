@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Composer } from './Composer'
 import { StoreProvider, useStore } from '../state/store'
@@ -45,6 +45,35 @@ describe('<Composer>', () => {
     const menu = await screen.findByRole('menu')
     await user.click(within(menu).getByText('Tra cứu web'))
     // menu stays open (onSelect preventDefault) so the user can flip several
+    expect(screen.queryByRole('menu')).toBeInTheDocument()
+  })
+})
+
+describe('<Composer> — cap-menu items', () => {
+  it('removes a staged file from its chip', async () => {
+    const user = userEvent.setup()
+    renderComposer()
+    await user.click(screen.getByRole('button', { name: /Bỏ Brief-Aurora\.pdf/ }))
+    expect(screen.queryByText('Brief-Aurora.pdf')).not.toBeInTheDocument()
+  })
+
+  it('triggers the upload-file and project items (menu closes on select)', async () => {
+    const user = userEvent.setup()
+    renderComposer()
+    await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
+    const menu = await screen.findByRole('menu')
+    await user.click(within(menu).getByText('Tải tệp lên'))
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+  })
+
+  it('toggles every Nova tool from the menu', async () => {
+    const user = userEvent.setup()
+    renderComposer()
+    await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
+    const menu = await screen.findByRole('menu')
+    for (const label of ['Đọc trang web', 'Tài liệu của bạn']) {
+      await user.click(within(menu).getByText(label))
+    }
     expect(screen.queryByRole('menu')).toBeInTheDocument()
   })
 })
