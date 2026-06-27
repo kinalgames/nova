@@ -32,7 +32,9 @@ import { downloadFile, openFile, previewSample } from '../services/files'
 
 const ACCENT_DEFAULT = 'var(--accent)'
 
-const PERSIST_KEY = 'lumen.flow.settings'
+// bump the version suffix whenever the persisted shape changes so stale data
+// from an older schema is ignored rather than corrupting the new state
+export const PERSIST_KEY = 'lumen.flow.settings.v2'
 
 interface Persisted {
   theme?: Theme

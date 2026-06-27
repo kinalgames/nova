@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { StoreProvider, useStore } from './store'
+import { PERSIST_KEY, StoreProvider, useStore } from './store'
 
 function setup() {
   return renderHook(() => useStore(), { wrapper: StoreProvider })
@@ -90,12 +90,12 @@ describe('store — theme persistence', () => {
     act(() => result.current.v.setDark())
     expect(result.current.s.theme).toBe('dark')
     expect(result.current.v.dark).toBe(true)
-    const saved = JSON.parse(localStorage.getItem('lumen.flow.settings') || '{}')
+    const saved = JSON.parse(localStorage.getItem(PERSIST_KEY) || '{}')
     expect(saved.theme).toBe('dark')
   })
 
   it('restores persisted settings on a fresh mount', () => {
-    localStorage.setItem('lumen.flow.settings', JSON.stringify({ model: 'haiku', advanced: true }))
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ model: 'haiku', advanced: true }))
     const { result } = setup()
     expect(result.current.s.model).toBe('haiku')
     expect(result.current.s.advanced).toBe(true)
