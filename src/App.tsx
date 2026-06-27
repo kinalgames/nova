@@ -2,8 +2,7 @@ import type { CSSProperties } from 'react'
 import { useStore } from './state/store'
 import { css } from './css'
 import { Sidebar } from './components/Sidebar'
-import { AccountMenu, ConvMenu } from './components/Menus'
-import { TopBar, ModelMenu } from './components/TopBar'
+import { TopBar } from './components/TopBar'
 import { MobileDrawer } from './components/MobileDrawer'
 import { CommandPalette } from './components/CommandPalette'
 import { QuietMode } from './components/QuietMode'
@@ -27,13 +26,10 @@ export default function App() {
   return (
     <div className={v.dark ? 'dark' : undefined} style={accentVar ? { ...rootStyle, ...accentVar } : rootStyle}>
       <Sidebar />
-      <AccountMenu />
-      <ConvMenu />
 
       {/* MAIN COLUMN */}
       <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;position:relative')}>
         <TopBar />
-        <ModelMenu />
 
         {/* VIEW AREA */}
         <div style={css('flex:1;min-height:0;position:relative')}>

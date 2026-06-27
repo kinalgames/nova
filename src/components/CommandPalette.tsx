@@ -1,54 +1,77 @@
+import * as Dialog from '@radix-ui/react-dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useStore } from '../state/store'
-import { css } from '../css'
 import { Icon } from './Icon'
+
+const row =
+  'flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-[11px] text-left text-[15px] text-text ' +
+  'outline-none hover:bg-black/[0.035] focus-visible:bg-black/[0.05]'
 
 export function CommandPalette() {
   const { v } = useStore()
-  if (!v.palette) return null
   return (
-    <>
-      <div onClick={v.closeMenus} style={css('position:fixed;inset:0;background:rgba(27,26,22,.20);z-index:40;animation:dim .12s ease')} />
-      <div style={css(`position:fixed;left:50%;top:${v.paletteTop};transform:translateX(-50%);width:560px;max-width:94vw;z-index:41;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-overlay);overflow:hidden;animation:fadeUp .15s ease`)}>
-        <div style={css('height:58px;display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--border)')}>
-          <span style={css('color:var(--faint);display:flex')}><Icon n="search" size={18} /></span>
-          <input
-            autoFocus
-            value={v.q}
-            onChange={v.onQ}
-            placeholder="Tìm trang, dự án, hành động…"
-            style={css('flex:1;min-width:0;font-size:17px;color:var(--text)')}
-          />
-          <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--faint);border:1px solid var(--border);border-radius:5px;padding:2px 6px")}>esc</span>
-        </div>
-        <div style={css('max-height:52vh;overflow-y:auto;padding:8px')}>
-          <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);padding:8px 12px 5px")}>ĐI TỚI</div>
-          <div onClick={v.pConvAurora} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer')}>
-            <span style={css('width:9px;height:9px;border-radius:3px;background:var(--accent)')} />
-            <span style={css('font-size:15px;flex:1')}>Dự án · Aurora</span>
+    <Dialog.Root
+      open={v.palette}
+      onOpenChange={(o) => {
+        if (!o) v.closeMenus()
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 animate-[dim_120ms_ease] bg-[rgba(27,26,22,0.2)]" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          style={{ top: v.paletteTop }}
+          className="fixed left-1/2 z-40 w-[560px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] overflow-hidden rounded-[16px] border border-border bg-panel shadow-overlay outline-none"
+        >
+          <VisuallyHidden asChild>
+            <Dialog.Title>Bảng lệnh</Dialog.Title>
+          </VisuallyHidden>
+          <div className="flex h-[58px] items-center gap-3 border-b border-border px-[18px]">
+            <Icon n="search" size={18} className="text-faint" />
+            <input
+              value={v.q}
+              onChange={v.onQ}
+              placeholder="Tìm trang, dự án, hành động…"
+              className="min-w-0 flex-1 bg-transparent text-[17px] text-text outline-none"
+            />
+            <span className="rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] text-faint">
+              esc
+            </span>
           </div>
-          <div onClick={v.pProjects} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer')}>
-            <Icon n="file" size={16} style={{ color: 'var(--muted)' }} />
-            <span style={css('font-size:15px;flex:1')}>Tất cả dự án</span>
+          <div className="max-h-[52vh] overflow-y-auto p-2">
+            <div className="px-3 pb-[5px] pt-2 font-mono text-[10px] tracking-[0.14em] text-faint">
+              ĐI TỚI
+            </div>
+            <button onClick={v.pConvAurora} className={row}>
+              <span className="size-[9px] rounded-[3px] bg-accent" />
+              <span className="flex-1">Dự án · Aurora</span>
+            </button>
+            <button onClick={v.pProjects} className={row}>
+              <Icon n="file" size={16} className="text-muted" />
+              <span className="flex-1">Tất cả dự án</span>
+            </button>
+            <button onClick={v.pAssistant} className={row}>
+              <Icon n="nova" size={16} className="text-muted" />
+              <span className="flex-1">Nova · trợ lý</span>
+            </button>
+            <button onClick={v.pSettings} className={row}>
+              <Icon n="settings" size={16} className="text-muted" />
+              <span className="flex-1">Cài đặt</span>
+            </button>
+            <div className="px-3 pb-[5px] pt-3 font-mono text-[10px] tracking-[0.14em] text-faint">
+              HÀNH ĐỘNG
+            </div>
+            <button onClick={v.pNewChat} className={row}>
+              <Icon n="plus" size={16} className="text-muted" />
+              <span className="flex-1">Cuộc trò chuyện mới</span>
+            </button>
+            <button onClick={v.pQuiet} className={`${row} bg-accent-soft`}>
+              <Icon n="focus" size={16} className="text-accent" />
+              <span className="flex-1">Vào chế độ tập trung</span>
+            </button>
           </div>
-          <div onClick={v.pAssistant} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer')}>
-            <Icon n="nova" size={16} style={{ color: 'var(--muted)' }} />
-            <span style={css('font-size:15px;flex:1')}>Nova · trợ lý</span>
-          </div>
-          <div onClick={v.pSettings} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer')}>
-            <Icon n="settings" size={16} style={{ color: 'var(--muted)' }} />
-            <span style={css('font-size:15px;flex:1')}>Cài đặt</span>
-          </div>
-          <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);padding:12px 12px 5px")}>HÀNH ĐỘNG</div>
-          <div onClick={v.pNewChat} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer')}>
-            <Icon n="plus" size={16} style={{ color: 'var(--muted)' }} />
-            <span style={css('font-size:15px;flex:1')}>Cuộc trò chuyện mới</span>
-          </div>
-          <div onClick={v.pQuiet} style={css('display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer;background:var(--accent-soft)')}>
-            <Icon n="focus" size={16} style={{ color: 'var(--accent)' }} />
-            <span style={css('font-size:15px;flex:1')}>Vào chế độ tập trung</span>
-          </div>
-        </div>
-      </div>
-    </>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

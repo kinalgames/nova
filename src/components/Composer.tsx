@@ -1,8 +1,18 @@
 import { useRef } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useStore } from '../state/store'
 import { css } from '../css'
 import { Icon } from './Icon'
 import type { StagedFile } from '../state/types'
+
+const POPUP =
+  'z-40 max-w-[78vw] rounded-[14px] border border-border bg-panel p-[7px] shadow-pop ' +
+  'origin-bottom animate-[fadeUp_140ms_var(--ease-paper)]'
+const POPUP_LABEL = 'px-3 pb-[5px] pt-2 font-mono text-[9.5px] tracking-[0.14em] text-label'
+const ROW =
+  'flex cursor-pointer select-none items-center gap-3 rounded-[9px] px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
+const TOOL_ROW =
+  'flex cursor-pointer select-none items-center gap-2.5 rounded-[9px] px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
 
 const badgeStyle: Record<string, { bg: string; fg: string; label: string }> = {
   pdf: { bg: 'var(--danger-bg)', fg: 'var(--danger-strong)', label: 'PDF' },
@@ -82,60 +92,86 @@ export function Composer() {
           )}
 
           <div style={css('display:flex;align-items:flex-end;gap:8px')}>
-            <div style={css('position:relative;flex-shrink:0')}>
-              <button type="button" aria-label="Thêm vào chat" onClick={v.toggleCapMenu} className="tap" style={css('background:transparent;border:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)')}>
-                <Icon n="plus" size={20} />
-              </button>
-              {/* hidden real file inputs */}
-              <input ref={imgInput} type="file" accept="image/*" multiple onChange={onFiles} style={{ display: 'none' }} />
-              <input ref={fileInput} type="file" multiple onChange={onFiles} style={{ display: 'none' }} />
-              {v.capMenu && (
-                <>
-                  <div onClick={v.toggleCapMenu} style={css('position:fixed;inset:0;z-index:7')} />
-                  <div style={css('position:absolute;bottom:calc(100% + 8px);left:0;width:300px;max-width:78vw;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-pop);padding:7px;animation:fadeUp .14s ease;z-index:8;max-height:60vh;overflow-y:auto')}>
-                    <div style={css("font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;color:var(--label);padding:8px 12px 5px")}>THÊM VÀO CHAT</div>
-                    <div onClick={() => imgInput.current?.click()} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css('width:26px;height:26px;border-radius:7px;background:var(--fill);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0')}><Icon n="image" size={15} /></span>
-                      <div style={css('flex:1')}><div style={css('font-size:14px')}>Tải ảnh lên</div></div>
+            {/* hidden real file inputs */}
+            <input ref={imgInput} type="file" accept="image/*" multiple onChange={onFiles} className="hidden" />
+            <input ref={fileInput} type="file" multiple onChange={onFiles} className="hidden" />
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label="Thêm vào chat"
+                  className="tap flex size-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  <Icon n="plus" size={20} />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  side="top"
+                  align="start"
+                  sideOffset={8}
+                  className={`${POPUP} max-h-[60vh] w-[300px] overflow-y-auto`}
+                >
+                  <div className={POPUP_LABEL}>THÊM VÀO CHAT</div>
+                  <DropdownMenu.Item onSelect={() => imgInput.current?.click()} className={ROW}>
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-fill text-accent">
+                      <Icon n="image" size={15} />
+                    </span>
+                    <div className="text-[14px] text-text">Tải ảnh lên</div>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={() => fileInput.current?.click()} className={ROW}>
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-border text-text-2">
+                      <Icon n="file" size={15} />
+                    </span>
+                    <div>
+                      <div className="text-[14px] text-text">Tải tệp lên</div>
+                      <div className="text-[11.5px] text-muted">PDF, tài liệu, mã, bảng tính</div>
                     </div>
-                    <div onClick={() => fileInput.current?.click()} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css('width:26px;height:26px;border-radius:7px;background:var(--border);color:var(--text-2);display:flex;align-items:center;justify-content:center;flex-shrink:0')}><Icon n="file" size={15} /></span>
-                      <div style={css('flex:1')}><div style={css('font-size:14px')}>Tải tệp lên</div><div style={css('font-size:11.5px;color:var(--muted)')}>PDF, tài liệu, mã, bảng tính</div></div>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={v.goProjects} className={ROW}>
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-accent-soft text-accent">
+                      <Icon n="folder" size={15} />
+                    </span>
+                    <div>
+                      <div className="text-[14px] text-text">Thêm từ dự án</div>
+                      <div className="text-[11.5px] text-muted">Tài liệu trong Aurora</div>
                     </div>
-                    <div onClick={v.goProjects} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css('width:26px;height:26px;border-radius:7px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0')}><Icon n="folder" size={15} /></span>
-                      <div style={css('flex:1')}><div style={css('font-size:14px')}>Thêm từ dự án</div><div style={css('font-size:11.5px;color:var(--muted)')}>Tài liệu trong Aurora</div></div>
-                    </div>
-                    <div onClick={v.openLightbox} data-hover="soft2" style={css('display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css('width:26px;height:26px;border-radius:7px;background:var(--border);color:var(--text-2);display:flex;align-items:center;justify-content:center;flex-shrink:0')}><Icon n="expand" size={15} /></span>
-                      <div style={css('flex:1')}><div style={css('font-size:14px')}>Chụp màn hình</div></div>
-                    </div>
-                    <div style={css('height:1px;background:var(--border);margin:5px 8px')} />
-                    <div style={css("font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;color:var(--label);padding:6px 12px 5px")}>CÔNG CỤ CỦA NOVA</div>
-                    <div onClick={v.toggle_web} data-hover="soft2" style={css('display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css(`width:20px;display:flex;justify-content:center;color:${v.webRowFg}`)}><Icon n="search" size={16} /></span>
-                      <span style={css(`flex:1;font-size:14px;color:${v.webRowFg}`)}>Tra cứu web</span>
-                      <span style={css('color:var(--accent);font-size:13px')}>{v.webCheck}</span>
-                    </div>
-                    <div onClick={v.toggle_fetch} data-hover="soft2" style={css('display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css(`width:20px;display:flex;justify-content:center;color:${v.fetchRowFg}`)}><Icon n="fetch" size={16} /></span>
-                      <span style={css(`flex:1;font-size:14px;color:${v.fetchRowFg}`)}>Đọc trang web</span>
-                      <span style={css('color:var(--accent);font-size:13px')}>{v.fetchCheck}</span>
-                    </div>
-                    <div onClick={v.toggle_files} data-hover="soft2" style={css('display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css(`width:20px;display:flex;justify-content:center;color:${v.filesRowFg}`)}><Icon n="file" size={16} /></span>
-                      <span style={css(`flex:1;font-size:14px;color:${v.filesRowFg}`)}>Tài liệu của bạn</span>
-                      <span style={css('color:var(--accent);font-size:13px')}>{v.filesCheck}</span>
-                    </div>
-                    <div onClick={v.toggle_bash} data-hover="soft2" style={css('display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer')}>
-                      <span style={css(`width:20px;display:flex;justify-content:center;color:${v.bashRowFg}`)}><Icon n="terminal" size={16} /></span>
-                      <span style={css(`flex:1;font-size:14px;color:${v.bashRowFg}`)}>{v.bashLabel}</span>
-                      <span style={css('color:var(--accent);font-size:13px')}>{v.bashCheck}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={v.openLightbox} className={ROW}>
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-border text-text-2">
+                      <Icon n="expand" size={15} />
+                    </span>
+                    <div className="text-[14px] text-text">Chụp màn hình</div>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Separator className="mx-2 my-[5px] h-px bg-border" />
+                  <div className={POPUP_LABEL}>CÔNG CỤ CỦA NOVA</div>
+                  {(
+                    [
+                      ['web', 'search', 'Tra cứu web', v.webRowFg, v.webCheck, v.toggle_web],
+                      ['fetch', 'fetch', 'Đọc trang web', v.fetchRowFg, v.fetchCheck, v.toggle_fetch],
+                      ['files', 'file', 'Tài liệu của bạn', v.filesRowFg, v.filesCheck, v.toggle_files],
+                      ['bash', 'terminal', v.bashLabel, v.bashRowFg, v.bashCheck, v.toggle_bash],
+                    ] as const
+                  ).map(([key, icon, label, fg, check, toggle]) => (
+                    <DropdownMenu.Item
+                      key={key}
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        toggle()
+                      }}
+                      className={TOOL_ROW}
+                      style={{ color: fg }}
+                    >
+                      <span className="flex w-5 justify-center">
+                        <Icon n={icon} size={16} />
+                      </span>
+                      <span className="flex-1 text-[14px]">{label}</span>
+                      {check && <Icon n="check" size={14} className="text-accent" />}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
             <input
               value={v.draft}
               onChange={v.onDraft}
@@ -150,58 +186,75 @@ export function Composer() {
 
           {/* context row */}
           <div style={css('display:flex;align-items:center;justify-content:space-between;padding:8px 4px 2px')}>
-            <div style={css('position:relative')}>
-              <div onClick={v.toggleProjPicker} style={css('display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:12.5px;color:var(--text-2);background:var(--bg)')}>
-                <span style={css('width:8px;height:8px;border-radius:2px;background:var(--accent)')} />
-                {v.chatProject}
-                <Icon n="caret" size={12} style={{ color: 'var(--faint)' }} />
-              </div>
-              {v.projPicker && (
-                <>
-                  <div onClick={v.toggleProjPicker} style={css('position:fixed;inset:0;z-index:7')} />
-                  <div style={css('position:absolute;bottom:calc(100% + 8px);left:0;width:240px;max-width:78vw;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-pop);padding:8px;animation:fadeUp .14s ease;z-index:8')}>
-                    <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);padding:7px 10px 5px")}>CHAT TRONG DỰ ÁN</div>
-                    {v.pickProjects.map((pp, i) => (
-                      <div key={i} onClick={pp.pick} style={css(`display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;background:${pp.bg}`)}>
-                        <span style={css(`width:9px;height:9px;border-radius:3px;background:${pp.dot}`)} />
-                        <span style={css('flex:1;font-size:14px')}>{pp.name}</span>
-                        <span style={css('font-size:11px;color:var(--accent)')}>{pp.check}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Dự án: ${v.chatProject}`}
+                  className="flex cursor-pointer items-center gap-[7px] rounded-[8px] border border-border bg-bg px-[9px] py-[5px] text-[12.5px] text-text-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span className="size-2 rounded-[2px] bg-accent" />
+                  {v.chatProject}
+                  <Icon n="caret" size={12} className="text-faint" />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content side="top" align="start" sideOffset={8} className={`${POPUP} w-[240px]`}>
+                  <div className={`${POPUP_LABEL} text-faint`}>CHAT TRONG DỰ ÁN</div>
+                  {v.pickProjects.map((pp, i) => (
+                    <DropdownMenu.Item
+                      key={i}
+                      onSelect={pp.pick}
+                      className="flex cursor-pointer select-none items-center gap-2.5 rounded-[9px] px-2.5 py-2.5 text-[14px] text-text outline-none data-[highlighted]:bg-black/[0.04]"
+                      style={{ background: pp.bg }}
+                    >
+                      <span className="size-[9px] rounded-[3px]" style={{ background: pp.dot }} />
+                      <span className="flex-1">{pp.name}</span>
+                      {pp.check && <Icon n="check" size={13} className="text-accent" />}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+
             <div style={css('display:flex;align-items:center;gap:12px')}>
-              <div style={css('position:relative')}>
-                <span onClick={v.toggleThinkMenu} data-hover="text" style={css('display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2);cursor:pointer;white-space:nowrap')}>
-                  <Icon n="think" size={13} /> Suy nghĩ: {v.thinkLabel} <Icon n="caret" size={12} style={{ color: 'var(--faint)' }} />
-                </span>
-                {v.thinkMenu && (
-                  <>
-                    <div onClick={v.toggleThinkMenu} style={css('position:fixed;inset:0;z-index:7')} />
-                    <div style={css('position:absolute;bottom:calc(100% + 8px);right:0;width:220px;max-width:78vw;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-pop);padding:7px;animation:fadeUp .14s ease;z-index:8')}>
-                      <div style={css("font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;color:var(--label);padding:7px 10px 5px")}>CHẾ ĐỘ SUY NGHĨ</div>
-                      <div onClick={v.setThinkOff} data-hover="soft2" style={css('display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer')}>
-                        <div style={css('flex:1')}><div style={css('font-size:14px')}>Tắt</div><div style={css('font-size:11.5px;color:var(--muted)')}>Trả lời ngay</div></div>
-                        <span style={css('color:var(--accent);font-size:13px')}>{v.thinkChkOff}</span>
-                      </div>
-                      <div onClick={v.setThinkLow} data-hover="soft2" style={css('display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer')}>
-                        <div style={css('flex:1')}><div style={css('font-size:14px')}>Thấp</div><div style={css('font-size:11.5px;color:var(--muted)')}>Cân nhắc nhanh</div></div>
-                        <span style={css('color:var(--accent);font-size:13px')}>{v.thinkChkLow}</span>
-                      </div>
-                      <div onClick={v.setThinkNormal} data-hover="soft2" style={css('display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer')}>
-                        <div style={css('flex:1')}><div style={css('font-size:14px')}>Vừa</div><div style={css('font-size:11.5px;color:var(--muted)')}>Cân bằng — khuyên dùng</div></div>
-                        <span style={css('color:var(--accent);font-size:13px')}>{v.thinkChkNormal}</span>
-                      </div>
-                      <div onClick={v.setThinkHigh} data-hover="soft2" style={css('display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer')}>
-                        <div style={css('flex:1')}><div style={css('font-size:14px')}>Cao</div><div style={css('font-size:11.5px;color:var(--muted)')}>Suy luận sâu, chậm hơn</div></div>
-                        <span style={css('color:var(--accent);font-size:13px')}>{v.thinkChkHigh}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Mức suy nghĩ: ${v.thinkLabel}`}
+                    className="inline-flex cursor-pointer items-center gap-[5px] whitespace-nowrap border-none bg-transparent text-[11.5px] text-text-2 outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <Icon n="think" size={13} /> Suy nghĩ: {v.thinkLabel}{' '}
+                    <Icon n="caret" size={12} className="text-faint" />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content side="top" align="end" sideOffset={8} className={`${POPUP} w-[220px]`}>
+                    <div className={POPUP_LABEL}>CHẾ ĐỘ SUY NGHĨ</div>
+                    {(
+                      [
+                        [v.setThinkOff, 'Tắt', 'Trả lời ngay', v.thinkChkOff],
+                        [v.setThinkLow, 'Thấp', 'Cân nhắc nhanh', v.thinkChkLow],
+                        [v.setThinkNormal, 'Vừa', 'Cân bằng — khuyên dùng', v.thinkChkNormal],
+                        [v.setThinkHigh, 'Cao', 'Suy luận sâu, chậm hơn', v.thinkChkHigh],
+                      ] as const
+                    ).map(([pick, label, sub, check], i) => (
+                      <DropdownMenu.Item
+                        key={i}
+                        onSelect={pick}
+                        className="flex cursor-pointer select-none items-center gap-2.5 rounded-[9px] px-2.5 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]"
+                      >
+                        <div className="flex-1">
+                          <div className="text-[14px] text-text">{label}</div>
+                          <div className="text-[11.5px] text-muted">{sub}</div>
+                        </div>
+                        {check && <Icon n="check" size={13} className="text-accent" />}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
               {v.showComposerHint && (
                 <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--faint);white-space:nowrap")}>
                   {v.activeCount} công cụ · ⏎ gửi

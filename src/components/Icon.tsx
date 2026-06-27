@@ -85,12 +85,14 @@ export function Icon({
   stroke = 1.75,
   fill = 'none',
   style,
+  className,
 }: {
   n: IconName
   size?: number
   stroke?: number
   fill?: string
   style?: CSSProperties
+  className?: string
 }) {
   const C = REGISTRY[n]
   return (
@@ -98,6 +100,7 @@ export function Icon({
       size={size}
       strokeWidth={stroke}
       fill={fill}
+      className={className}
       style={{ flexShrink: 0, display: 'block', ...style }}
     />
   )

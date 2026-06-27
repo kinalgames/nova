@@ -1,23 +1,42 @@
+import * as Dialog from '@radix-ui/react-dialog'
 import { useStore } from '../state/store'
 import { css } from '../css'
 import { Icon } from './Icon'
 
 export function Preview() {
   const { v } = useStore()
-  if (!v.hasPreview) return null
   return (
-    <div style={css('position:fixed;inset:0;z-index:60;background:rgba(20,18,15,.82);display:flex;flex-direction:column;animation:dim .14s ease')}>
-      <div style={css('height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#ece7dd')}>
-        <span style={css('font-size:14px')}>
-          {v.previewName} <span style={css('color:#9c958a;font-size:12px')}>· {v.previewMeta}</span>
-        </span>
-        <div style={css('display:flex;align-items:center;gap:16px;font-size:13px')}>
-          <span style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="download" size={14} /> Tải</span>
-          <span style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="open" size={14} /> Mở</span>
-          <button type="button" aria-label="Đóng" onClick={v.closePreview} style={css('background:transparent;border:none;color:inherit;cursor:pointer;display:flex')}><Icon n="close" size={16} /></button>
-        </div>
-      </div>
-      <div style={css('flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:0 20px 30px')}>
+    <Dialog.Root
+      open={v.hasPreview}
+      onOpenChange={(o) => {
+        if (!o) v.closePreview()
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_140ms_ease] bg-[rgba(20,18,15,0.82)]" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="fixed inset-0 z-[60] flex flex-col outline-none"
+        >
+          <div className="flex h-14 flex-shrink-0 items-center justify-between px-[18px] text-[#ece7dd]">
+            <Dialog.Title className="text-[14px] font-normal">
+              {v.previewName} <span className="text-[12px] text-[#9c958a]">· {v.previewMeta}</span>
+            </Dialog.Title>
+            <div className="flex items-center gap-4 text-[13px]">
+              <button type="button" className="inline-flex cursor-pointer items-center gap-[5px] border-none bg-transparent text-inherit">
+                <Icon n="download" size={14} /> Tải
+              </button>
+              <button type="button" className="inline-flex cursor-pointer items-center gap-[5px] border-none bg-transparent text-inherit">
+                <Icon n="open" size={14} /> Mở
+              </button>
+              <Dialog.Close asChild>
+                <button type="button" aria-label="Đóng" className="flex cursor-pointer border-none bg-transparent text-inherit outline-none">
+                  <Icon n="close" size={16} />
+                </button>
+              </Dialog.Close>
+            </div>
+          </div>
+          <div style={css('flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:0 20px 30px')}>
         {v.isPrevImage &&
           (v.previewUrl ? (
             <img
@@ -94,7 +113,9 @@ export function Preview() {
             <div style={css('font-size:14.5px;line-height:1.7;color:var(--text)')}>Định vị → Sản xuất → Ra mắt &amp; đo lường.</div>
           </div>
         )}
-      </div>
-    </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
