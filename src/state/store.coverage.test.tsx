@@ -133,6 +133,31 @@ describe('store — palette actions', () => {
   })
 })
 
+describe('store — recent conversations (rename / pin / delete)', () => {
+  it('deletes a conversation by id', () => {
+    const { result } = setup()
+    const target = result.current.v.sideConvs[1]
+    const len = result.current.v.sideConvs.length
+    act(() => target.del())
+    expect(result.current.v.sideConvs).toHaveLength(len - 1)
+    expect(result.current.v.sideConvs.find((c) => c.id === target.id)).toBeUndefined()
+  })
+  it('pins a conversation to the top', () => {
+    const { result } = setup()
+    const target = result.current.v.sideConvs[2]
+    act(() => target.pin())
+    expect(result.current.v.sideConvs[0].id).toBe(target.id)
+  })
+  it('renames via prompt and persists', () => {
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Tên mới')
+    const { result } = setup()
+    const target = result.current.v.sideConvs[0]
+    act(() => target.rename())
+    expect(result.current.v.sideConvs.find((c) => c.id === target.id)?.title).toBe('Tên mới')
+    promptSpy.mockRestore()
+  })
+})
+
 describe('store — preset toggles', () => {
   it('toggling a project preset updates the active-skill summary', () => {
     const { result } = setup()

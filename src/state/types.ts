@@ -41,6 +41,12 @@ export interface SentMsg {
   isNova: boolean
 }
 
+export interface Conversation {
+  id: string
+  title: string
+  active: boolean
+}
+
 export interface StyleFlags {
   concise: boolean
   warm: boolean
@@ -68,6 +74,7 @@ export interface LumenState {
   preview: Preview | null
   respState: RespState
   freshChat: boolean
+  conversations: Conversation[]
   chatProject: 'Aurora' | 'Chung'
   thinkingLevel: ThinkLevel
   theme: Theme

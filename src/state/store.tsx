@@ -43,6 +43,7 @@ interface Persisted {
   styles?: LumenState['styles']
   projPresets?: Record<PresetId, boolean>
   presetDefault?: Record<PresetId, boolean>
+  conversations?: LumenState['conversations']
 }
 
 function loadPersisted(): Persisted {
@@ -72,6 +73,7 @@ function initialState(): LumenState {
     preview: null,
     respState: 'done',
     freshChat: false,
+    conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
     chatProject: 'Aurora',
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
@@ -162,6 +164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       styles: s.styles,
       projPresets: s.projPresets,
       presetDefault: s.presetDefault,
+      conversations: s.conversations,
     }
     try {
       localStorage.setItem(PERSIST_KEY, JSON.stringify(p))
@@ -181,6 +184,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     s.styles,
     s.projPresets,
     s.presetDefault,
+    s.conversations,
   ])
 
   // resize tracking
@@ -440,12 +444,31 @@ function deriveValues(
     fg: p.id === activeProj ? 'var(--text)' : 'var(--text-2)',
     open: () => go('conversation'),
   }))
-  const sideConvs = convDefs.map((c) => ({
+  const sideConvs = s.conversations.map((c) => ({
+    id: c.id,
     title: c.title,
     dot: c.active ? accent : 'var(--border)',
     bg: c.active ? 'var(--accent-soft)' : 'transparent',
     fg: c.active ? 'var(--text)' : 'var(--text-2)',
     open: () => go('conversation'),
+    rename: () => {
+      const next =
+        typeof window !== 'undefined' ? window.prompt('Đổi tên cuộc trò chuyện', c.title) : null
+      if (next && next.trim())
+        set((x) => ({
+          conversations: x.conversations.map((k) =>
+            k.id === c.id ? { ...k, title: next.trim() } : k,
+          ),
+        }))
+    },
+    pin: () =>
+      set((x) => ({
+        conversations: [
+          ...x.conversations.filter((k) => k.id === c.id),
+          ...x.conversations.filter((k) => k.id !== c.id),
+        ],
+      })),
+    del: () => set((x) => ({ conversations: x.conversations.filter((k) => k.id !== c.id) })),
   }))
 
   const pickProjects = [

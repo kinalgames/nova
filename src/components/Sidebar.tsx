@@ -124,11 +124,16 @@ export function Sidebar() {
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.Content align="start" sideOffset={4} className={MENU_CONTENT}>
-                      <DropdownMenu.Item className={MENU_ITEM}>Đổi tên</DropdownMenu.Item>
-                      <DropdownMenu.Item className={MENU_ITEM}>Ghim lên đầu</DropdownMenu.Item>
-                      <DropdownMenu.Item className={MENU_ITEM}>Chuyển dự án…</DropdownMenu.Item>
+                      <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
+                        Đổi tên
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
+                        Ghim lên đầu
+                      </DropdownMenu.Item>
                       <DropdownMenu.Separator className={MENU_SEP} />
-                      <DropdownMenu.Item className={MENU_ITEM_DANGER}>Xóa</DropdownMenu.Item>
+                      <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
+                        Xóa
+                      </DropdownMenu.Item>
                     </DropdownMenu.Content>
                   </DropdownMenu.Portal>
                 </DropdownMenu.Root>
