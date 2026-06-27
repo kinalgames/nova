@@ -17,3 +17,7 @@ coverage
 playwright-report
 test-results
 .vitest
+
+# IDE
+.idea
+.vscode
