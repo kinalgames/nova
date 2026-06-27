@@ -14,7 +14,7 @@ export function Preview() {
         <div style={css('display:flex;align-items:center;gap:16px;font-size:13px')}>
           <span style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="download" size={14} /> Tải</span>
           <span style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="open" size={14} /> Mở</span>
-          <span onClick={v.closePreview} style={css('cursor:pointer;display:flex')}><Icon n="close" size={16} /></span>
+          <button type="button" aria-label="Đóng" onClick={v.closePreview} style={css('background:transparent;border:none;color:inherit;cursor:pointer;display:flex')}><Icon n="close" size={16} /></button>
         </div>
       </div>
       <div style={css('flex:1;min-height:0;overflow:auto;display:flex;align-items:center;justify-content:center;padding:0 20px 30px')}>
@@ -22,6 +22,7 @@ export function Preview() {
           (v.previewUrl ? (
             <img
               src={v.previewUrl}
+              alt={v.previewName}
               onClick={v.closePreview}
               style={css('max-width:min(820px,90vw);max-height:70vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .18s ease;cursor:pointer;object-fit:contain')}
             />

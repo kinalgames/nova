@@ -7,7 +7,7 @@ export function NovaView() {
   const { v } = useStore()
   if (!v.isAssistant) return null
   return (
-    <div style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
+    <div className="view" style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
       <div style={css(`width:660px;max-width:100%;padding:${v.pagePad}`)}>
         <div style={css('display:flex;align-items:center;gap:16px;margin-bottom:28px')}>
           <div style={css('width:54px;height:54px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--bg);box-shadow:inset -5px -5px 0 rgba(0,0,0,.08);flex-shrink:0')}><Icon n="nova" size={24} /></div>

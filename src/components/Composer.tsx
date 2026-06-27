@@ -20,15 +20,17 @@ function StagedItem({ f }: { f: StagedFile }) {
       : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)'
     return (
       <div onClick={() => v.openStaged(f)} style={css(`position:relative;width:54px;height:54px;border-radius:10px;background:${bg};cursor:pointer;border:1px solid rgba(0,0,0,.06)`)}>
-        <span
+        <button
+          type="button"
+          aria-label={`Bỏ ${f.name}`}
           onClick={(e) => {
             e.stopPropagation()
             v.removeStaged(f.id)
           }}
-          style={css('position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:center;cursor:pointer')}
+          style={css('border:none;position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:center;cursor:pointer')}
         >
           <Icon n="close" size={11} stroke={2.25} />
-        </span>
+        </button>
       </div>
     )
   }
@@ -40,15 +42,17 @@ function StagedItem({ f }: { f: StagedFile }) {
         <div style={css('font-size:12.5px')}>{f.name}</div>
         <div style={css('font-size:10.5px;color:var(--muted)')}>{f.size}</div>
       </div>
-      <span
+      <button
+        type="button"
+        aria-label={`Bỏ ${f.name}`}
         onClick={(e) => {
           e.stopPropagation()
           v.removeStaged(f.id)
         }}
-        style={css('margin-left:4px;color:var(--faint);cursor:pointer;display:flex')}
+        style={css('background:transparent;border:none;margin-left:4px;color:var(--faint);cursor:pointer;display:flex')}
       >
         <Icon n="close" size={14} />
-      </span>
+      </button>
     </div>
   )
 }
@@ -79,9 +83,9 @@ export function Composer() {
 
           <div style={css('display:flex;align-items:flex-end;gap:8px')}>
             <div style={css('position:relative;flex-shrink:0')}>
-              <div onClick={v.toggleCapMenu} style={css('width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)')}>
+              <button type="button" aria-label="Thêm vào chat" onClick={v.toggleCapMenu} className="tap" style={css('background:transparent;border:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted)')}>
                 <Icon n="plus" size={20} />
-              </div>
+              </button>
               {/* hidden real file inputs */}
               <input ref={imgInput} type="file" accept="image/*" multiple onChange={onFiles} style={{ display: 'none' }} />
               <input ref={fileInput} type="file" multiple onChange={onFiles} style={{ display: 'none' }} />
@@ -139,9 +143,9 @@ export function Composer() {
               placeholder="Trả lời Nova…"
               style={css('flex:1;min-width:0;font-size:17px;color:var(--text);padding:9px 0')}
             />
-            <div onClick={v.send} style={css('width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}>
+            <button type="button" aria-label="Gửi" onClick={v.send} className="tap" style={css('border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}>
               <Icon n="send" size={17} stroke={2} />
-            </div>
+            </button>
           </div>
 
           {/* context row */}

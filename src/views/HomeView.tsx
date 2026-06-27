@@ -2,14 +2,22 @@ import { useStore } from '../state/store'
 import { css } from '../css'
 import { Icon } from './../components/Icon'
 
+function greeting(): string {
+  const h = new Date().getHours()
+  if (h < 11) return 'Chào buổi sáng'
+  if (h < 13) return 'Chào buổi trưa'
+  if (h < 18) return 'Chào buổi chiều'
+  return 'Chào buổi tối'
+}
+
 export function HomeView() {
   const { v } = useStore()
   if (!v.isHome) return null
   return (
-    <div style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
+    <div className="view" style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
       <div style={css(`width:640px;max-width:100%;padding:${v.homePad};display:flex;flex-direction:column;align-items:center;min-height:100%;justify-content:center`)}>
         <div style={css(`font-family:var(--font-display);font-size:${v.heroSize};line-height:1.04;letter-spacing:-.01em;text-align:center`)}>
-          Chào buổi chiều, Minh.
+          {greeting()}, Minh.
         </div>
         <div style={css('font-size:17px;color:var(--muted);margin-top:12px;text-align:center')}>
           Mình là Nova. Bạn muốn làm gì hôm nay?
@@ -22,9 +30,9 @@ export function HomeView() {
             placeholder="Nhắn cho Nova…"
             style={css('flex:1;min-width:0;font-size:18px;color:var(--text)')}
           />
-          <div onClick={v.send} style={css('width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}>
+          <button type="button" aria-label="Gửi" onClick={v.send} className="tap" style={css('border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}>
             <Icon n="send" size={17} stroke={2} />
-          </div>
+          </button>
         </div>
         <div style={css(`width:100%;margin-top:14px;display:grid;grid-template-columns:${v.sugCols};gap:10px`)}>
           {v.suggestions.map((g, i) => (

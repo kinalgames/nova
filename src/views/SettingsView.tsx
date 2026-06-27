@@ -7,7 +7,7 @@ export function SettingsView() {
   const { v } = useStore()
   if (!v.isSettings) return null
   return (
-    <div style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
+    <div className="view" style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
       <div style={css(`width:640px;max-width:100%;padding:${v.pagePad}`)}>
         <div style={css(`font-family:var(--font-display);font-size:${v.pageTitle};letter-spacing:-.01em;margin-bottom:28px`)}>Cài đặt</div>
 

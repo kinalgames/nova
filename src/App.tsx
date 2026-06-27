@@ -61,6 +61,9 @@ export default function App() {
       <Preview />
       <QuietMode />
       <Auth />
+
+      {/* paper fibre over the whole sheet */}
+      <div className="grain" aria-hidden />
     </div>
   )
 }

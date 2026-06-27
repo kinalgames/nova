@@ -14,7 +14,7 @@ export function MobileDrawer() {
             <div style={css('width:13px;height:13px;border-radius:50%;background:var(--ink);box-shadow:inset -3px -3px 0 var(--side)')} />
             <span style={css("font-family:var(--font-display);font-size:21px")}>Lumen</span>
           </div>
-          <span onClick={v.closeDrawer} style={css('cursor:pointer;color:var(--muted);display:flex')}><Icon n="close" size={17} /></span>
+          <button type="button" aria-label="Đóng" onClick={v.closeDrawer} className="tap" style={css('background:transparent;border:none;cursor:pointer;color:var(--muted);display:flex')}><Icon n="close" size={17} /></button>
         </div>
         <div style={css('padding:0 12px;display:flex;flex-direction:column;gap:6px')}>
           <div onClick={v.pNewChat} style={css('display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--border);cursor:pointer;font-size:14px')}>

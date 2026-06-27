@@ -7,7 +7,7 @@ export function ProjectConfigView() {
   const { v } = useStore()
   if (!v.isProjectCfg) return null
   return (
-    <div style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
+    <div className="view" style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
       <div style={css(`width:640px;max-width:100%;padding:${v.pagePad}`)}>
         <div onClick={v.goProjects} style={css('display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);cursor:pointer;margin-bottom:14px')}><Icon n="back" size={15} /> Tất cả dự án</div>
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:6px')}>

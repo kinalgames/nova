@@ -8,7 +8,7 @@ export function ConversationView() {
   const { v } = useStore()
   if (!v.isConv) return null
   return (
-    <div style={css('position:absolute;inset:0;display:flex')}>
+    <div className="view" style={css('position:absolute;inset:0;display:flex')}>
       <div style={css('flex:1;min-width:0;display:flex;flex-direction:column')}>
         <div ref={v.scrollRef} style={css('flex:1;min-height:0;overflow-y:auto;display:flex;justify-content:center;scroll-behavior:smooth')}>
           <div style={css(`width:680px;max-width:100%;padding:${v.convPad}`)}>
@@ -97,7 +97,7 @@ function DemoThread() {
         Moodboard nghiêng về tông ấm, thủ công — <b style={css('font-weight:600')}>hợp một nửa</b>. Định vị Aurora nhấn "tập trung, tối giản", nên mình gợi ý giảm hoạ tiết và tăng khoảng trắng. Chi tiết khớp/lệch mình ghi trong nhận xét.
       </div>
       <div style={css('margin-top:14px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)')}>
-        <span onClick={v.copyCode} style={css('cursor:pointer')}>{v.copyLabel}</span>
+        <span onClick={v.copyCode} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n={v.copied ? 'check' : 'copy'} size={14} /> {v.copyLabel}</span>
         <span onClick={v.openLightbox} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="open" size={14} /> Xem moodboard</span>
       </div>
 
@@ -249,7 +249,7 @@ function DoneAnswer() {
         <span onClick={v.openPdf} style={css('cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:3px 8px')}><sup>2</sup> openview.dev</span>
       </div>
       <div style={css('margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)')}>
-        <span onClick={v.copyCode} style={css('cursor:pointer')}>{v.copyLabel}</span>
+        <span onClick={v.copyCode} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n={v.copied ? 'check' : 'copy'} size={14} /> {v.copyLabel}</span>
         <span onClick={v.setError} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="retry" size={14} /> Thử lại</span>
         <span onClick={v.openMd} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="open" size={14} /> Mở plan.md</span>
       </div>

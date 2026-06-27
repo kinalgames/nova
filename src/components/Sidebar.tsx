@@ -20,15 +20,15 @@ export function Sidebar() {
           )}
         </div>
         {v.sidebarExpanded && (
-          <span onClick={v.collapseSidebar} style={css('cursor:pointer;color:var(--muted);display:flex')}>
+          <button type="button" aria-label="Thu gọn thanh bên" onClick={v.collapseSidebar} style={css('background:transparent;border:none;cursor:pointer;color:var(--muted);display:flex')}>
             <Icon n="collapse" size={16} />
-          </span>
+          </button>
         )}
       </div>
       {v.sidebarCollapsed && (
-        <div onClick={v.collapseSidebar} style={css('display:flex;justify-content:center;padding:0 0 10px;cursor:pointer;color:var(--muted)')}>
+        <button type="button" aria-label="Mở thanh bên" onClick={v.collapseSidebar} style={css('background:transparent;border:none;width:100%;display:flex;justify-content:center;padding:0 0 10px;cursor:pointer;color:var(--muted)')}>
           <Icon n="expandRail" size={16} />
-        </div>
+        </button>
       )}
 
       {/* new + search */}
@@ -101,9 +101,9 @@ export function Sidebar() {
                 <span onClick={c.open} style={css(`flex:1;font-size:13.5px;color:${c.fg};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer`)}>
                   {c.title}
                 </span>
-                <span onClick={v.openConvMenu} style={css('color:var(--faint);cursor:pointer;padding:0 2px;flex-shrink:0;display:flex')}>
+                <button type="button" aria-label="Tùy chọn cuộc trò chuyện" onClick={v.openConvMenu} style={css('background:transparent;border:none;color:var(--faint);cursor:pointer;padding:0 2px;flex-shrink:0;display:flex')}>
                   <Icon n="more" size={15} />
-                </span>
+                </button>
               </div>
             ))}
           </>

@@ -771,7 +771,8 @@ function deriveValues(
     activeCount,
     tokenPct: s.tokenPct,
     tokenLabel: adv ? '84k / 200k' : 'còn 58%',
-    copyLabel: s.copied ? '✓ đã chép' : '⧉ Sao chép',
+    copyLabel: s.copied ? 'Đã chép' : 'Sao chép',
+    copied: s.copied,
     quietClock: '24:13',
     // nav handlers
     goHome: () => go('home'),

@@ -14,7 +14,7 @@ export function Inspector({ advanced, tokenPct, tokenLabel, onClose }: Inspector
     <div style={css("font-family:var(--font-body)")}>
       <div style={css('height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--border-2)')}>
         <span style={css("font-family:var(--font-display);font-size:18px;color:var(--text)")}>Ngữ cảnh</span>
-        <span onClick={onClose} style={css('cursor:pointer;color:var(--faint);display:flex')}><Icon n="close" size={16} /></span>
+        <button type="button" aria-label="Đóng ngữ cảnh" onClick={onClose} style={css('background:transparent;border:none;cursor:pointer;color:var(--faint);display:flex')}><Icon n="close" size={16} /></button>
       </div>
       <div style={css('padding:18px;display:flex;flex-direction:column;gap:22px')}>
         <div>

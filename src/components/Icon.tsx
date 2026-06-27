@@ -9,6 +9,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Command,
+  Copy,
   Diamond,
   Download,
   FileText,
@@ -73,6 +74,7 @@ const REGISTRY = {
   command: Command,
   data: BarChart3,
   plan: ListTodo,
+  copy: Copy,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof REGISTRY

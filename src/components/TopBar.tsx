@@ -9,9 +9,9 @@ export function TopBar() {
     <div style={css('height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:var(--bg);gap:10px')}>
       <div style={css('display:flex;align-items:center;gap:10px;min-width:0')}>
         {v.isMobile && (
-          <span onClick={v.openDrawer} style={css('cursor:pointer;color:var(--text-2);padding-right:2px;display:flex')}>
+          <button type="button" aria-label="Mở menu" onClick={v.openDrawer} className="tap" style={css('background:transparent;border:none;cursor:pointer;color:var(--text-2);padding-right:2px;display:flex')}>
             <Icon n="menu" size={19} />
-          </span>
+          </button>
         )}
         <div onClick={v.goProjectCfg} style={css('display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0')}>
           <span style={css('width:9px;height:9px;border-radius:3px;background:var(--accent);flex-shrink:0')} />
@@ -37,10 +37,10 @@ export function TopBar() {
           <span style={css('white-space:nowrap')}>{v.modelLabel}</span>
           <Icon n="caret" size={13} style={{ color: 'var(--faint)' }} />
         </div>
-        <div onClick={v.enterQuiet} style={css('display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9px;padding:7px 11px;cursor:pointer;font-size:13px;color:var(--text-2);background:var(--panel)')}>
+        <button type="button" aria-label="Vào chế độ tập trung" onClick={v.enterQuiet} style={css('display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9px;padding:7px 11px;cursor:pointer;font-size:13px;color:var(--text-2);background:var(--panel);font-family:inherit')}>
           <Icon n="focus" size={15} />
           {v.isDesktop && <span style={css('white-space:nowrap')}>Tập trung</span>}
-        </div>
+        </button>
       </div>
     </div>
   )

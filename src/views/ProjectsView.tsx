@@ -6,7 +6,7 @@ export function ProjectsView() {
   const { v } = useStore()
   if (!v.isProjects) return null
   return (
-    <div style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
+    <div className="view" style={css('position:absolute;inset:0;overflow-y:auto;display:flex;justify-content:center')}>
       <div style={css(`width:720px;max-width:100%;padding:${v.pagePad}`)}>
         <div style={css('display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px')}>
           <div style={css(`font-family:var(--font-display);font-size:${v.pageTitle};letter-spacing:-.01em`)}>Dự án</div>
@@ -42,7 +42,7 @@ export function ProjectsView() {
                 <br />
                 {p.when}
               </span>
-              <span onClick={p.config} style={css('color:var(--faint);cursor:pointer;display:flex')}><Icon n="settings" size={16} /></span>
+              <button type="button" aria-label={`Cấu hình ${p.name}`} onClick={p.config} style={css('background:transparent;border:none;color:var(--faint);cursor:pointer;display:flex')}><Icon n="settings" size={16} /></button>
             </div>
           </div>
         ))}
