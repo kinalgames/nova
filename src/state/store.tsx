@@ -453,7 +453,9 @@ function deriveValues(
     open: () => go('conversation'),
     rename: () => {
       const next =
-        typeof window !== 'undefined' ? window.prompt('Đổi tên cuộc trò chuyện', c.title) : null
+        typeof window !== 'undefined' && window.prompt
+          ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
+          : null
       if (next && next.trim())
         set((x) => ({
           conversations: x.conversations.map((k) =>

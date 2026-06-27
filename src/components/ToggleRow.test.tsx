@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { axe } from 'vitest-axe'
 import { ToggleRow } from './ToggleRow'
+import { makeUser } from '../test/util'
 
 describe('<ToggleRow>', () => {
   it('renders an accessible switch reflecting the on state', () => {
@@ -14,7 +14,7 @@ describe('<ToggleRow>', () => {
   it('calls onToggle when activated by click', async () => {
     const onToggle = vi.fn()
     render(<ToggleRow title="Chế độ tối" sub="…" on={false} onToggle={onToggle} />)
-    await userEvent.click(screen.getByRole('switch'))
+    await makeUser().click(screen.getByRole('switch'))
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
 
@@ -23,7 +23,7 @@ describe('<ToggleRow>', () => {
     render(<ToggleRow title="Chế độ tối" sub="…" on={false} onToggle={onToggle} />)
     const sw = screen.getByRole('switch')
     sw.focus()
-    await userEvent.keyboard(' ')
+    await makeUser().keyboard(' ')
     expect(onToggle).toHaveBeenCalled()
   })
 

@@ -149,12 +149,13 @@ describe('store — recent conversations (rename / pin / delete)', () => {
     expect(result.current.v.sideConvs[0].id).toBe(target.id)
   })
   it('renames via prompt and persists', () => {
-    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Tên mới')
+    const orig = window.prompt
+    window.prompt = vi.fn(() => 'Tên mới')
     const { result } = setup()
     const target = result.current.v.sideConvs[0]
     act(() => target.rename())
     expect(result.current.v.sideConvs.find((c) => c.id === target.id)?.title).toBe('Tên mới')
-    promptSpy.mockRestore()
+    window.prompt = orig
   })
 })
 

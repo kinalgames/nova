@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeUser } from "../test/util"
 import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { Composer } from './Composer'
 import { StoreProvider, useStore } from '../state/store'
 
@@ -16,7 +16,7 @@ function renderComposer() {
 
 describe('<Composer>', () => {
   it('opens the "add to chat" menu (Radix) and lists tools', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
@@ -31,7 +31,7 @@ describe('<Composer>', () => {
   })
 
   it('reflects typing into the message field', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     const input = screen.getByRole('textbox', { name: 'Nhắn cho Nova' })
     await user.type(input, 'xin chào')
@@ -39,7 +39,7 @@ describe('<Composer>', () => {
   })
 
   it('keeps the add-to-chat menu open while toggling a tool', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
@@ -51,14 +51,14 @@ describe('<Composer>', () => {
 
 describe('<Composer> — cap-menu items', () => {
   it('removes a staged file from its chip', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     await user.click(screen.getByRole('button', { name: /Bỏ Brief-Aurora\.pdf/ }))
     expect(screen.queryByText('Brief-Aurora.pdf')).not.toBeInTheDocument()
   })
 
   it('triggers the upload-file and project items (menu closes on select)', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
@@ -67,7 +67,7 @@ describe('<Composer> — cap-menu items', () => {
   })
 
   it('toggles every Nova tool from the menu', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
@@ -81,7 +81,7 @@ describe('<Composer> — cap-menu items', () => {
 describe('<Composer> — real upload', () => {
   it('stages an uploaded image (object URL) with a remove control', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:mock')
-    const user = userEvent.setup()
+    const user = makeUser()
     renderComposer()
     const imgInput = document.querySelector(
       'input[type="file"][accept="image/*"]',
@@ -100,7 +100,7 @@ function ToolProbe() {
 
 describe('<Composer> + store wiring', () => {
   it('actually flips the tool state in the store', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     render(
       <StoreProvider>
         <Composer />

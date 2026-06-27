@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { makeUser } from './test/util'
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import App from './App'
 import { StoreProvider } from './state/store'
 
@@ -21,21 +21,21 @@ describe('App — shell & navigation', () => {
   })
 
   it('navigates to Settings via the sidebar', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderApp()
     await user.click(screen.getByRole('button', { name: 'Cài đặt' }))
     expect(await screen.findByText('Chế độ nâng cao')).toBeInTheDocument()
   })
 
   it('navigates to Nova via the sidebar', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderApp()
     await user.click(screen.getByRole('button', { name: 'Nova' }))
     expect(await screen.findByText('PHONG CÁCH TRẢ LỜI')).toBeInTheDocument()
   })
 
   it('opens the command palette (Radix dialog) from the sidebar search', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderApp()
     await user.click(screen.getByRole('button', { name: /Tìm/ }))
     const dialog = await screen.findByRole('dialog')
@@ -47,7 +47,7 @@ describe('App — shell & navigation', () => {
 
 describe('App — sending a message', () => {
   it('appends the typed message to the conversation', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderApp()
     const input = screen.getByRole('textbox', { name: 'Nhắn cho Nova' })
     await user.type(input, 'Phân tích quý 4 giúp mình')

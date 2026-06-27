@@ -1,15 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import App from '../App'
-import { renderWithStore } from '../test/util'
+import {renderWithStore, makeUser } from '../test/util'
 
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
 
 describe('<HomeView>', () => {
   it('clicking an intent suggestion navigates into a conversation', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderWithStore(<App />, (s) => s.v.goHome())
     await user.click(await screen.findByText('Lên kế hoạch'))
     // suggestion routes into the conversation composer

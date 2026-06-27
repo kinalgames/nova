@@ -1,14 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import App from '../App'
-import { renderWithStore } from '../test/util'
+import {renderWithStore, makeUser } from '../test/util'
 
 beforeEach(() => localStorage.clear())
 
 describe('overlay open/close wiring', () => {
   it('command palette closes on Escape (onOpenChange → closeMenus)', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderWithStore(<App />, (s) => s.set({ palette: true }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     await user.keyboard('{Escape}')
@@ -16,7 +15,7 @@ describe('overlay open/close wiring', () => {
   })
 
   it('preview closes via its close button (onOpenChange → closePreview)', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderWithStore(<App />, (s) => s.v.openPdf())
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Đóng' }))
@@ -24,7 +23,7 @@ describe('overlay open/close wiring', () => {
   })
 
   it('mobile drawer navigates and closes when a project is chosen', async () => {
-    const user = userEvent.setup()
+    const user = makeUser()
     renderWithStore(<App />, (s) => s.set({ vw: 375, drawerOpen: true }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: /Aurora/ }))
