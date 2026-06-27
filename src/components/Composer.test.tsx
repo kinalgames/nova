@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Composer } from './Composer'
@@ -46,6 +46,20 @@ describe('<Composer>', () => {
     await user.click(within(menu).getByText('Tra cứu web'))
     // menu stays open (onSelect preventDefault) so the user can flip several
     expect(screen.queryByRole('menu')).toBeInTheDocument()
+  })
+})
+
+describe('<Composer> — real upload', () => {
+  it('stages an uploaded image (object URL) with a remove control', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:mock')
+    const user = userEvent.setup()
+    renderComposer()
+    const imgInput = document.querySelector(
+      'input[type="file"][accept="image/*"]',
+    ) as HTMLInputElement
+    const file = new File(['x'], 'ảnh-mới.png', { type: 'image/png' })
+    await user.upload(imgInput, file)
+    expect(screen.getByRole('button', { name: /Bỏ ảnh-mới\.png/ })).toBeInTheDocument()
   })
 })
 
