@@ -42,13 +42,15 @@ describe('store — advanced mode & composer hint', () => {
 })
 
 describe('store — skill presets', () => {
-  it('toggles a library preset', () => {
+  it('toggles a library preset and flips its persisted on-state', () => {
     const { result } = setup()
     const first = result.current.v.presetsLib[0]
-    const before = first.id
+    const id = first.id as 'code'
+    const before = result.current.s.presetDefault[id]
+    expect(first.on).toBe(before)
     act(() => first.toggle())
-    // state map for that id flipped
-    expect(result.current.s.presetDefault[before as 'code']).toBeTypeOf('boolean')
+    expect(result.current.s.presetDefault[id]).toBe(!before)
+    expect(result.current.v.presetsLib[0].on).toBe(!before)
   })
 })
 

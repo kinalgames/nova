@@ -59,22 +59,16 @@ export interface LumenState {
   view: ViewName
   advanced: boolean
   palette: boolean
-  modelMenu: boolean
-  capMenu: boolean
-  projPicker: boolean
   inspector: boolean
   quiet: boolean
   traceOpen: boolean
   drawerOpen: boolean
   sidebarCollapsed: boolean
-  accountMenu: boolean
   authView: AuthView
   preview: Preview | null
   respState: RespState
   freshChat: boolean
-  convMenu: string | null
   chatProject: 'Aurora' | 'Chung'
-  thinkMenu: boolean
   thinkingLevel: ThinkLevel
   theme: Theme
   focusDur: '15' | '25' | '50'

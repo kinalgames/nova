@@ -131,7 +131,10 @@ function Trace() {
       <button type="button" onClick={v.toggleTrace} style={css('display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--text-2);margin-bottom:14px;border:1px solid var(--border);background:var(--panel);border-radius:10px;padding:9px 13px;font:inherit;text-align:left')}>
         <span style={css(`width:18px;height:18px;border-radius:50%;background:${v.traceIconBg};color:${v.traceIconFg};display:flex;align-items:center;justify-content:center`)}><Icon n={v.isStream ? 'focus' : 'check'} size={11} stroke={2.25} /></span>
         <span style={css('color:var(--text)')}>{v.traceSummary}</span>
-        <span style={css('color:var(--faint);font-size:12px')}>{v.traceCaret}</span>
+        <span style={css('display:inline-flex;align-items:center;gap:4px;color:var(--faint);font-size:12px')}>
+          {v.traceCaret}
+          <Icon n="caret" size={12} style={v.traceOpen ? { transform: 'rotate(180deg)' } : undefined} />
+        </span>
       </button>
       {v.traceOpen && (
         <div style={css('border-left:2px solid var(--border);padding-left:22px;display:flex;flex-direction:column;gap:15px;margin-bottom:6px')}>

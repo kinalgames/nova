@@ -87,22 +87,12 @@ describe('store — preview formats', () => {
   })
 })
 
-describe('store — conversation menu & inspector', () => {
-  it('opens and closes the conv menu', () => {
-    const { result } = setup()
-    act(() => result.current.v.openConvMenu())
-    expect(result.current.s.convMenu).toBe('c1')
-    act(() => result.current.v.closeConvMenu())
-    expect(result.current.s.convMenu).toBeNull()
-  })
+describe('store — inspector & sidebar / drawer', () => {
   it('toggles the inspector', () => {
     const { result } = setup()
     act(() => result.current.v.toggleInspector())
     expect(result.current.s.inspector).toBe(true)
   })
-})
-
-describe('store — sidebar / drawer / account', () => {
   it('collapses the sidebar', () => {
     const { result } = setup()
     act(() => result.current.v.collapseSidebar())
@@ -115,10 +105,8 @@ describe('store — sidebar / drawer / account', () => {
     act(() => result.current.v.closeDrawer())
     expect(result.current.s.drawerOpen).toBe(false)
   })
-  it('toggles the account menu and the shortcuts bar', () => {
+  it('toggles the shortcuts bar', () => {
     const { result } = setup()
-    act(() => result.current.v.toggleAccountMenu())
-    expect(result.current.s.accountMenu).toBe(true)
     act(() => result.current.v.toggleBar())
     expect(result.current.s.barOn).toBe(false)
   })
@@ -146,14 +134,14 @@ describe('store — palette actions', () => {
 })
 
 describe('store — preset toggles', () => {
-  it('toggles a project preset and a library preset', () => {
+  it('toggling a project preset updates the active-skill summary', () => {
     const { result } = setup()
-    const proj = result.current.v.presetsProj[0]
-    const lib = result.current.v.presetsLib[0]
+    const proj = result.current.v.presetsProj[0] // 'code' / Lập trình, off by default
+    expect(proj.on).toBe(false)
+    expect(result.current.v.projActiveNames).not.toContain('Lập trình')
     act(() => proj.toggle())
-    act(() => lib.toggle())
-    // projActiveNames is recomputed from the project preset map
-    expect(typeof result.current.v.projActiveNames).toBe('string')
+    expect(result.current.s.projPresets.code).toBe(true)
+    expect(result.current.v.projActiveNames).toContain('Lập trình')
   })
 })
 
@@ -190,22 +178,7 @@ describe('store — copy & search input', () => {
   })
 })
 
-describe('store — model menu & cap menu toggles', () => {
-  it('toggles the model and cap menus', () => {
-    const { result } = setup()
-    act(() => result.current.v.toggleModelMenu())
-    expect(result.current.s.modelMenu).toBe(true)
-    act(() => result.current.v.toggleCapMenu())
-    expect(result.current.s.capMenu).toBe(true)
-  })
-})
-
-describe('store — think menu & auth toggle branches', () => {
-  it('toggles the thinking menu', () => {
-    const { result } = setup()
-    act(() => result.current.v.toggleThinkMenu())
-    expect(result.current.s.thinkMenu).toBe(true)
-  })
+describe('store — auth toggle branches', () => {
   it('toggles signup back to login', () => {
     const { result } = setup()
     act(() => result.current.set({ authView: 'signup' }))
@@ -222,13 +195,12 @@ describe('store — projects + closeMenus', () => {
     act(() => result.current.v.projects[0].config())
     expect(result.current.v.isProjectCfg).toBe(true)
   })
-  it('closeMenus clears palette + model menu', () => {
+  it('closeMenus closes the palette', () => {
     const { result } = setup()
     act(() => result.current.v.togglePalette())
-    act(() => result.current.v.toggleModelMenu())
+    expect(result.current.s.palette).toBe(true)
     act(() => result.current.v.closeMenus())
     expect(result.current.s.palette).toBe(false)
-    expect(result.current.s.modelMenu).toBe(false)
   })
   it('goHome and goConv navigate', () => {
     const { result } = setup()

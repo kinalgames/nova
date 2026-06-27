@@ -27,13 +27,3 @@ export function css(decl: string): CSSProperties {
   cache.set(decl, frozen)
   return frozen
 }
-
-/** Merge several declaration strings / style objects into one style object. */
-export function sx(...parts: (string | CSSProperties | undefined | false)[]): CSSProperties {
-  const out: CSSProperties = {}
-  for (const p of parts) {
-    if (!p) continue
-    Object.assign(out, typeof p === 'string' ? css(p) : p)
-  }
-  return out
-}

@@ -63,22 +63,16 @@ function initialState(): LumenState {
     view: 'conversation',
     advanced: p.advanced ?? false,
     palette: false,
-    modelMenu: false,
-    capMenu: false,
-    projPicker: false,
     inspector: false,
     quiet: false,
     traceOpen: false,
     drawerOpen: false,
     sidebarCollapsed: false,
-    accountMenu: false,
     authView: null,
     preview: null,
     respState: 'done',
     freshChat: false,
-    convMenu: null,
     chatProject: 'Aurora',
-    thinkMenu: false,
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
@@ -216,18 +210,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         e.preventDefault()
         set((x) => ({ quiet: !x.quiet }))
       } else if (e.key === 'Escape') {
-        set({
-          palette: false,
-          modelMenu: false,
-          capMenu: false,
-          projPicker: false,
-          quiet: false,
-          drawerOpen: false,
-          accountMenu: false,
-          preview: null,
-          thinkMenu: false,
-          convMenu: null,
-        })
+        // Radix overlays close themselves on Escape; this covers the
+        // store-driven surfaces (palette, quiet, drawer, preview).
+        set({ palette: false, quiet: false, drawerOpen: false, preview: null })
       }
     }
     window.addEventListener('keydown', onKey)
@@ -250,18 +235,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   )
 
   const go = useCallback(
-    (view: ViewName) =>
-      set({
-        view,
-        palette: false,
-        modelMenu: false,
-        capMenu: false,
-        projPicker: false,
-        drawerOpen: false,
-        accountMenu: false,
-        convMenu: null,
-        freshChat: false,
-      }),
+    (view: ViewName) => set({ view, palette: false, drawerOpen: false, freshChat: false }),
     [set],
   )
 
@@ -301,8 +275,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         draft: '',
         typing: true,
         typingLabel: 'Nova đang suy nghĩ…',
-        capMenu: false,
-        projPicker: false,
       }
     })
   }, [set])
@@ -334,7 +306,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
           : `${Math.max(1, Math.round(file.size / 1024))} KB`
       const item: StagedFile = { id: uid(), kind, name: file.name, size, url }
-      set((x) => ({ staged: [...x.staged, item], capMenu: false }))
+      set((x) => ({ staged: [...x.staged, item] }))
     },
     [set],
   )
@@ -484,7 +456,7 @@ function deriveValues(
     dot: p.dot,
     bg: s.chatProject === p.id ? 'var(--accent-soft)' : 'transparent',
     check: s.chatProject === p.id ? '✓' : '',
-    pick: () => set({ chatProject: p.id, projPicker: false }),
+    pick: () => set({ chatProject: p.id }),
   }))
 
   const suggestions = suggestionDefs.map((g) => ({
@@ -540,9 +512,6 @@ function deriveValues(
     // top
     headerTitle: s.chatProject === 'Chung' ? 'Chung · Mặc định' : 'Aurora · Ra mắt',
     palette: s.palette,
-    modelMenu: s.modelMenu,
-    capMenu: s.capMenu,
-    projPicker: s.projPicker,
     quiet: s.quiet,
     notQuiet: !s.quiet,
     showMeter: isDesktop,
@@ -574,7 +543,7 @@ function deriveValues(
         : adv
           ? 'Đã suy nghĩ và dùng 5 công cụ · 6.4 giây'
           : 'Nova đã tra cứu web và cập nhật tài liệu của bạn',
-    traceCaret: s.traceOpen ? 'Ẩn ▴' : adv ? 'Chi tiết ▾' : 'Xem Nova đã làm gì ▾',
+    traceCaret: s.traceOpen ? 'Ẩn' : adv ? 'Chi tiết' : 'Xem Nova đã làm gì',
     toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
     traceOpen: s.traceOpen,
     setStream: () => set({ respState: 'stream' }),
@@ -592,8 +561,6 @@ function deriveValues(
     toggleInspector: () => set((x) => ({ inspector: !x.inspector })),
     // composer
     chatProject: s.chatProject,
-    toggleProjPicker: () =>
-      set((x) => ({ projPicker: !x.projPicker, capMenu: false, thinkMenu: false })),
     staged: s.staged,
     hasStaged: s.staged.length > 0,
     removeStaged: (id: string) =>
@@ -634,7 +601,7 @@ function deriveValues(
     finishOnboarding: () => set({ authView: null }),
     showAuth: !!s.authView,
     isLogin: s.authView !== 'signup',
-    logout: () => set({ authView: 'login', accountMenu: false }),
+    logout: () => set({ authView: 'login' }),
     doLogin: () =>
       set({ authView: s.authView === 'signup' ? 'onboarding' : null }),
     authTitle: s.authView === 'signup' ? 'Tạo tài khoản' : 'Đăng nhập',
@@ -659,10 +626,6 @@ function deriveValues(
     // empty / demo
     isEmptyChat: s.freshChat && s.sent.length === 0,
     hasDemo: !(s.freshChat && s.sent.length === 0),
-    // conv menu
-    convMenu: s.convMenu,
-    openConvMenu: () => set({ convMenu: 'c1' }),
-    closeConvMenu: () => set({ convMenu: null }),
     // thinking
     thinkingLevel: s.thinkingLevel,
     thinkLabel:
@@ -670,17 +633,14 @@ function deriveValues(
         s.thinkingLevel
       ] || 'Vừa',
     showThinkChip: s.thinkingLevel !== 'off',
-    thinkMenu: s.thinkMenu,
-    toggleThinkMenu: () =>
-      set((x) => ({ thinkMenu: !x.thinkMenu, capMenu: false, projPicker: false })),
     thinkChkOff: s.thinkingLevel === 'off' ? '✓' : '',
     thinkChkLow: s.thinkingLevel === 'low' ? '✓' : '',
     thinkChkNormal: s.thinkingLevel === 'normal' ? '✓' : '',
     thinkChkHigh: s.thinkingLevel === 'high' ? '✓' : '',
-    setThinkOff: () => set({ thinkingLevel: 'off', thinkMenu: false }),
-    setThinkLow: () => set({ thinkingLevel: 'low', thinkMenu: false }),
-    setThinkNormal: () => set({ thinkingLevel: 'normal', thinkMenu: false }),
-    setThinkHigh: () => set({ thinkingLevel: 'high', thinkMenu: false }),
+    setThinkOff: () => set({ thinkingLevel: 'off' }),
+    setThinkLow: () => set({ thinkingLevel: 'low' }),
+    setThinkNormal: () => set({ thinkingLevel: 'normal' }),
+    setThinkHigh: () => set({ thinkingLevel: 'high' }),
     // theme controls
     themeVal: s.theme,
     focusVal: s.focusDur,
@@ -726,9 +686,6 @@ function deriveValues(
     stHumorBd: s.styles.humor ? accent : 'var(--border)',
     stHumorBg: s.styles.humor ? 'var(--accent-soft)' : 'transparent',
     stHumorFg: s.styles.humor ? accent : 'var(--muted)',
-    // account
-    accountMenu: s.accountMenu,
-    toggleAccountMenu: () => set((x) => ({ accountMenu: !x.accountMenu })),
     bashLabel: adv ? 'Bash' : 'Chạy lệnh',
     showComposerHint: true,
     // bottom bar
@@ -785,12 +742,9 @@ function deriveValues(
     goAssistant: () => go('assistant'),
     goSettings: () => go('settings'),
     togglePalette: () => set((x) => ({ palette: !x.palette, drawerOpen: false })),
-    closeMenus: () => set({ palette: false, modelMenu: false }),
-    toggleModelMenu: () => set((x) => ({ modelMenu: !x.modelMenu })),
-    pickOpus: () => set({ model: 'opus', modelMenu: false }),
-    pickHaiku: () => set({ model: 'haiku', modelMenu: false }),
-    toggleCapMenu: () =>
-      set((x) => ({ capMenu: !x.capMenu, projPicker: false, thinkMenu: false })),
+    closeMenus: () => set({ palette: false }),
+    pickOpus: () => set({ model: 'opus' }),
+    pickHaiku: () => set({ model: 'haiku' }),
     enterQuiet: () => set({ quiet: true }),
     exitQuiet: () => set({ quiet: false }),
     onDraft: (e: React.ChangeEvent<HTMLInputElement>) => set({ draft: e.target.value }),
@@ -814,12 +768,9 @@ function deriveValues(
         freshChat: true,
         respState: 'done',
         palette: false,
-        modelMenu: false,
         drawerOpen: false,
-        accountMenu: false,
       }),
     pQuiet: () => set({ quiet: true, palette: false }),
-    // expose auth openers for account menu etc.
     openLogin: () => set({ authView: 'login' }),
   }
 }
