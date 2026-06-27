@@ -124,7 +124,7 @@ export interface Store {
   s: LumenState
   set: (u: Updater) => void
   v: ReturnType<typeof deriveValues>
-  scrollRef: React.RefObject<HTMLDivElement>
+  scrollRef: React.RefObject<HTMLDivElement | null>
   /** Stage a real uploaded file (image preview via object URL). */
   addUpload: (file: File) => void
 }
@@ -145,9 +145,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       window.matchMedia?.('(prefers-color-scheme: dark)').matches,
   )
   const scrollRef = useRef<HTMLDivElement>(null)
-  const t1 = useRef<ReturnType<typeof setTimeout>>()
-  const t2 = useRef<ReturnType<typeof setTimeout>>()
-  const tc = useRef<ReturnType<typeof setTimeout>>()
+  const t1 = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const t2 = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const tc = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const set = useCallback((u: Updater) => {
     setS((prev) => ({ ...prev, ...(typeof u === 'function' ? u(prev) : u) }))
@@ -365,7 +365,7 @@ function deriveValues(
     send: () => void
     copyCode: () => void
     dark: boolean
-    scrollRef: React.RefObject<HTMLDivElement>
+    scrollRef: React.RefObject<HTMLDivElement | null>
   },
 ) {
   const { go, send, copyCode, dark, scrollRef } = extra

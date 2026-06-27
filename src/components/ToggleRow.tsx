@@ -1,27 +1,35 @@
-import { css } from '../css'
+import * as Switch from '@radix-ui/react-switch'
 
 interface ToggleRowProps {
   title: string
   sub: string
   on: boolean
-  accent: string
   onToggle: () => void
   last?: boolean
 }
 
-export function ToggleRow({ title, sub, on, accent, onToggle, last }: ToggleRowProps) {
-  const trackBg = on ? accent : 'var(--border)'
-  const knobTx = on ? 'translateX(17px)' : 'translateX(0)'
-  const borderStyle = last ? 'none' : '1px solid var(--border-2)'
+/**
+ * A labelled setting row with a real, accessible switch (Radix: role=switch,
+ * aria-checked, Space/Enter, focus ring). Styled with token-mapped Tailwind.
+ */
+export function ToggleRow({ title, sub, on, onToggle, last }: ToggleRowProps) {
   return (
-    <div style={css(`display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;border-bottom:${borderStyle};font-family:var(--font-body)`)}>
-      <div style={css('min-width:0')}>
-        <div style={css('font-size:16px;color:var(--text)')}>{title}</div>
-        <div style={css('font-size:13px;color:var(--muted)')}>{sub}</div>
+    <div
+      className={`flex items-center justify-between gap-3 px-0.5 py-3.5 ${
+        last ? '' : 'border-b border-border'
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="text-base text-text">{title}</div>
+        <div className="text-[13px] text-muted">{sub}</div>
       </div>
-      <div onClick={onToggle} style={css(`width:40px;height:23px;border-radius:12px;background:${trackBg};position:relative;cursor:pointer;transition:background .2s;flex-shrink:0`)}>
-        <div style={css(`position:absolute;left:2px;top:2px;width:19px;height:19px;border-radius:50%;background:var(--knob);transform:${knobTx};transition:transform .2s;box-shadow:var(--knob-shadow)`)} />
-      </div>
+      <Switch.Root
+        checked={on}
+        onCheckedChange={onToggle}
+        className="relative h-[23px] w-10 shrink-0 cursor-pointer rounded-full bg-border p-0.5 transition-colors data-[state=checked]:bg-accent"
+      >
+        <Switch.Thumb className="block size-[19px] rounded-full bg-[var(--knob)] shadow-[var(--knob-shadow)] transition-transform data-[state=checked]:translate-x-[17px]" />
+      </Switch.Root>
     </div>
   )
 }

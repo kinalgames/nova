@@ -89,7 +89,6 @@ export function SettingsView() {
             title="Thanh phím tắt dưới cùng"
             sub="Hiện gợi ý phím tắt (chỉ desktop)"
             on={v.barOn}
-            accent={v.accent}
             onToggle={v.toggleBar}
           />
         )}

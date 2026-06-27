@@ -1,8 +1,59 @@
+@import 'tailwindcss';
+
+/* our dark mode is a class, not prefers-color-scheme */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ===========================================================================
    LUMEN — design tokens. One sheet of paper: tonal separation, hairline rules,
    flat at rest. Shadow is reserved for overlays that lift off the page.
    Every visual decision lives here so light/dark and accent stay coherent.
+
+   Tailwind utilities are mapped (@theme inline) onto these runtime vars, so
+   `bg-panel` / `text-muted` / `font-display` follow .dark automatically.
    =========================================================================== */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-side: var(--side);
+  --color-panel: var(--panel);
+  --color-fill: var(--fill);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-muted: var(--muted);
+  --color-label: var(--label);
+  --color-faint: var(--faint);
+  --color-border: var(--border);
+  --color-border-2: var(--border-2);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-plum: var(--plum);
+  --color-code-bg: var(--code-bg);
+  --color-code-fg: var(--code-fg);
+  --color-code-dim: var(--code-dim);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-pop: var(--shadow-pop);
+
+  --ease-paper: var(--ease);
+}
+
 :root {
   /* paper — surfaces are the same sheet at different tones, never elevated */
   --bg: #fbfaf6;        /* the sheet */

@@ -11,3 +11,9 @@ yarn-debug.log*
 yarn-error.log*
 
 *.tsbuildinfo
+
+# test/tooling artifacts
+coverage
+playwright-report
+test-results
+.vitest
