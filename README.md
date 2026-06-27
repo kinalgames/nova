@@ -1,39 +1,69 @@
 # Lumen Flow
 
-A faithful, interactive implementation of the **Lumen Flow** design — a light,
-editorial, single-flow AI chat "operating system." The app is **Lumen**; the
-assistant is **Nova**. Built from the Claude Design handoff bundle (see
-[`HANDOFF.md`](./HANDOFF.md), [`chats/`](./chats), and [`project/`](./project)).
+A light, editorial, single-flow AI chat "operating system." The app is
+**Lumen**; the assistant is **Nova**. The interface language is Vietnamese.
 
-Stack: **React 18 + Vite + TypeScript**. All UI is recreated pixel-faithfully
-from the prototype; the interface language is Vietnamese, matching the design.
+The design language is **"mọi thứ nằm trên một trang giấy"** (everything on one
+sheet of paper): one tonal plane separated by tone and hairlines rather than
+hard borders, **flat at rest** (only overlays — palette, popovers, dropdowns,
+lightbox — cast shadow), ink-on-paper color, and type as the hero (display
+font **Fraunces**, body **Geist**, mono **Geist Mono**).
+
+> The app runs on **fake data and a fake service layer** — there is no backend.
+> The behavior is built to match production (streaming replies, per-conversation
+> history, provider key testing, file download, validated auth), so it is a
+> runnable MVP rather than a static mock.
+
+## Stack
+
+- **React 19** · **Vite 7** · **TypeScript**
+- **Tailwind CSS v4** — mapped onto the design tokens via `@theme inline`, so
+  `bg-panel` / `text-muted` / `font-display` follow the `.dark` variant
+- **Radix UI** primitives (Dialog, Dropdown Menu, Switch, Visually Hidden)
+- **lucide-react** icons via a semantic `Icon` wrapper
 
 ## Run
 
 ```bash
 npm install
-npm run dev      # start the dev server (http://localhost:5173)
-npm run build    # typecheck + production build to dist/
+npm run dev      # dev server at http://localhost:5173
+npm run build    # typecheck (tsc -b) + production build to dist/
 npm run preview  # serve the production build
 ```
 
+## Quality
+
+```bash
+npm run lint           # ESLint 9 (flat config) + jsx-a11y
+npm run format         # Prettier (+ tailwindcss plugin)
+npm test               # Vitest + Testing Library (happy-dom)
+npm run test:coverage  # coverage, gated at 95/91/95/96 (stmts/branches/funcs/lines)
+npm run test:e2e       # Playwright + @axe-core (structural a11y hard-gated to 0)
+```
+
+The unit suite (~140 tests) covers the store logic, real Radix interaction, and
+full-view render, and runs in a few seconds. The e2e suite hard-gates zero
+structural WCAG 2 A/AA violations and tracks contrast against a ratchet baseline.
+
 ## What's implemented
 
-Everything from the prototype, fully interactive:
+Every screen and control from the design, fully interactive:
 
-- **Seamless sidebar** (collapsible) with projects (Chung + Aurora), recent
-  conversations, Nova/Settings/account — plus a sliding **mobile drawer**.
-- **Top bar**: project pill, context/memory meter, **model switcher**
+- **Sidebar** (collapsible) — projects (Chung + Aurora), recent conversations
+  (rename / pin / delete, persisted), Nova / Settings / account — plus a sliding
+  **mobile drawer**.
+- **Top bar** — project pill, context/memory meter, **model switcher**
   (Thông minh / Nhanh), focus button.
-- **Home** — greeting + intent suggestions.
-- **Conversation** — full tool-use trace (think → web_search → fetch
-  error/retry → read_file → bash → write) and a **demo state switcher**:
-  _Đang soạn (stream) · Chờ duyệt (approval) · Hoàn tất (done) · Lỗi (error)_.
-- **Composer** — "Add to chat" (＋) popover, staged attachments, project
-  picker, thinking-level menu (Tắt/Thấp/Vừa/Cao), tool toggles.
+- **Home** — time-aware greeting + intent suggestions.
+- **Conversation** — full tool-use trace (think → `web_search` → `fetch`
+  error/retry → `read_file` → `bash` → `write`) and a **demo state switcher**:
+  Đang soạn (stream) · Chờ duyệt (approval) · Hoàn tất (done) · Lỗi (error).
+- **Composer** — "Add to chat" (＋) popover with real file upload, staged
+  attachments, project picker, thinking-level menu (Tắt / Thấp / Vừa / Cao),
+  tool toggles.
 - **Projects**, **Project config** (instructions, files, skill presets),
   **Nova** (style, skills, system prompt), **Settings** (advanced toggle,
-  providers Claude/Gemini/OpenAI/Ollama, theme, focus duration, account).
+  providers, theme, focus duration, account).
 - **Inspector**, **command palette (⌘K)**, **quiet/focus mode (⌘.)**,
   **file/media preview** (image · pdf · code · csv · md), **auth**
   (login / signup / onboarding).
@@ -41,31 +71,40 @@ Everything from the prototype, fully interactive:
   (raw tool names, exit codes, tokens, API keys, system prompt) in the same
   layout; it never hides anything from basic users.
 
-### Real local functionality (beyond a static mock)
+### Production-like behavior (fake services)
 
-- **Real file upload** — the ＋ menu's "Tải ảnh lên" / "Tải tệp lên" open real
-  file pickers; uploaded files are staged as chips and uploaded images preview
-  via object URLs in the lightbox.
-- **Theme persistence** — light / dark / auto persists to `localStorage`;
-  `auto` follows the OS `prefers-color-scheme`. Dark mode genuinely re-themes
-  the whole app via CSS variables.
-- **Persisted settings** — advanced mode, model, providers, thinking level,
-  tool toggles, answer styles, skill presets and focus duration all persist.
-- **Working forms & shortcuts** — message composer, command palette, auth
-  flows, and the `⌘K` / `⌘.` / `Esc` keyboard shortcuts are all live.
+- **Streaming chat** — `src/services/chat.ts` composes a varied, contextual
+  reply and `send()` streams it word by word into the active conversation,
+  paced by the selected model and thinking level, with a live caret.
+- **Per-conversation history** — each conversation has its own message thread;
+  switching loads that thread, New chat creates a fresh one, deleting reassigns
+  the active conversation. Threads persist to `localStorage`.
+- **Provider settings** — API keys are editable and persisted; "Lưu & kiểm tra"
+  runs an async check that resolves to connected / error.
+- **File download / open** — `src/services/files.ts` produces real `Blob`
+  downloads and opens previews in a new tab.
+- **Auth** — the login form validates email and password before proceeding.
+- **Theme & settings persistence** — light / dark / auto (auto follows the OS
+  `prefers-color-scheme`); model, providers, thinking level, tool toggles,
+  answer styles, skill presets, focus duration, conversations and threads all
+  persist. The storage key is versioned (`PERSIST_KEY`), so a persisted-shape
+  change invalidates incompatible older data instead of corrupting state.
 
 ## Project structure
 
 ```
 src/
-  state/        store (ported DC logic), types
-  data/         static definitions (presets, providers, suggestions)
-  components/   sidebar, top bar, composer, inspector, menus, overlays
+  state/        store (React context) + derived values, types
+  data/         static definitions (presets, providers, suggestions, seed threads)
+  services/     fake service layer — chat (streaming), files (download/open)
+  components/   sidebar, top bar, composer, inspector, overlays, Icon, ToggleRow
   views/        home, conversation, projects, project config, nova, settings
   css.ts        helper: inline-CSS string -> React style object
+  test/         shared test harness + setup
+  index.css     design tokens (:root + .dark) and Tailwind theme mapping
   App.tsx       layout composition
 ```
 
-The state store (`src/state/store.tsx`) is a direct port of the prototype's
-`DCLogic` class — its `state` and `renderVals()` derived values — into a React
-context, so behaviour matches the design 1:1.
+State lives in `src/state/store.tsx` as a React context: a single `state` object
+plus a `deriveValues()` function that computes everything the views render, so
+components stay declarative and the behavior is centralized.
