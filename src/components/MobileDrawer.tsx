@@ -64,8 +64,8 @@ export function MobileDrawer() {
             <div className="px-2 pb-2 pt-[18px] font-mono text-[9.5px] tracking-[0.14em] text-label">
               GẦN ĐÂY · AURORA
             </div>
-            {v.sideConvs.map((c, i) => (
-              <button key={i} onClick={c.open} className={navRow} style={{ background: c.bg }}>
+            {v.sideConvs.map((c) => (
+              <button key={c.id} onClick={c.open} className={navRow} style={{ background: c.bg }}>
                 <span className="size-[5px] rounded-full" style={{ background: c.dot }} />
                 <span className="flex-1 truncate text-[13.5px]" style={{ color: c.fg }}>
                   {c.title}

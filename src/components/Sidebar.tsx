@@ -96,9 +96,9 @@ export function Sidebar() {
             <div style={css("font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;color:var(--label);padding:18px 8px 8px")}>
               GẦN ĐÂY · AURORA
             </div>
-            {v.sideConvs.map((c, i) => (
+            {v.sideConvs.map((c) => (
               <div
-                key={i}
+                key={c.id}
                 data-hover="soft"
                 style={css('display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;margin-bottom:1px')}
               >
