@@ -1,4 +1,4 @@
-// Static definitions ported verbatim from the Lumen Flow prototype logic.
+// Static definitions ported verbatim from the Nova Flow prototype logic.
 
 import type { IconName } from '../components/Icon'
 

@@ -80,7 +80,7 @@ export function Auth() {
       <div style={css('width:380px;max-width:100%')}>
         <div style={css('display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:24px')}>
           <div style={css('width:15px;height:15px;border-radius:50%;background:var(--ink);box-shadow:inset -4px -4px 0 var(--bg)')} />
-          <span style={css("font-family:var(--font-display);font-size:28px")}>Lumen</span>
+          <span style={css("font-family:var(--font-display);font-size:28px")}>Nova</span>
         </div>
 
         {v.isLoginForm && (
@@ -109,7 +109,7 @@ export function Auth() {
 
         {v.isOnboarding && (
           <>
-            <div style={css("font-family:var(--font-display);font-size:32px;text-align:center;line-height:1.1")}>Chào mừng đến Lumen</div>
+            <div style={css("font-family:var(--font-display);font-size:32px;text-align:center;line-height:1.1")}>Chào mừng đến Nova</div>
             <div style={css('font-size:15px;color:var(--muted);text-align:center;margin-top:8px;margin-bottom:26px')}>Vài lựa chọn nhanh để Nova hợp với bạn.</div>
             <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);margin-bottom:8px")}>TÊN TRỢ LÝ</div>
             <input defaultValue="Nova" style={css('width:100%;border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-size:15px;background:var(--panel);margin-bottom:20px')} />
@@ -131,7 +131,7 @@ export function Auth() {
               </div>
             </div>
             <button type="button" onClick={v.finishOnboarding} style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500;border:none;font:inherit')}>
-              Bắt đầu dùng Lumen
+              Bắt đầu dùng Nova
             </button>
           </>
         )}

@@ -15,10 +15,10 @@ export function Sidebar() {
     >
       {/* brand row */}
       <div style={css('height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 14px 0 18px')}>
-        <button type="button" aria-label="Trang chủ Lumen" onClick={v.goHome} style={css('display:flex;align-items:center;gap:9px;cursor:pointer;min-width:0;background:transparent;border:none;font:inherit')}>
+        <button type="button" aria-label="Trang chủ Nova" onClick={v.goHome} style={css('display:flex;align-items:center;gap:9px;cursor:pointer;min-width:0;background:transparent;border:none;font:inherit')}>
           <div style={css('width:13px;height:13px;border-radius:50%;background:var(--ink);box-shadow:inset -3px -3px 0 var(--side);flex-shrink:0')} />
           {v.sidebarExpanded && (
-            <span style={css("font-family:var(--font-display);font-size:21px")}>Lumen</span>
+            <span style={css("font-family:var(--font-display);font-size:21px")}>Nova</span>
           )}
         </button>
         {v.sidebarExpanded && (

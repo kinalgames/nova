@@ -4,7 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ===========================================================================
-   LUMEN — design tokens. One sheet of paper: tonal separation, hairline rules,
+   NOVA — design tokens. One sheet of paper: tonal separation, hairline rules,
    flat at rest. Shadow is reserved for overlays that lift off the page.
    Every visual decision lives here so light/dark and accent stay coherent.
 

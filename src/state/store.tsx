@@ -20,7 +20,7 @@ import {
 } from '../data/defs'
 import type {
   LiveProviderStatus,
-  LumenState,
+  NovaState,
   PreviewKind,
   StagedFile,
   Theme,
@@ -34,7 +34,7 @@ const ACCENT_DEFAULT = 'var(--accent)'
 
 // bump the version suffix whenever the persisted shape changes so stale data
 // from an older schema is ignored rather than corrupting the new state
-export const PERSIST_KEY = 'lumen.flow.settings.v2'
+export const PERSIST_KEY = 'nova.flow.settings.v2'
 
 interface Persisted {
   theme?: Theme
@@ -45,15 +45,15 @@ interface Persisted {
   barOn?: boolean
   thinkingLevel?: ThinkLevel
   activeProvider?: ProviderId
-  providerKeys?: LumenState['providerKeys']
-  providerStatus?: LumenState['providerStatus']
-  tools?: LumenState['tools']
-  styles?: LumenState['styles']
+  providerKeys?: NovaState['providerKeys']
+  providerStatus?: NovaState['providerStatus']
+  tools?: NovaState['tools']
+  styles?: NovaState['styles']
   projPresets?: Record<PresetId, boolean>
   presetDefault?: Record<PresetId, boolean>
-  conversations?: LumenState['conversations']
+  conversations?: NovaState['conversations']
   activeConv?: string
-  threads?: LumenState['threads']
+  threads?: NovaState['threads']
 }
 
 function loadPersisted(): Persisted {
@@ -68,7 +68,7 @@ function loadPersisted(): Persisted {
 let _uid = 0
 const uid = () => `f${++_uid}`
 
-function initialState(): LumenState {
+function initialState(): NovaState {
   const p = loadPersisted()
   return {
     view: 'conversation',
@@ -136,10 +136,10 @@ function initialState(): LumenState {
   }
 }
 
-type Updater = Partial<LumenState> | ((s: LumenState) => Partial<LumenState>)
+type Updater = Partial<NovaState> | ((s: NovaState) => Partial<NovaState>)
 
 export interface Store {
-  s: LumenState
+  s: NovaState
   set: (u: Updater) => void
   v: ReturnType<typeof deriveValues>
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -156,7 +156,7 @@ export function useStore(): Store {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [s, setS] = useState<LumenState>(initialState)
+  const [s, setS] = useState<NovaState>(initialState)
   const [prefersDark, setPrefersDark] = useState(
     () =>
       typeof window !== 'undefined' &&
@@ -387,7 +387,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 // Derived values — a faithful port of the prototype's renderVals()
 // ---------------------------------------------------------------------------
 function deriveValues(
-  s: LumenState,
+  s: NovaState,
   set: (u: Updater) => void,
   extra: {
     go: (v: ViewName) => void
@@ -406,11 +406,11 @@ function deriveValues(
   const activeThread = s.threads[s.activeConv] ?? []
   const activeIsDemo = !!s.conversations.find((c) => c.id === s.activeConv)?.demo
 
-  const tk: (keyof LumenState['tools'])[] = ['web', 'fetch', 'files', 'bash']
-  const toolToggle = (k: keyof LumenState['tools']) => () =>
+  const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
+  const toolToggle = (k: keyof NovaState['tools']) => () =>
     set((x) => ({ tools: { ...x.tools, [k]: !x.tools[k] } }))
-  const chk = (k: keyof LumenState['tools']) => (s.tools[k] ? '✓' : '')
-  const rowFg = (k: keyof LumenState['tools']) => (s.tools[k] ? accent : 'var(--text-2)')
+  const chk = (k: keyof NovaState['tools']) => (s.tools[k] ? '✓' : '')
+  const rowFg = (k: keyof NovaState['tools']) => (s.tools[k] ? accent : 'var(--text-2)')
   const activeCount = tk.filter((k) => s.tools[k]).length
 
   const mkPreset = (
@@ -729,7 +729,7 @@ function deriveValues(
     authTitle: s.authView === 'signup' ? 'Tạo tài khoản' : 'Đăng nhập',
     authSub:
       s.authView === 'signup'
-        ? 'Bắt đầu với Lumen trong một phút.'
+        ? 'Bắt đầu với Nova trong một phút.'
         : 'Tiếp tục tới không gian làm việc của bạn.',
     authCta: s.authView === 'signup' ? 'Tạo tài khoản' : 'Tiếp tục',
     authToggleText: s.authView === 'signup' ? 'Đã có tài khoản?' : 'Chưa có tài khoản?',

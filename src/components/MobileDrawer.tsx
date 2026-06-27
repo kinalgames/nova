@@ -27,7 +27,7 @@ export function MobileDrawer() {
           <div className="flex h-14 flex-shrink-0 items-center justify-between pl-[18px] pr-3.5">
             <div className="flex items-center gap-[9px]">
               <div className="size-[13px] rounded-full bg-ink shadow-[inset_-3px_-3px_0_var(--side)]" />
-              <span className="font-display text-[21px]">Lumen</span>
+              <span className="font-display text-[21px]">Nova</span>
             </div>
             <Dialog.Close asChild>
               <button

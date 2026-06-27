@@ -1,7 +1,8 @@
-# Lumen Flow
+# Nova Flow
 
-A light, editorial, single-flow AI chat "operating system." The app is
-**Lumen**; the assistant is **Nova**. The interface language is Vietnamese.
+A light, editorial, single-flow AI chat "operating system" called **Nova** —
+the name of both the app and its assistant. The interface language is
+Vietnamese.
 
 The design language is **"mọi thứ nằm trên một trang giấy"** (everything on one
 sheet of paper): one tonal plane separated by tone and hairlines rather than

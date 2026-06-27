@@ -64,7 +64,7 @@ export interface ToolFlags {
   bash: boolean
 }
 
-export interface LumenState {
+export interface NovaState {
   view: ViewName
   advanced: boolean
   palette: boolean

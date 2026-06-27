@@ -45,7 +45,7 @@ describe('<Auth>', () => {
 
   it('onboarding asks for assistant name + default model', async () => {
     renderWithStore(<App />, (s) => s.set({ authView: 'onboarding' }))
-    expect(await screen.findByText('Chào mừng đến Lumen')).toBeInTheDocument()
+    expect(await screen.findByText('Chào mừng đến Nova')).toBeInTheDocument()
     expect(screen.getByText('TÊN TRỢ LÝ')).toBeInTheDocument()
   })
 })
