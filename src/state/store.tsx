@@ -25,6 +25,7 @@ import type {
   ThinkLevel,
   ViewName,
 } from './types'
+import { composeReply, thinkingDelay, tokenInterval } from '../services/chat'
 
 const ACCENT_DEFAULT = 'var(--accent)'
 
@@ -233,7 +234,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => () => {
       clearTimeout(t1.current)
       clearTimeout(t2.current)
-      clearTimeout(tc.current)
+      clearInterval(tc.current)
     },
     [],
   )
@@ -248,37 +249,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = (prev.draft || '').trim() || 'Tiếp tục giúp mình phần tiếp theo nhé.'
       clearTimeout(t1.current)
       clearTimeout(t2.current)
-      t1.current = setTimeout(
-        () => set({ typingLabel: 'Đang chạy tính toán…' }),
-        800,
-      )
-      t2.current = setTimeout(
-        () =>
-          set((x) => ({
-            typing: false,
-            tokenPct: '51%',
-            sent: [
-              ...x.sent,
-              {
-                who: 'NOVA',
-                color: 'var(--accent)',
-                text: 'Đã rõ. Mình giữ đúng nhịp ba giai đoạn và đã cập nhật plan.md cho khớp.',
-                isNova: true,
-              },
-            ],
-          })),
-        1900,
-      )
+      clearInterval(tc.current)
+
+      const reply = composeReply(t, {
+        model: prev.model,
+        thinking: prev.thinkingLevel,
+        project: prev.chatProject,
+      })
+      const words = reply.split(' ')
+      const step = tokenInterval(prev.model)
+
+      // after a "thinking" pause, append an empty Nova bubble and stream into it
+      t1.current = setTimeout(() => {
+        set((x) => ({
+          typingLabel: 'Đang viết câu trả lời…',
+          sent: [...x.sent, { who: 'NOVA', color: 'var(--accent)', text: '', isNova: true }],
+        }))
+        let i = 0
+        tc.current = setInterval(() => {
+          i += 1
+          set((x) => {
+            const sent = x.sent.slice()
+            sent[sent.length - 1] = { ...sent[sent.length - 1], text: words.slice(0, i).join(' ') }
+            return { sent }
+          })
+          if (i >= words.length) {
+            clearInterval(tc.current)
+            set({ typing: false, tokenPct: `${Math.min(98, 42 + words.length)}%` })
+          }
+        }, step)
+      }, thinkingDelay(prev.thinkingLevel))
+
       return {
         ...prev,
         view: 'conversation',
-        sent: [
-          ...prev.sent,
-          { who: 'MINH', color: 'var(--muted)', text: t, isNova: false },
-        ],
+        sent: [...prev.sent, { who: 'MINH', color: 'var(--muted)', text: t, isNova: false }],
         draft: '',
         typing: true,
-        typingLabel: 'Nova đang suy nghĩ…',
+        typingLabel: prev.thinkingLevel === 'off' ? 'Đang viết câu trả lời…' : 'Nova đang suy nghĩ…',
       }
     })
   }, [set])
@@ -650,7 +658,9 @@ function deriveValues(
     stFgApproval: rs === 'approval' ? 'var(--text)' : 'var(--muted)',
     // empty / demo
     isEmptyChat: s.freshChat && s.sent.length === 0,
-    hasDemo: !(s.freshChat && s.sent.length === 0),
+    // the scripted showcase thread belongs to the seeded conversations only;
+    // a fresh chat shows just the real streamed exchange
+    hasDemo: !s.freshChat,
     // thinking
     thinkingLevel: s.thinkingLevel,
     thinkLabel:

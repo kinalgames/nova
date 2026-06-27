@@ -356,7 +356,12 @@ function SentMessages() {
             )}
             <span style={css(`font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:${m.color}`)}>{m.who}</span>
           </div>
-          <div style={css('font-size:18px;line-height:1.7')}>{m.text}</div>
+          <div style={css('font-size:18px;line-height:1.7')}>
+            {m.text}
+            {i === v.sent.length - 1 && v.typing && m.isNova && (
+              <span style={css('display:inline-block;width:2px;height:19px;background:var(--accent);vertical-align:-3px;margin-left:2px;animation:caret 1.1s steps(1) infinite')} />
+            )}
+          </div>
         </div>
       ))}
       {v.typing && (

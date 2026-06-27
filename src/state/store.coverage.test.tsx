@@ -213,6 +213,43 @@ describe('store — auth toggle branches', () => {
   })
 })
 
+describe('store — streaming chat engine', () => {
+  it('appends the user message, then streams a Nova reply token by token', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    act(() => result.current.set({ draft: 'Viết email cho mình' }))
+    act(() => result.current.v.send())
+    // user message lands immediately; assistant is "thinking"
+    expect(result.current.s.sent.at(-1)?.who).toBe('MINH')
+    expect(result.current.s.typing).toBe(true)
+    // after the thinking pause, an empty Nova bubble appears and starts filling
+    act(() => vi.advanceTimersByTime(700))
+    const nova = result.current.s.sent.at(-1)
+    expect(nova?.isNova).toBe(true)
+    const partial = nova?.text ?? ''
+    act(() => vi.advanceTimersByTime(120))
+    expect((result.current.s.sent.at(-1)?.text ?? '').length).toBeGreaterThan(partial.length)
+    // streaming completes
+    act(() => vi.advanceTimersByTime(5000))
+    expect(result.current.s.typing).toBe(false)
+    expect((result.current.s.sent.at(-1)?.text ?? '').length).toBeGreaterThan(0)
+  })
+
+  it('a fresh chat hides the demo thread and shows the real exchange', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    act(() => result.current.v.pNewChat())
+    expect(result.current.v.isEmptyChat).toBe(true)
+    expect(result.current.v.hasDemo).toBe(false)
+    act(() => result.current.set({ draft: 'xin chào' }))
+    act(() => result.current.v.send())
+    act(() => vi.advanceTimersByTime(5000))
+    expect(result.current.v.isEmptyChat).toBe(false)
+    expect(result.current.v.hasDemo).toBe(false)
+    expect(result.current.s.sent.some((m) => m.isNova)).toBe(true)
+  })
+})
+
 describe('store — advanced / alternate-state derived paths', () => {
   it('takes the advanced + haiku + ollama branches', () => {
     const { result } = setup()
