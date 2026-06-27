@@ -26,7 +26,8 @@ export function ToggleRow({ title, sub, on, onToggle, last }: ToggleRowProps) {
       <Switch.Root
         checked={on}
         onCheckedChange={onToggle}
-        className="relative h-[23px] w-10 shrink-0 cursor-pointer rounded-full bg-border p-0.5 transition-colors data-[state=checked]:bg-accent"
+        aria-label={title}
+        className="relative h-[23px] w-10 shrink-0 cursor-pointer rounded-full bg-border p-0.5 outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent data-[state=checked]:bg-accent"
       >
         <Switch.Thumb className="block size-[19px] rounded-full bg-[var(--knob)] shadow-[var(--knob-shadow)] transition-transform data-[state=checked]:translate-x-[17px]" />
       </Switch.Root>

@@ -27,6 +27,7 @@ export function HomeView() {
             value={v.draft}
             onChange={v.onDraft}
             onKeyDown={v.onKey}
+            aria-label="Nhắn cho Nova"
             placeholder="Nhắn cho Nova…"
             style={css('flex:1;min-width:0;font-size:18px;color:var(--text)')}
           />

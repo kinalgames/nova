@@ -176,6 +176,7 @@ export function Composer() {
               value={v.draft}
               onChange={v.onDraft}
               onKeyDown={v.onKey}
+              aria-label="Nhắn cho Nova"
               placeholder="Trả lời Nova…"
               style={css('flex:1;min-width:0;font-size:17px;color:var(--text);padding:9px 0')}
             />

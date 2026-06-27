@@ -9,5 +9,22 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: false,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'text', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.{test,spec}.{ts,tsx}',
+        'src/test/**',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
+      thresholds: {
+        statements: 68,
+        branches: 70,
+        functions: 60,
+        lines: 70,
+      },
+    },
   },
 })

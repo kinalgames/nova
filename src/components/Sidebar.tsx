@@ -35,30 +35,32 @@ export function Sidebar() {
 
       {/* new + search */}
       <div style={css('padding:0 12px;display:flex;flex-direction:column;gap:6px')}>
-        <div
+        <button
+          type="button"
           onClick={v.pNewChat}
           style={css(
-            `display:flex;align-items:center;gap:10px;justify-content:${v.railJustify};padding:9px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--border);cursor:pointer;font-size:14px;color:var(--text)`,
+            `width:100%;display:flex;align-items:center;gap:10px;justify-content:${v.railJustify};padding:9px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--border);cursor:pointer;font-size:14px;color:var(--text)`,
           )}
         >
           <Icon n="plus" size={17} />
-          {v.sidebarExpanded && <span style={css('flex:1')}>Cuộc trò chuyện mới</span>}
-        </div>
-        <div
+          {v.sidebarExpanded && <span style={css('flex:1;text-align:left')}>Cuộc trò chuyện mới</span>}
+        </button>
+        <button
+          type="button"
           onClick={v.togglePalette}
           data-hover="soft"
           style={css(
-            `display:flex;align-items:center;gap:10px;justify-content:${v.railJustify};padding:9px 12px;border-radius:10px;cursor:pointer;font-size:14px;color:var(--muted)`,
+            `width:100%;border:none;display:flex;align-items:center;gap:10px;justify-content:${v.railJustify};padding:9px 12px;border-radius:10px;cursor:pointer;font-size:14px;color:var(--muted)`,
           )}
         >
           <Icon n="search" size={17} />
           {v.sidebarExpanded && (
             <>
-              <span style={css('flex:1')}>Tìm</span>
+              <span style={css('flex:1;text-align:left')}>Tìm</span>
               <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--faint)")}>⌘K</span>
             </>
           )}
-        </div>
+        </button>
       </div>
 
       {/* lists */}
@@ -69,24 +71,25 @@ export function Sidebar() {
           </div>
         )}
         {v.sideProjects.map((p, i) => (
-          <div
+          <button
             key={i}
+            type="button"
             onClick={p.open}
             data-hover="soft"
             style={css(
-              `display:flex;align-items:center;gap:10px;justify-content:${v.railJustify};padding:8px 10px;border-radius:9px;cursor:pointer;margin-bottom:1px;background:${p.bg}`,
+              `width:100%;border:none;display:flex;align-items:center;gap:10px;justify-content:${v.railJustify};padding:8px 10px;border-radius:9px;cursor:pointer;margin-bottom:1px;background:${p.bg}`,
             )}
           >
             <span style={css(`width:9px;height:9px;border-radius:3px;background:${p.dot};flex-shrink:0`)} />
             {v.sidebarExpanded && (
               <>
-                <span style={css(`flex:1;font-size:14px;color:${p.fg};white-space:nowrap;overflow:hidden;text-overflow:ellipsis`)}>
+                <span style={css(`flex:1;text-align:left;font-size:14px;color:${p.fg};white-space:nowrap;overflow:hidden;text-overflow:ellipsis`)}>
                   {p.name}
                 </span>
                 <span style={css("font-family:var(--font-mono);font-size:10px;color:var(--faint)")}>{p.count}</span>
               </>
             )}
-          </div>
+          </button>
         ))}
         {v.sidebarExpanded && (
           <>

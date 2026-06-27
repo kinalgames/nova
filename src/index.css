@@ -68,8 +68,8 @@
   --text: #23211c;      /* primary body */
   --text-2: #514c43;    /* secondary */
   --muted: #6c675c;     /* muted but readable (was #8C877B / #9A9488) */
-  --label: #847e72;     /* mono section labels (was #B3AD9F) */
-  --faint: #a39d8e;     /* placeholders, carets — decorative, non-essential */
+  --label: #6a6456;     /* mono section labels — AA on cream (axe-verified) */
+  --faint: #6b6557;     /* placeholders, dim captions — AA on cream */
 
   /* hairline rules — like ruled lines on paper, never UI chrome */
   --border: #e5e0d5;
@@ -83,7 +83,7 @@
   /* semantic roles */
   --success: #3e8a5e;
   --success-bg: #e2efe7;
-  --danger: #c0654a;
+  --danger: #b3543a;    /* AA on cream */
   --danger-strong: #d9573e;
   --danger-bg: #fbeee9;
   --danger-line: #ecc9bf;
@@ -105,7 +105,7 @@
   --knob: #ffffff;
   --knob-shadow: 0 1px 2px rgba(27, 26, 22, 0.18);
 
-  --placeholder: #a39d8e;
+  --placeholder: #6b6557;
 
   /* type */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;

@@ -10,7 +10,7 @@ export function ConversationView() {
   return (
     <div className="view" style={css('position:absolute;inset:0;display:flex')}>
       <div style={css('flex:1;min-width:0;display:flex;flex-direction:column')}>
-        <div ref={v.scrollRef} style={css('flex:1;min-height:0;overflow-y:auto;display:flex;justify-content:center;scroll-behavior:smooth')}>
+        <div ref={v.scrollRef} tabIndex={0} role="region" aria-label="Hội thoại" style={css('flex:1;min-height:0;overflow-y:auto;display:flex;justify-content:center;scroll-behavior:smooth')}>
           <div style={css(`width:680px;max-width:100%;padding:${v.convPad}`)}>
             {v.isEmptyChat && <EmptyChat />}
             {v.hasDemo && <DemoThread />}
