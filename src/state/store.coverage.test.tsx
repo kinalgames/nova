@@ -213,6 +213,30 @@ describe('store — auth toggle branches', () => {
   })
 })
 
+describe('store — advanced / alternate-state derived paths', () => {
+  it('takes the advanced + haiku + ollama branches', () => {
+    const { result } = setup()
+    act(() =>
+      result.current.set({ advanced: true, model: 'haiku', activeProvider: 'ollama' }),
+    )
+    expect(result.current.v.bashLabel).toBe('Bash')
+    expect(result.current.v.tokenLabel).toBe('84k / 200k')
+    expect(result.current.v.modelMenuLabel).toContain('MÔ HÌNH')
+    expect(result.current.v.modelLabel).toBe('Nhanh')
+    // ollama uses an endpoint field, not an API key
+    const ollama = result.current.v.providers.find((p) => p.name.includes('máy'))
+    expect(ollama?.fieldLabel).toBe('ĐỊA CHỈ MÁY CHỦ')
+  })
+  it('reflects all tools off in the chip + count derivations', () => {
+    const { result } = setup()
+    act(() =>
+      result.current.set({ tools: { web: false, fetch: false, files: false, bash: false } }),
+    )
+    expect(result.current.v.webCheck).toBe('')
+    expect(result.current.v.activeCount).toBe(0)
+  })
+})
+
 describe('store — projects + closeMenus', () => {
   it('a project row opens the conversation / its config', () => {
     const { result } = setup()

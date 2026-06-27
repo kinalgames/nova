@@ -50,6 +50,14 @@ describe('<Composer>', () => {
 })
 
 describe('<Composer> — cap-menu items', () => {
+  it('opens a staged file from its chip', async () => {
+    const user = makeUser()
+    renderComposer()
+    await user.click(screen.getByRole('button', { name: 'Mở Brief-Aurora.pdf' }))
+    // openStaged ran without error; the chip is still present
+    expect(screen.getByText('Brief-Aurora.pdf')).toBeInTheDocument()
+  })
+
   it('removes a staged file from its chip', async () => {
     const user = makeUser()
     renderComposer()
@@ -63,6 +71,24 @@ describe('<Composer> — cap-menu items', () => {
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
     await user.click(within(menu).getByText('Tải tệp lên'))
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+  })
+
+  it('opens and removes the staged image via its chip buttons', async () => {
+    const user = makeUser()
+    renderComposer()
+    await user.click(screen.getByRole('button', { name: 'Mở moodboard.png' }))
+    await user.click(screen.getByRole('button', { name: 'Bỏ moodboard.png' }))
+    expect(screen.queryByRole('button', { name: 'Bỏ moodboard.png' })).not.toBeInTheDocument()
+  })
+
+  it('triggers the add-from-project and screenshot items', async () => {
+    const user = makeUser()
+    renderComposer()
+    await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
+    await user.click(within(await screen.findByRole('menu')).getByText('Thêm từ dự án'))
+    await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
+    await user.click(within(await screen.findByRole('menu')).getByText('Chụp màn hình'))
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
   })
 

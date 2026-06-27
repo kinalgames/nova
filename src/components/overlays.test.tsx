@@ -29,4 +29,12 @@ describe('overlay open/close wiring', () => {
     await user.click(within(dialog).getByRole('button', { name: /Aurora/ }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
+
+  it('mobile drawer closes via its close button (onOpenChange → closeDrawer)', async () => {
+    const user = makeUser()
+    renderWithStore(<App />, (s) => s.set({ vw: 375, drawerOpen: true }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Đóng' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
 })

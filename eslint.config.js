@@ -31,4 +31,11 @@ export default tseslint.config(
       'react-hooks/refs': 'off',
     },
   },
+  {
+    // test files and helpers aren't fast-refresh boundaries
+    files: ['**/*.{test,spec}.{ts,tsx}', 'src/test/**'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

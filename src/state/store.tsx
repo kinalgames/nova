@@ -378,7 +378,7 @@ function deriveValues(
         trackBg: on ? accent : 'var(--border)',
         knobTx: on ? 'translateX(17px)' : 'translateX(0)',
         border: on ? 'var(--accent-line)' : 'var(--border)',
-        bg: on ? 'var(--panel)' : 'var(--panel)',
+        bg: 'var(--panel)',
       }
     })
 
@@ -409,7 +409,7 @@ function deriveValues(
       statusBg: st.bg,
       rec: p.rec ? '· khuyên dùng' : '',
       border: active ? accent : 'var(--border)',
-      bg: active ? 'var(--panel)' : 'var(--panel)',
+      bg: 'var(--panel)',
       radioBd: active ? accent : 'var(--border)',
       radioBg: active ? accent : 'transparent',
       radioDot: active ? 'var(--panel)' : 'transparent',
@@ -744,7 +744,7 @@ function deriveValues(
     advTrackBg: adv ? accent : 'var(--border)',
     advKnobTx: adv ? 'translateX(19px)' : 'translateX(0)',
     advBorder: adv ? 'var(--accent-line)' : 'var(--border)',
-    advBg: adv ? 'var(--panel)' : 'var(--panel)',
+    advBg: 'var(--panel)',
     toggleAdvanced: () => set((x) => ({ advanced: !x.advanced })),
     barOn: s.barOn,
     toggleBar: () => set((x) => ({ barOn: !x.barOn })),
