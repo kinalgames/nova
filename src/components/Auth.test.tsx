@@ -1,9 +1,34 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import App from '../App'
-import { renderWithStore } from '../test/util'
+import { makeUser, renderWithStore } from '../test/util'
 
 beforeEach(() => localStorage.clear())
+
+describe('<Auth> — email validation', () => {
+  it('blocks an invalid email, then proceeds on a valid one', async () => {
+    const user = makeUser()
+    renderWithStore(<App />, (s) => s.set({ authView: 'login' }))
+    const submit = await screen.findByRole('button', { name: 'Tiếp tục' })
+    await user.click(submit)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Email/)
+    await user.type(screen.getByLabelText('Email'), 'minh@aurora.studio')
+    await user.type(screen.getByLabelText('Mật khẩu'), 'secret123')
+    await user.click(submit)
+    await waitFor(() =>
+      expect(screen.queryByText('Tiếp tục với Google')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('rejects a too-short password', async () => {
+    const user = makeUser()
+    renderWithStore(<App />, (s) => s.set({ authView: 'login' }))
+    await user.type(screen.getByLabelText('Email'), 'a@b.co')
+    await user.type(screen.getByLabelText('Mật khẩu'), '123')
+    await user.click(screen.getByRole('button', { name: 'Tiếp tục' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Mật khẩu/)
+  })
+})
 
 describe('<Auth>', () => {
   it('login form shows social + email options', async () => {

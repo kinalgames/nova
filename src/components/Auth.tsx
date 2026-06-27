@@ -1,5 +1,57 @@
+import { useState } from 'react'
 import { useStore } from '../state/store'
 import { css } from '../css'
+
+const inputCss =
+  'border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-size:15px;background:var(--panel);width:100%'
+
+function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
+  const [email, setEmail] = useState('')
+  const [pw, setPw] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Email chưa hợp lệ.')
+    if (pw.length < 6) return setError('Mật khẩu cần ít nhất 6 ký tự.')
+    setError(null)
+    onSubmit()
+  }
+  return (
+    <form onSubmit={submit} style={css('display:flex;flex-direction:column;gap:10px')}>
+      <input
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value)
+          setError(null)
+        }}
+        placeholder="Email"
+        aria-label="Email"
+        autoComplete="email"
+        style={css(inputCss)}
+      />
+      <input
+        value={pw}
+        onChange={(e) => setPw(e.target.value)}
+        type="password"
+        placeholder="Mật khẩu"
+        aria-label="Mật khẩu"
+        autoComplete="current-password"
+        style={css(inputCss)}
+      />
+      {error && (
+        <div role="alert" style={css('font-size:13px;color:var(--danger)')}>
+          {error}
+        </div>
+      )}
+      <button
+        type="submit"
+        style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500;border:none;font:inherit')}
+      >
+        {cta}
+      </button>
+    </form>
+  )
+}
 
 function GoogleMark() {
   return (
@@ -48,13 +100,7 @@ export function Auth() {
               hoặc
               <div style={css('flex:1;height:1px;background:var(--border)')} />
             </div>
-            <div style={css('display:flex;flex-direction:column;gap:10px')}>
-              <input placeholder="Email" style={css('border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-size:15px;background:var(--panel)')} />
-              <input type="password" placeholder="Mật khẩu" style={css('border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-size:15px;background:var(--panel)')} />
-              <button type="button" onClick={v.doLogin} style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500;border:none;font:inherit')}>
-                {v.authCta}
-              </button>
-            </div>
+            <EmailForm cta={v.authCta} onSubmit={v.doLogin} />
             <div style={css('text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)')}>
               {v.authToggleText} <button type="button" onClick={v.authToggleAct} style={css('color:var(--accent);cursor:pointer;background:transparent;border:none;text-align:left;font:inherit')}>{v.authToggleLink}</button>
             </div>
