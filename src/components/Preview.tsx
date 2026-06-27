@@ -23,10 +23,18 @@ export function Preview() {
               {v.previewName} <span className="text-[12px] text-[#9c958a]">· {v.previewMeta}</span>
             </Dialog.Title>
             <div className="flex items-center gap-4 text-[13px]">
-              <button type="button" className="inline-flex cursor-pointer items-center gap-[5px] border-none bg-transparent text-inherit">
+              <button
+                type="button"
+                onClick={v.downloadPreview}
+                className="inline-flex cursor-pointer items-center gap-[5px] border-none bg-transparent text-inherit"
+              >
                 <Icon n="download" size={14} /> Tải
               </button>
-              <button type="button" className="inline-flex cursor-pointer items-center gap-[5px] border-none bg-transparent text-inherit">
+              <button
+                type="button"
+                onClick={v.openPreviewExternal}
+                className="inline-flex cursor-pointer items-center gap-[5px] border-none bg-transparent text-inherit"
+              >
                 <Icon n="open" size={14} /> Mở
               </button>
               <Dialog.Close asChild>

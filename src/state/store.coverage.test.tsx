@@ -213,6 +213,43 @@ describe('store — auth toggle branches', () => {
   })
 })
 
+describe('store — provider key + connection test', () => {
+  it('saves a key and a valid key tests as connected', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    const claude = () => result.current.v.providers.find((p) => p.id === 'claude')!
+    act(() => claude().setKey('sk-ant-new-key-123456'))
+    expect(result.current.s.providerKeys.claude).toBe('sk-ant-new-key-123456')
+    act(() => claude().test())
+    expect(result.current.s.providerStatus.claude).toBe('testing')
+    act(() => vi.advanceTimersByTime(1000))
+    expect(result.current.s.providerStatus.claude).toBe('connected')
+  })
+  it('a too-short key tests as error', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    const gemini = () => result.current.v.providers.find((p) => p.id === 'gemini')!
+    act(() => gemini().setKey('x'))
+    act(() => gemini().test())
+    act(() => vi.advanceTimersByTime(1000))
+    expect(result.current.s.providerStatus.gemini).toBe('error')
+  })
+})
+
+describe('store — file download', () => {
+  it('downloadPreview generates a blob and triggers an anchor download', () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x')
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const { result } = setup()
+    act(() => result.current.v.openMd())
+    act(() => result.current.v.downloadPreview())
+    expect(URL.createObjectURL).toHaveBeenCalled()
+    expect(click).toHaveBeenCalled()
+    click.mockRestore()
+  })
+})
+
 describe('store — streaming chat engine', () => {
   it('appends the user message, then streams a Nova reply token by token', () => {
     vi.useFakeTimers()

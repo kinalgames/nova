@@ -1,4 +1,6 @@
-import type { PresetId, ProviderId } from '../data/defs'
+import type { PresetId, ProviderId, ProviderStatus } from '../data/defs'
+
+export type LiveProviderStatus = ProviderStatus | 'testing' | 'error'
 
 export type ViewName =
   | 'home'
@@ -91,6 +93,8 @@ export interface LumenState {
   copied: boolean
   tokenPct: string
   activeProvider: ProviderId
+  providerKeys: Record<ProviderId, string>
+  providerStatus: Record<ProviderId, LiveProviderStatus>
   projPresets: Record<PresetId, boolean>
   presetDefault: Record<PresetId, boolean>
   staged: StagedFile[]

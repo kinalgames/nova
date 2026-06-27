@@ -18,6 +18,7 @@ import {
   type ProviderId,
 } from '../data/defs'
 import type {
+  LiveProviderStatus,
   LumenState,
   PreviewKind,
   StagedFile,
@@ -26,6 +27,7 @@ import type {
   ViewName,
 } from './types'
 import { composeReply, thinkingDelay, tokenInterval } from '../services/chat'
+import { downloadFile, openFile, previewSample } from '../services/files'
 
 const ACCENT_DEFAULT = 'var(--accent)'
 
@@ -40,6 +42,8 @@ interface Persisted {
   barOn?: boolean
   thinkingLevel?: ThinkLevel
   activeProvider?: ProviderId
+  providerKeys?: LumenState['providerKeys']
+  providerStatus?: LumenState['providerStatus']
   tools?: LumenState['tools']
   styles?: LumenState['styles']
   projPresets?: Record<PresetId, boolean>
@@ -91,6 +95,18 @@ function initialState(): LumenState {
     copied: false,
     tokenPct: '42%',
     activeProvider: p.activeProvider ?? 'claude',
+    providerKeys:
+      p.providerKeys ??
+      (Object.fromEntries(provDefs.map((d) => [d.id, d.fieldValue])) as Record<
+        ProviderId,
+        string
+      >),
+    providerStatus:
+      p.providerStatus ??
+      (Object.fromEntries(provDefs.map((d) => [d.id, d.status])) as Record<
+        ProviderId,
+        LiveProviderStatus
+      >),
     projPresets: p.projPresets ?? {
       code: false,
       design: true,
@@ -161,6 +177,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       barOn: s.barOn,
       thinkingLevel: s.thinkingLevel,
       activeProvider: s.activeProvider,
+      providerKeys: s.providerKeys,
+      providerStatus: s.providerStatus,
       tools: s.tools,
       styles: s.styles,
       projPresets: s.projPresets,
@@ -181,6 +199,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     s.barOn,
     s.thinkingLevel,
     s.activeProvider,
+    s.providerKeys,
+    s.providerStatus,
     s.tools,
     s.styles,
     s.projPresets,
@@ -401,11 +421,30 @@ function deriveValues(
       .map((p) => p.name)
       .join(' · ') || 'cơ bản'
 
+  const liveStatusMap: Record<LiveProviderStatus, { badge: string; fg: string; bg: string }> = {
+    ...statusMap,
+    testing: { badge: 'Đang kiểm tra…', fg: 'var(--warn)', bg: 'var(--warn-bg)' },
+    error: { badge: 'Khóa không hợp lệ', fg: 'var(--danger)', bg: 'var(--danger-bg)' },
+  }
+  const setProviderKey = (id: ProviderId, value: string) =>
+    set((x) => ({ providerKeys: { ...x.providerKeys, [id]: value } }))
+  const testProvider = (id: ProviderId) => {
+    set((x) => ({ providerStatus: { ...x.providerStatus, [id]: 'testing' } }))
+    setTimeout(() => {
+      set((x) => {
+        const ok = (x.providerKeys[id] || '').trim().length > 4
+        const next: LiveProviderStatus = ok ? (id === 'ollama' ? 'local' : 'connected') : 'error'
+        return { providerStatus: { ...x.providerStatus, [id]: next } }
+      })
+    }, 900)
+  }
   const providers = provDefs.map((p) => {
     const active = s.activeProvider === p.id
-    const st = statusMap[p.status]
+    const status = s.providerStatus[p.id]
+    const st = liveStatusMap[status]
     return {
       id: p.id,
+      active,
       select: () => set({ activeProvider: p.id }),
       name: p.name,
       sub: p.sub,
@@ -423,9 +462,11 @@ function deriveValues(
       radioDot: active ? 'var(--panel)' : 'transparent',
       showKey: active,
       fieldLabel: p.field === 'key' ? 'API KEY' : 'ĐỊA CHỈ MÁY CHỦ',
-      fieldValue: p.fieldValue,
-      fieldAction:
-        p.field === 'key' ? (p.status === 'add' ? 'Lưu' : 'Đổi') : 'Kiểm tra',
+      fieldValue: s.providerKeys[p.id],
+      setKey: (value: string) => setProviderKey(p.id, value),
+      test: () => testProvider(p.id),
+      testing: status === 'testing',
+      fieldAction: p.field === 'key' ? 'Lưu & kiểm tra' : 'Kiểm tra',
       models: p.models.map((m, i) => ({
         name: m,
         fg: i === 0 ? accent : 'var(--muted)',
@@ -625,6 +666,16 @@ function deriveValues(
     openCsv: () => set({ preview: { kind: 'csv', name: 'Khảo-sát.csv' } }),
     openMd: () => set({ preview: { kind: 'md', name: 'plan.md' } }),
     closePreview: () => set({ preview: null }),
+    downloadPreview: () => {
+      if (!s.preview) return
+      const { type, body } = previewSample(s.preview.kind)
+      downloadFile(s.preview.name, body, type)
+    },
+    openPreviewExternal: () => {
+      if (!s.preview) return
+      const { type, body } = previewSample(s.preview.kind)
+      openFile(body, type)
+    },
     scrollRef,
     // theme: CSS owns the palette; we only signal which sheet we're on
     dark,

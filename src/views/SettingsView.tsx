@@ -35,8 +35,8 @@ export function SettingsView() {
         <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);margin-bottom:11px")}>NOVA DÙNG MÔ HÌNH</div>
         <div style={css('display:flex;flex-direction:column;gap:10px;margin-bottom:12px')}>
           {v.providers.map((pr) => (
-            <button type="button" key={pr.id} onClick={pr.select} aria-label={`Dùng ${pr.name}`} style={css(`width:100%;text-align:left;font:inherit;border:1px solid ${pr.border};background:${pr.bg};border-radius:13px;padding:14px 16px;cursor:pointer`)}>
-              <div style={css('display:flex;align-items:center;gap:13px')}>
+            <div key={pr.id} style={css(`border:1px solid ${pr.border};background:${pr.bg};border-radius:13px;padding:14px 16px`)}>
+              <button type="button" onClick={pr.select} aria-pressed={pr.active} aria-label={`Dùng ${pr.name}`} style={css('width:100%;text-align:left;font:inherit;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;gap:13px')}>
                 <div style={css(`width:36px;height:36px;border-radius:10px;background:${pr.badgeBg};color:${pr.badgeFg};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:15px;flex-shrink:0`)}>
                   {pr.glyph}
                 </div>
@@ -50,14 +50,22 @@ export function SettingsView() {
                 <span style={css(`width:18px;height:18px;border-radius:50%;border:2px solid ${pr.radioBd};background:${pr.radioBg};flex-shrink:0;display:flex;align-items:center;justify-content:center`)}>
                   <span style={css(`width:7px;height:7px;border-radius:50%;background:${pr.radioDot}`)} />
                 </span>
-              </div>
+              </button>
               {pr.showKey && (
                 <div style={css('margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px')}>
                   <div>
-                    <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--faint);margin-bottom:7px")}>{pr.fieldLabel}</div>
-                    <div style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:9px;padding:10px 12px;background:var(--panel)')}>
-                      <span style={css("font-family:var(--font-mono);font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{pr.fieldValue}</span>
-                      <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--accent);cursor:pointer")}>{pr.fieldAction}</span>
+                    <label style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--faint);margin-bottom:7px;display:block")}>{pr.fieldLabel}</label>
+                    <div style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:9px;padding:6px 8px 6px 12px;background:var(--panel)')}>
+                      <input
+                        value={pr.fieldValue}
+                        onChange={(e) => pr.setKey(e.target.value)}
+                        aria-label={`${pr.fieldLabel} — ${pr.name}`}
+                        spellCheck={false}
+                        style={css("font-family:var(--font-mono);font-size:13px;color:var(--text);flex:1;min-width:0;background:transparent")}
+                      />
+                      <button type="button" onClick={pr.test} disabled={pr.testing} style={css("font-family:var(--font-mono);font-size:11px;color:var(--accent);cursor:pointer;background:transparent;border:1px solid var(--accent-line);border-radius:7px;padding:5px 9px;white-space:nowrap")}>
+                        {pr.testing ? 'Đang kiểm tra…' : pr.fieldAction}
+                      </button>
                     </div>
                   </div>
                   <div>
@@ -72,7 +80,7 @@ export function SettingsView() {
                   </div>
                 </div>
               )}
-            </button>
+            </div>
           ))}
         </div>
         {v.advanced && (
