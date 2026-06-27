@@ -40,9 +40,9 @@ export function QuietMode() {
       <div style={css('min-height:80px;display:flex;align-items:center;justify-content:center;padding:14px 22px')}>
         <div style={css('width:620px;max-width:100%;display:flex;align-items:center;gap:12px;opacity:.85')}>
           <input placeholder="Tiếp tục trong im lặng…" style={css('flex:1;min-width:0;font-size:17px;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:8px')} />
-          <div onClick={v.exitQuiet} style={css('font-size:12.5px;color:var(--muted);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;flex-shrink:0')}>
+          <button type="button" onClick={v.exitQuiet} style={css('font-size:12.5px;color:var(--muted);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;flex-shrink:0;background:transparent;text-align:left;font:inherit')}>
             Thoát
-          </div>
+          </button>
         </div>
       </div>
     </div>

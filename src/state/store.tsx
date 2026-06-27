@@ -397,6 +397,7 @@ function deriveValues(
         help: p.help,
         tools: p.tools.map((t) => ({ t })),
         showTools: adv && p.tools.length > 0,
+        on,
         toggle: () => tog(p.id),
         trackBg: on ? accent : 'var(--border)',
         knobTx: on ? 'translateX(17px)' : 'translateX(0)',
@@ -681,6 +682,8 @@ function deriveValues(
     setThinkNormal: () => set({ thinkingLevel: 'normal', thinkMenu: false }),
     setThinkHigh: () => set({ thinkingLevel: 'high', thinkMenu: false }),
     // theme controls
+    themeVal: s.theme,
+    focusVal: s.focusDur,
     setLight: () => set({ theme: 'light' }),
     setDark: () => set({ theme: 'dark' }),
     setAuto: () => set({ theme: 'auto' }),

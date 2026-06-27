@@ -37,7 +37,13 @@ export function HomeView() {
         </div>
         <div style={css(`width:100%;margin-top:14px;display:grid;grid-template-columns:${v.sugCols};gap:10px`)}>
           {v.suggestions.map((g, i) => (
-            <div key={i} onClick={g.go} data-hover="border" style={css('border:1px solid var(--border);border-radius:13px;background:var(--panel);padding:14px 15px;cursor:pointer')}>
+            <button
+              type="button"
+              key={i}
+              onClick={g.go}
+              data-hover="border"
+              style={css('width:100%;text-align:left;font:inherit;border:1px solid var(--border);border-radius:13px;background:var(--panel);padding:14px 15px;cursor:pointer')}
+            >
               <div style={css('display:flex;align-items:center;gap:9px')}>
                 <span style={css(`width:26px;height:26px;border-radius:8px;background:${g.bg};color:${g.fg};display:flex;align-items:center;justify-content:center;flex-shrink:0`)}>
                   <Icon n={g.glyph} size={15} />
@@ -45,7 +51,7 @@ export function HomeView() {
                 <span style={css('font-size:15px;font-weight:500')}>{g.title}</span>
               </div>
               <div style={css('font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45')}>{g.sub}</div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

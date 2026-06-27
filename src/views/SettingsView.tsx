@@ -1,3 +1,4 @@
+import * as Switch from '@radix-ui/react-switch'
 import { useStore } from '../state/store'
 import { css } from '../css'
 import { ToggleRow } from '../components/ToggleRow'
@@ -19,9 +20,14 @@ export function SettingsView() {
               <div style={css('font-size:16px;font-weight:500')}>Chế độ nâng cao</div>
               <div style={css('font-size:13px;color:var(--muted);margin-top:2px;line-height:1.45')}>Hé lộ chi tiết kỹ thuật trong cùng giao diện: tên công cụ, token, nhà cung cấp &amp; API, system prompt, phím tắt.</div>
             </div>
-            <div onClick={v.toggleAdvanced} style={css(`width:44px;height:25px;border-radius:13px;background:${v.advTrackBg};position:relative;cursor:pointer;transition:background .2s;flex-shrink:0`)}>
-              <div style={css(`position:absolute;left:2px;top:2px;width:21px;height:21px;border-radius:50%;background:var(--knob);transform:${v.advKnobTx};transition:transform .2s;box-shadow:var(--knob-shadow)`)} />
-            </div>
+            <Switch.Root
+              checked={v.advanced}
+              onCheckedChange={v.toggleAdvanced}
+              aria-label="Chế độ nâng cao"
+              className="relative h-[25px] w-11 shrink-0 cursor-pointer rounded-[13px] bg-border p-0.5 outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent data-[state=checked]:bg-accent"
+            >
+              <Switch.Thumb className="block size-[21px] rounded-full bg-[var(--knob)] shadow-[var(--knob-shadow)] transition-transform data-[state=checked]:translate-x-[19px]" />
+            </Switch.Root>
           </div>
         </div>
 
@@ -29,7 +35,7 @@ export function SettingsView() {
         <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);margin-bottom:11px")}>NOVA DÙNG MÔ HÌNH</div>
         <div style={css('display:flex;flex-direction:column;gap:10px;margin-bottom:12px')}>
           {v.providers.map((pr) => (
-            <div key={pr.id} onClick={pr.select} style={css(`border:1px solid ${pr.border};background:${pr.bg};border-radius:13px;padding:14px 16px;cursor:pointer`)}>
+            <button type="button" key={pr.id} onClick={pr.select} aria-label={`Dùng ${pr.name}`} style={css(`width:100%;text-align:left;font:inherit;border:1px solid ${pr.border};background:${pr.bg};border-radius:13px;padding:14px 16px;cursor:pointer`)}>
               <div style={css('display:flex;align-items:center;gap:13px')}>
                 <div style={css(`width:36px;height:36px;border-radius:10px;background:${pr.badgeBg};color:${pr.badgeFg};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:15px;flex-shrink:0`)}>
                   {pr.glyph}
@@ -66,7 +72,7 @@ export function SettingsView() {
                   </div>
                 </div>
               )}
-            </div>
+            </button>
           ))}
         </div>
         {v.advanced && (
@@ -79,9 +85,9 @@ export function SettingsView() {
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;border-bottom:1px solid var(--border)')}>
           <span style={css('font-size:16px')}>Giao diện</span>
           <div style={css('display:flex;gap:6px;flex-shrink:0')}>
-            <span onClick={v.setLight} style={css(`border:1px solid ${v.themeLightBd};background:${v.themeLightBg};color:${v.themeLightFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer`)}>Sáng</span>
-            <span onClick={v.setDark} style={css(`border:1px solid ${v.themeDarkBd};background:${v.themeDarkBg};color:${v.themeDarkFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer`)}>Tối</span>
-            <span onClick={v.setAuto} style={css(`border:1px solid ${v.themeAutoBd};background:${v.themeAutoBg};color:${v.themeAutoFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer`)}>Tự động</span>
+            <button type="button" aria-pressed={v.themeVal === 'light'} onClick={v.setLight} style={css(`border:1px solid ${v.themeLightBd};background:${v.themeLightBg};color:${v.themeLightFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>Sáng</button>
+            <button type="button" aria-pressed={v.themeVal === 'dark'} onClick={v.setDark} style={css(`border:1px solid ${v.themeDarkBd};background:${v.themeDarkBg};color:${v.themeDarkFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>Tối</button>
+            <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} style={css(`border:1px solid ${v.themeAutoBd};background:${v.themeAutoBg};color:${v.themeAutoFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>Tự động</button>
           </div>
         </div>
         {v.advanced && (
@@ -98,9 +104,9 @@ export function SettingsView() {
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 2px;border-bottom:1px solid var(--border)')}>
           <span style={css('font-size:16px')}>Thời lượng phiên</span>
           <div style={css('display:flex;gap:6px;flex-shrink:0')}>
-            <span onClick={v.setF15} style={css(`border:1px solid ${v.f15Bd};background:${v.f15Bg};color:${v.f15Fg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer`)}>15′</span>
-            <span onClick={v.setF25} style={css(`border:1px solid ${v.f25Bd};background:${v.f25Bg};color:${v.f25Fg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer`)}>25′</span>
-            <span onClick={v.setF50} style={css(`border:1px solid ${v.f50Bd};background:${v.f50Bg};color:${v.f50Fg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer`)}>50′</span>
+            <button type="button" aria-pressed={v.focusVal === '15'} onClick={v.setF15} style={css(`border:1px solid ${v.f15Bd};background:${v.f15Bg};color:${v.f15Fg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>15′</button>
+            <button type="button" aria-pressed={v.focusVal === '25'} onClick={v.setF25} style={css(`border:1px solid ${v.f25Bd};background:${v.f25Bg};color:${v.f25Fg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>25′</button>
+            <button type="button" aria-pressed={v.focusVal === '50'} onClick={v.setF50} style={css(`border:1px solid ${v.f50Bd};background:${v.f50Bg};color:${v.f50Fg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>50′</button>
           </div>
         </div>
 
@@ -112,7 +118,7 @@ export function SettingsView() {
             <div style={css('font-size:16px')}>Minh Trần</div>
             <div style={css('font-size:13px;color:var(--muted)')}>minh@aurora.studio · Gói Pro</div>
           </div>
-          <span onClick={v.logout} style={css('font-size:13px;color:var(--faint);cursor:pointer')}>Quản lý</span>
+          <button type="button" onClick={v.logout} style={css('font-size:13px;color:var(--faint);cursor:pointer;background:transparent;border:none;font:inherit')}>Quản lý</button>
         </div>
       </div>
     </div>

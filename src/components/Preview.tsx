@@ -42,11 +42,10 @@ export function Preview() {
             <img
               src={v.previewUrl}
               alt={v.previewName}
-              onClick={v.closePreview}
-              style={css('max-width:min(820px,90vw);max-height:70vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .18s ease;cursor:pointer;object-fit:contain')}
+              style={css('max-width:min(820px,90vw);max-height:70vh;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .18s ease;object-fit:contain')}
             />
           ) : (
-            <div onClick={v.closePreview} style={css('width:min(820px,90vw);height:min(560px,70vh);border-radius:14px;background:linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92);box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .18s ease')} />
+            <div style={css('width:min(820px,90vw);height:min(560px,70vh);border-radius:14px;background:linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92);box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .18s ease')} />
           ))}
 
         {v.isPrevPdf && (

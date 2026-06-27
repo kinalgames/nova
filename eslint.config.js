@@ -24,6 +24,11 @@ export default tseslint.config(
       ...jsxA11y.flatConfigs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-explicit-any': 'warn',
+      // Experimental React-Compiler rule (plugin v7). False positive here: the
+      // store returns `scrollRef` inside its derived `v` object, so the rule
+      // flags every `v.x` read as "ref access during render" — but `.current`
+      // is only ever read inside effects, never during render. Off by intent.
+      'react-hooks/refs': 'off',
     },
   },
 )

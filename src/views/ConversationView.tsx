@@ -10,6 +10,8 @@ export function ConversationView() {
   return (
     <div className="view" style={css('position:absolute;inset:0;display:flex')}>
       <div style={css('flex:1;min-width:0;display:flex;flex-direction:column')}>
+        {/* a scrollable region must be keyboard-focusable (axe scrollable-region-focusable); jsx-a11y's noninteractive-tabindex is a false positive here */}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
         <div ref={v.scrollRef} tabIndex={0} role="region" aria-label="Hội thoại" style={css('flex:1;min-height:0;overflow-y:auto;display:flex;justify-content:center;scroll-behavior:smooth')}>
           <div style={css(`width:680px;max-width:100%;padding:${v.convPad}`)}>
             {v.isEmptyChat && <EmptyChat />}
@@ -26,10 +28,10 @@ export function ConversationView() {
         <div style={css('flex-shrink:0;display:flex;justify-content:center;padding:4px 12px 0')}>
           <div style={css('display:inline-flex;align-items:center;gap:4px;background:var(--fill);border-radius:10px;padding:3px;font-size:11.5px')}>
             <span style={css('color:var(--muted);padding:0 6px')}>demo:</span>
-            <span onClick={v.setStream} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgStream};color:${v.stFgStream}`)}>Đang soạn</span>
-            <span onClick={v.setApproval} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgApproval};color:${v.stFgApproval}`)}>Chờ duyệt</span>
-            <span onClick={v.setDone} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgDone};color:${v.stFgDone}`)}>Hoàn tất</span>
-            <span onClick={v.setError} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgError};color:${v.stFgError}`)}>Lỗi</span>
+            <button type="button" onClick={v.setStream} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgStream};color:${v.stFgStream};border:none;font:inherit;text-align:left`)}>Đang soạn</button>
+            <button type="button" onClick={v.setApproval} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgApproval};color:${v.stFgApproval};border:none;font:inherit;text-align:left`)}>Chờ duyệt</button>
+            <button type="button" onClick={v.setDone} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgDone};color:${v.stFgDone};border:none;font:inherit;text-align:left`)}>Hoàn tất</button>
+            <button type="button" onClick={v.setError} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgError};color:${v.stFgError};border:none;font:inherit;text-align:left`)}>Lỗi</button>
           </div>
         </div>
 
@@ -43,9 +45,9 @@ export function ConversationView() {
         </div>
       )}
       {v.showReopen && (
-        <div onClick={v.toggleInspector} style={css('position:absolute;top:14px;right:16px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;cursor:pointer;background:var(--panel);z-index:4;white-space:nowrap')}>
+        <button type="button" onClick={v.toggleInspector} style={css('position:absolute;top:14px;right:16px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;cursor:pointer;background:var(--panel);z-index:4;white-space:nowrap;font:inherit;text-align:left')}>
           <Icon n="info" size={14} /> Ngữ cảnh
-        </div>
+        </button>
       )}
     </div>
   )
@@ -73,19 +75,19 @@ function DemoThread() {
       <div style={css("font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--muted);margin-bottom:10px")}>MINH</div>
       <div style={css('font-size:18px;line-height:1.6')}>Xem giúp mình moodboard này có hợp với định vị Aurora không? Tham chiếu cả brief.</div>
       <div style={css('margin-top:14px;display:flex;gap:10px;flex-wrap:wrap')}>
-        <div onClick={v.openLightbox} style={css('width:150px;height:104px;border-radius:11px;background:linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92);position:relative;cursor:pointer;overflow:hidden;border:1px solid rgba(0,0,0,.06)')}>
+        <button type="button" onClick={v.openLightbox} style={css('width:150px;height:104px;border-radius:11px;background:linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92);position:relative;cursor:pointer;overflow:hidden;border:1px solid rgba(0,0,0,.06);font:inherit;text-align:left')}>
           <div style={css('position:absolute;left:0;right:0;bottom:0;padding:7px 9px;background:linear-gradient(transparent,rgba(0,0,0,.45));display:flex;align-items:center;justify-content:space-between')}>
             <span style={css('font-size:11px;color:#fff')}>moodboard.png</span>
             <Icon n="expand" size={13} style={{ color: '#fff' }} />
           </div>
-        </div>
-        <div onClick={v.openPdf} style={css('width:200px;border:1px solid var(--border);border-radius:11px;background:var(--panel);padding:11px 12px;display:flex;align-items:center;gap:10px;cursor:pointer')}>
+        </button>
+        <button type="button" onClick={v.openPdf} style={css('width:200px;border:1px solid var(--border);border-radius:11px;background:var(--panel);padding:11px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;font:inherit;text-align:left')}>
           <span style={css("width:30px;height:36px;border-radius:5px;background:var(--danger-bg);color:var(--danger-strong);font-family:var(--font-mono);font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0")}>PDF</span>
           <div style={css('flex:1;min-width:0')}>
             <div style={css('font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis')}>Brief-Aurora.pdf</div>
             <div style={css('font-size:11.5px;color:var(--muted);margin-top:2px')}>1.2 MB · 8 trang</div>
           </div>
-        </div>
+        </button>
       </div>
       <div style={css('height:30px')} />
 
@@ -97,8 +99,8 @@ function DemoThread() {
         Moodboard nghiêng về tông ấm, thủ công — <b style={css('font-weight:600')}>hợp một nửa</b>. Định vị Aurora nhấn "tập trung, tối giản", nên mình gợi ý giảm hoạ tiết và tăng khoảng trắng. Chi tiết khớp/lệch mình ghi trong nhận xét.
       </div>
       <div style={css('margin-top:14px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)')}>
-        <span onClick={v.copyCode} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n={v.copied ? 'check' : 'copy'} size={14} /> {v.copyLabel}</span>
-        <span onClick={v.openLightbox} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="open" size={14} /> Xem moodboard</span>
+        <button type="button" onClick={v.copyCode} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:transparent;text-align:left;font:inherit')}><Icon n={v.copied ? 'check' : 'copy'} size={14} /> {v.copyLabel}</button>
+        <button type="button" onClick={v.openLightbox} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:transparent;text-align:left;font:inherit')}><Icon n="open" size={14} /> Xem moodboard</button>
       </div>
 
       <div style={css('height:42px')} />
@@ -126,11 +128,11 @@ function Trace() {
   const { v } = useStore()
   return (
     <>
-      <div onClick={v.toggleTrace} style={css('display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--text-2);margin-bottom:14px;border:1px solid var(--border);background:var(--panel);border-radius:10px;padding:9px 13px')}>
+      <button type="button" onClick={v.toggleTrace} style={css('display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--text-2);margin-bottom:14px;border:1px solid var(--border);background:var(--panel);border-radius:10px;padding:9px 13px;font:inherit;text-align:left')}>
         <span style={css(`width:18px;height:18px;border-radius:50%;background:${v.traceIconBg};color:${v.traceIconFg};display:flex;align-items:center;justify-content:center`)}><Icon n={v.isStream ? 'focus' : 'check'} size={11} stroke={2.25} /></span>
         <span style={css('color:var(--text)')}>{v.traceSummary}</span>
         <span style={css('color:var(--faint);font-size:12px')}>{v.traceCaret}</span>
-      </div>
+      </button>
       {v.traceOpen && (
         <div style={css('border-left:2px solid var(--border);padding-left:22px;display:flex;flex-direction:column;gap:15px;margin-bottom:6px')}>
           {/* think */}
@@ -245,28 +247,28 @@ function DoneAnswer() {
       </div>
       <div style={css('margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)')}>
         <span>Nguồn:</span>
-        <span onClick={v.openPdf} style={css('cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:3px 8px')}><sup>1</sup> techreview.io</span>
-        <span onClick={v.openPdf} style={css('cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:3px 8px')}><sup>2</sup> openview.dev</span>
+        <button type="button" onClick={v.openPdf} style={css('cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:3px 8px;background:transparent;font:inherit;text-align:left')}><sup>1</sup> techreview.io</button>
+        <button type="button" onClick={v.openPdf} style={css('cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:3px 8px;background:transparent;font:inherit;text-align:left')}><sup>2</sup> openview.dev</button>
       </div>
       <div style={css('margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)')}>
-        <span onClick={v.copyCode} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n={v.copied ? 'check' : 'copy'} size={14} /> {v.copyLabel}</span>
-        <span onClick={v.setError} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="retry" size={14} /> Thử lại</span>
-        <span onClick={v.openMd} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer')}><Icon n="open" size={14} /> Mở plan.md</span>
+        <button type="button" onClick={v.copyCode} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:transparent;text-align:left;font:inherit')}><Icon n={v.copied ? 'check' : 'copy'} size={14} /> {v.copyLabel}</button>
+        <button type="button" onClick={v.setError} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:transparent;text-align:left;font:inherit')}><Icon n="retry" size={14} /> Thử lại</button>
+        <button type="button" onClick={v.openMd} style={css('display:inline-flex;align-items:center;gap:5px;cursor:pointer;border:none;background:transparent;text-align:left;font:inherit')}><Icon n="open" size={14} /> Mở plan.md</button>
       </div>
       <div style={css("margin-top:20px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;color:var(--label);margin-bottom:9px")}>TỆP NOVA ĐÃ DÙNG</div>
       <div style={css('display:flex;gap:8px;flex-wrap:wrap')}>
-        <div onClick={v.openMd} style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;cursor:pointer')}>
+        <button type="button" onClick={v.openMd} style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;cursor:pointer;font:inherit;text-align:left')}>
           <span style={css("width:24px;height:28px;border-radius:4px;background:var(--fill);color:var(--accent);font-family:var(--font-mono);font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0")}>MD</span>
           <div><div style={css('font-size:13px')}>plan.md</div><div style={css('font-size:11px;color:var(--muted)')}>2.1 KB · vừa cập nhật</div></div>
-        </div>
-        <div onClick={v.openCode} style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;cursor:pointer')}>
+        </button>
+        <button type="button" onClick={v.openCode} style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;cursor:pointer;font:inherit;text-align:left')}>
           <span style={css("width:24px;height:28px;border-radius:4px;background:var(--info-bg);color:var(--info);font-family:var(--font-mono);font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0")}>PY</span>
           <div><div style={css('font-size:13px')}>analyze.py</div><div style={css('font-size:11px;color:var(--muted)')}>1.4 KB</div></div>
-        </div>
-        <div onClick={v.openCsv} style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;cursor:pointer')}>
+        </button>
+        <button type="button" onClick={v.openCsv} style={css('display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;cursor:pointer;font:inherit;text-align:left')}>
           <span style={css("width:24px;height:28px;border-radius:4px;background:var(--success-bg);color:var(--success);font-family:var(--font-mono);font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0")}>CSV</span>
           <div><div style={css('font-size:13px')}>Khảo-sát.csv</div><div style={css('font-size:11px;color:var(--muted)')}>18 KB · 412 dòng</div></div>
-        </div>
+        </button>
       </div>
     </>
   )
@@ -288,7 +290,7 @@ function StreamBlock() {
         <span style={css('display:inline-block;width:2px;height:19px;background:var(--accent);vertical-align:-3px;margin-left:2px;animation:caret 1.1s steps(1) infinite')} />
       </div>
       <div style={css('margin-top:16px')}>
-        <span onClick={v.setDone} style={css('display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:9px;padding:7px 13px;font-size:13px;color:var(--text-2);cursor:pointer;background:var(--panel)')}><Icon n="stop" size={13} fill="currentColor" stroke={0} /> Dừng</span>
+        <button type="button" onClick={v.setDone} style={css('display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:9px;padding:7px 13px;font-size:13px;color:var(--text-2);cursor:pointer;background:var(--panel);font:inherit;text-align:left')}><Icon n="stop" size={13} fill="currentColor" stroke={0} /> Dừng</button>
       </div>
     </div>
   )
@@ -310,7 +312,7 @@ function ErrorBlock() {
             {v.advanced && <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--danger)")}> · err 503 · stream_closed</span>}
           </div>
         </div>
-        <span onClick={v.setDone} style={css('display:inline-flex;align-items:center;gap:6px;flex-shrink:0;background:var(--ink);color:var(--bg);border-radius:9px;padding:8px 13px;font-size:13px;cursor:pointer')}><Icon n="retry" size={14} /> Thử lại</span>
+        <button type="button" onClick={v.setDone} style={css('display:inline-flex;align-items:center;gap:6px;flex-shrink:0;background:var(--ink);color:var(--bg);border-radius:9px;padding:8px 13px;font-size:13px;cursor:pointer;border:none;font:inherit;text-align:left')}><Icon n="retry" size={14} /> Thử lại</button>
       </div>
     </>
   )
@@ -330,8 +332,8 @@ function ApprovalBlock() {
           </div>
         </div>
         <div style={css('padding:11px 15px;display:flex;align-items:center;gap:10px;flex-wrap:wrap')}>
-          <span onClick={v.approveTool} style={css('background:var(--ink);color:var(--bg);border-radius:9px;padding:8px 16px;font-size:13.5px;cursor:pointer')}>Cho phép</span>
-          <span onClick={v.denyTool} style={css('border:1px solid var(--border);border-radius:9px;padding:8px 16px;font-size:13.5px;cursor:pointer;color:var(--muted)')}>Từ chối</span>
+          <button type="button" onClick={v.approveTool} style={css('background:var(--ink);color:var(--bg);border-radius:9px;padding:8px 16px;font-size:13.5px;cursor:pointer;border:none;font:inherit;text-align:left')}>Cho phép</button>
+          <button type="button" onClick={v.denyTool} style={css('border:1px solid var(--border);border-radius:9px;padding:8px 16px;font-size:13.5px;cursor:pointer;color:var(--muted);background:transparent;font:inherit;text-align:left')}>Từ chối</button>
           <span style={css('font-size:12px;color:var(--muted)')}>Chỉ chạy trong môi trường an toàn</span>
         </div>
       </div>

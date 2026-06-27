@@ -1,3 +1,4 @@
+import * as Switch from '@radix-ui/react-switch'
 import { css } from '../css'
 import { Icon, type IconName } from './Icon'
 
@@ -10,6 +11,7 @@ export interface PresetVM {
   help: string
   tools: { t: string }[]
   showTools: boolean
+  on: boolean
   toggle: () => void
   trackBg: string
   knobTx: string
@@ -28,9 +30,14 @@ export function PresetCard({ pr }: { pr: PresetVM }) {
           <div style={css('font-size:15.5px')}>{pr.name}</div>
           <div style={css('font-size:13px;color:var(--muted);margin-top:2px;line-height:1.4')}>{pr.help}</div>
         </div>
-        <div onClick={pr.toggle} style={css(`width:40px;height:23px;border-radius:12px;background:${pr.trackBg};position:relative;cursor:pointer;transition:background .2s;flex-shrink:0`)}>
-          <div style={css(`position:absolute;left:2px;top:2px;width:19px;height:19px;border-radius:50%;background:var(--knob);transform:${pr.knobTx};transition:transform .2s;box-shadow:var(--knob-shadow)`)} />
-        </div>
+        <Switch.Root
+          checked={pr.on}
+          onCheckedChange={pr.toggle}
+          aria-label={pr.name}
+          className="relative h-[23px] w-10 shrink-0 cursor-pointer rounded-full bg-border p-0.5 outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent data-[state=checked]:bg-accent"
+        >
+          <Switch.Thumb className="block size-[19px] rounded-full bg-[var(--knob)] shadow-[var(--knob-shadow)] transition-transform data-[state=checked]:translate-x-[17px]" />
+        </Switch.Root>
       </div>
       {pr.showTools && (
         <div style={css('margin-top:11px;display:flex;flex-wrap:wrap;gap:6px;padding-left:46px')}>

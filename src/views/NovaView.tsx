@@ -19,10 +19,10 @@ export function NovaView() {
 
         <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);margin-bottom:11px")}>PHONG CÁCH TRẢ LỜI</div>
         <div style={css('display:flex;gap:9px;margin-bottom:28px;flex-wrap:wrap')}>
-          <div onClick={v.toggleConcise} style={css(`border:1px solid ${v.stConciseBd};background:${v.stConciseBg};color:${v.stConciseFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer`)}>Ngắn gọn</div>
-          <div onClick={v.toggleWarm} style={css(`border:1px solid ${v.stWarmBd};background:${v.stWarmBg};color:${v.stWarmFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer`)}>Ấm áp</div>
-          <div onClick={v.toggleFormal} style={css(`border:1px solid ${v.stFormalBd};background:${v.stFormalBg};color:${v.stFormalFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer`)}>Trang trọng</div>
-          <div onClick={v.toggleHumor} style={css(`border:1px solid ${v.stHumorBd};background:${v.stHumorBg};color:${v.stHumorFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer`)}>Hài hước</div>
+          <button type="button" onClick={v.toggleConcise} style={css(`border:1px solid ${v.stConciseBd};background:${v.stConciseBg};color:${v.stConciseFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer;text-align:left;font:inherit`)}>Ngắn gọn</button>
+          <button type="button" onClick={v.toggleWarm} style={css(`border:1px solid ${v.stWarmBd};background:${v.stWarmBg};color:${v.stWarmFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer;text-align:left;font:inherit`)}>Ấm áp</button>
+          <button type="button" onClick={v.toggleFormal} style={css(`border:1px solid ${v.stFormalBd};background:${v.stFormalBg};color:${v.stFormalFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer;text-align:left;font:inherit`)}>Trang trọng</button>
+          <button type="button" onClick={v.toggleHumor} style={css(`border:1px solid ${v.stHumorBd};background:${v.stHumorBg};color:${v.stHumorFg};border-radius:9px;padding:8px 15px;font-size:14px;cursor:pointer;text-align:left;font:inherit`)}>Hài hước</button>
         </div>
 
         <div style={css('display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px')}>

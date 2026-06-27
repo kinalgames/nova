@@ -36,12 +36,12 @@ export function Auth() {
             <div style={css("font-family:var(--font-display);font-size:34px;text-align:center;line-height:1.1")}>{v.authTitle}</div>
             <div style={css('font-size:15px;color:var(--muted);text-align:center;margin-top:8px;margin-bottom:26px')}>{v.authSub}</div>
             <div style={css('display:flex;flex-direction:column;gap:9px;margin-bottom:18px')}>
-              <div onClick={v.doLogin} data-hover="white" style={css('display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--border);border-radius:11px;padding:12px;cursor:pointer;font-size:14.5px;background:var(--panel)')}>
+              <button type="button" onClick={v.doLogin} data-hover="white" style={css('display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--border);border-radius:11px;padding:12px;cursor:pointer;font-size:14.5px;background:var(--panel);text-align:left;font:inherit')}>
                 <GoogleMark />Tiếp tục với Google
-              </div>
-              <div onClick={v.doLogin} data-hover="white" style={css('display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--border);border-radius:11px;padding:12px;cursor:pointer;font-size:14.5px;background:var(--panel)')}>
+              </button>
+              <button type="button" onClick={v.doLogin} data-hover="white" style={css('display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--border);border-radius:11px;padding:12px;cursor:pointer;font-size:14.5px;background:var(--panel);text-align:left;font:inherit')}>
                 <GithubMark />Tiếp tục với GitHub
-              </div>
+              </button>
             </div>
             <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:18px;color:var(--faint);font-size:12px')}>
               <div style={css('flex:1;height:1px;background:var(--border)')} />
@@ -51,12 +51,12 @@ export function Auth() {
             <div style={css('display:flex;flex-direction:column;gap:10px')}>
               <input placeholder="Email" style={css('border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-size:15px;background:var(--panel)')} />
               <input type="password" placeholder="Mật khẩu" style={css('border:1px solid var(--border);border-radius:11px;padding:12px 14px;font-size:15px;background:var(--panel)')} />
-              <div onClick={v.doLogin} style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500')}>
+              <button type="button" onClick={v.doLogin} style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500;border:none;font:inherit')}>
                 {v.authCta}
-              </div>
+              </button>
             </div>
             <div style={css('text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)')}>
-              {v.authToggleText} <span onClick={v.authToggleAct} style={css('color:var(--accent);cursor:pointer')}>{v.authToggleLink}</span>
+              {v.authToggleText} <button type="button" onClick={v.authToggleAct} style={css('color:var(--accent);cursor:pointer;background:transparent;border:none;text-align:left;font:inherit')}>{v.authToggleLink}</button>
             </div>
           </>
         )}
@@ -84,9 +84,9 @@ export function Auth() {
                 <div style={css('font-size:12px;color:var(--muted)')}>Haiku 4.8</div>
               </div>
             </div>
-            <div onClick={v.finishOnboarding} style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500')}>
+            <button type="button" onClick={v.finishOnboarding} style={css('background:var(--ink);color:var(--bg);border-radius:11px;padding:13px;text-align:center;cursor:pointer;font-size:15px;font-weight:500;border:none;font:inherit')}>
               Bắt đầu dùng Lumen
-            </div>
+            </button>
           </>
         )}
       </div>

@@ -29,15 +29,18 @@ function StagedItem({ f }: { f: StagedFile }) {
       ? `center/cover url(${f.url})`
       : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)'
     return (
-      <div onClick={() => v.openStaged(f)} style={css(`position:relative;width:54px;height:54px;border-radius:10px;background:${bg};cursor:pointer;border:1px solid rgba(0,0,0,.06)`)}>
+      <div style={css('position:relative;width:54px;height:54px;flex-shrink:0')}>
+        <button
+          type="button"
+          aria-label={`Mở ${f.name}`}
+          onClick={() => v.openStaged(f)}
+          style={css(`display:block;width:54px;height:54px;border-radius:10px;background:${bg};cursor:pointer;border:1px solid rgba(0,0,0,.06);padding:0`)}
+        />
         <button
           type="button"
           aria-label={`Bỏ ${f.name}`}
-          onClick={(e) => {
-            e.stopPropagation()
-            v.removeStaged(f.id)
-          }}
-          style={css('border:none;position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:center;cursor:pointer')}
+          onClick={() => v.removeStaged(f.id)}
+          style={css('border:none;position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1')}
         >
           <Icon n="close" size={11} stroke={2.25} />
         </button>
@@ -46,19 +49,23 @@ function StagedItem({ f }: { f: StagedFile }) {
   }
   const b = badgeStyle[f.kind] || badgeStyle.pdf
   return (
-    <div onClick={() => v.openStaged(f)} style={css('position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:7px 11px 7px 9px;cursor:pointer')}>
-      <span style={css(`width:24px;height:28px;border-radius:4px;background:${b.bg};color:${b.fg};font-family:var(--font-mono);font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0`)}>{b.label}</span>
-      <div>
-        <div style={css('font-size:12.5px')}>{f.name}</div>
-        <div style={css('font-size:10.5px;color:var(--muted)')}>{f.size}</div>
-      </div>
+    <div style={css('position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:7px 11px 7px 9px')}>
+      <button
+        type="button"
+        aria-label={`Mở ${f.name}`}
+        onClick={() => v.openStaged(f)}
+        style={css('display:flex;align-items:center;gap:8px;min-width:0;background:transparent;border:none;cursor:pointer;text-align:left;font:inherit')}
+      >
+        <span style={css(`width:24px;height:28px;border-radius:4px;background:${b.bg};color:${b.fg};font-family:var(--font-mono);font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0`)}>{b.label}</span>
+        <div>
+          <div style={css('font-size:12.5px')}>{f.name}</div>
+          <div style={css('font-size:10.5px;color:var(--muted)')}>{f.size}</div>
+        </div>
+      </button>
       <button
         type="button"
         aria-label={`Bỏ ${f.name}`}
-        onClick={(e) => {
-          e.stopPropagation()
-          v.removeStaged(f.id)
-        }}
+        onClick={() => v.removeStaged(f.id)}
         style={css('background:transparent;border:none;margin-left:4px;color:var(--faint);cursor:pointer;display:flex')}
       >
         <Icon n="close" size={14} />
