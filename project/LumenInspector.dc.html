@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="--accent:{{ accent }};font-family:'Geist',sans-serif">
+  <div style="height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid #F0EBE0"><span style="font-family:'Instrument Serif',serif;font-size:18px;color:#1B1A16">Ngữ cảnh</span><span onClick="{{ onClose }}" style="cursor:pointer;color:#B7B2A6;font-size:16px">✕</span></div>
+  <div style="padding:18px;display:flex;flex-direction:column;gap:22px">
+    <div>
+      <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;color:#B7B2A6;margin-bottom:9px">TÀI LIỆU TRONG CHAT</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:9px"><span style="width:20px;height:20px;border-radius:5px;background:#F0E5DB;color:#BE6A3A;font-family:'Geist Mono',monospace;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">md</span><span style="font-size:13px;flex:1;color:#1B1A16">plan.md</span><span style="font-family:'Geist Mono',monospace;font-size:10px;color:#B7B2A6">2.1KB</span></div>
+        <div style="display:flex;align-items:center;gap:9px"><span style="width:20px;height:20px;border-radius:5px;background:#E2EFE7;color:#3E8A5E;font-family:'Geist Mono',monospace;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">cs</span><span style="font-size:13px;flex:1;color:#1B1A16">Khảo-sát.csv</span><span style="font-family:'Geist Mono',monospace;font-size:10px;color:#B7B2A6">18KB</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;color:#B7B2A6;margin-bottom:10px">{{ workLabel }}</div>
+      <sc-if value="{{ advanced }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:7px;font-family:'Geist Mono',monospace;font-size:12px;color:#5A554B">
+        <div>⌕ web_search <span style="color:#B7B2A6">· 6 kết quả</span></div>
+        <div>↓ web_fetch <span style="color:#B7B2A6">· 14.2KB</span></div>
+        <div>▤ read_file <span style="color:#B7B2A6">· 412 dòng</span></div>
+        <div>⌗ bash <span style="color:#B7B2A6">· thoát 0</span></div>
+        <div>✎ write_file <span style="color:#B7B2A6">· plan.md</span></div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ simpleMode }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;color:#5A554B">
+        <div>✓ Tra cứu trên web</div>
+        <div>✓ Đọc một trang web</div>
+        <div>✓ Mở tài liệu của bạn</div>
+        <div>✓ Lưu vào tài liệu</div>
+      </div>
+      </sc-if>
+    </div>
+    <sc-if value="{{ advanced }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div style="font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:.12em;color:#B7B2A6;margin-bottom:9px">TOKEN</div>
+      <div style="height:6px;border-radius:3px;background:#ECE7DC;overflow:hidden;margin-bottom:7px"><div style="width:{{ tokenPct }};height:100%;background:var(--accent,#BE6A3A)"></div></div>
+      <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#8C877B">{{ tokenLabel }} · còn 58%</div>
+    </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:300,&quot;height&quot;:520},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#BE6A3A&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;advanced&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;tokenPct&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;42%&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tokenLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;84k / 200k&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const adv = !!this.props.advanced;
+    return {
+      accent: this.props.accent ?? '#BE6A3A',
+      advanced: adv, simpleMode: !adv,
+      workLabel: adv ? 'CÔNG CỤ ĐÃ DÙNG' : 'NOVA ĐÃ LÀM',
+      tokenPct: this.props.tokenPct ?? '42%',
+      tokenLabel: this.props.tokenLabel ?? '84k / 200k',
+      onClose: this.props.onClose
+    };
+  }
+}
+</script>
+</body>
+</html>
