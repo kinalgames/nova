@@ -68,7 +68,6 @@ export interface NovaState {
   view: ViewName
   advanced: boolean
   palette: boolean
-  inspector: boolean
   quiet: boolean
   traceOpen: boolean
   drawerOpen: boolean

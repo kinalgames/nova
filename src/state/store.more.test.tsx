@@ -32,12 +32,12 @@ describe('store — focus duration & answer styles', () => {
   })
 })
 
-describe('store — advanced mode & composer hint', () => {
-  it('reveals advanced detail', () => {
+describe('store — advanced mode default', () => {
+  it('defaults advanced ON and toggles off', () => {
     const { result } = setup()
-    expect(result.current.s.advanced).toBe(false)
-    act(() => result.current.v.toggleAdvanced())
     expect(result.current.s.advanced).toBe(true)
+    act(() => result.current.v.toggleAdvanced())
+    expect(result.current.s.advanced).toBe(false)
   })
 })
 

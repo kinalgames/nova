@@ -1,4 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import * as HoverCard from '@radix-ui/react-hover-card'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
@@ -40,16 +41,33 @@ export function TopBar() {
       <div className="flex flex-shrink-0 items-center gap-[9px]">
         {v.showMeter && (
           <>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] text-faint">{v.meterLabel}</span>
-              <div className="h-[5px] w-[84px] overflow-hidden rounded-[3px] bg-border">
-                <div
-                  className="h-full bg-accent transition-[width] duration-500"
-                  style={{ width: v.tokenPct }}
-                />
-              </div>
-              <span className="font-mono text-[11px] text-muted">{v.tokenLabel}</span>
-            </div>
+            <HoverCard.Root openDelay={120} closeDelay={80}>
+              <HoverCard.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label={`${v.meterLabel} — ${v.tokenDetail}`}
+                  className="flex cursor-help items-center gap-2 border-none bg-transparent p-0 font-[inherit] outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                >
+                  <span className="font-mono text-[11px] text-faint">{v.meterLabel}</span>
+                  <div className="h-[5px] w-[84px] overflow-hidden rounded-[3px] bg-border">
+                    <div
+                      className="h-full bg-accent transition-[width] duration-500"
+                      style={{ width: v.tokenPct }}
+                    />
+                  </div>
+                  <span className="font-mono text-[11px] text-muted">{v.tokenLabel}</span>
+                </button>
+              </HoverCard.Trigger>
+              <HoverCard.Portal>
+                <HoverCard.Content
+                  align="end"
+                  sideOffset={10}
+                  className="z-40 rounded-[10px] border border-border bg-panel px-3 py-2 font-mono text-[11.5px] text-text shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
+                >
+                  {v.tokenDetail}
+                </HoverCard.Content>
+              </HoverCard.Portal>
+            </HoverCard.Root>
             <span className="h-[18px] w-px bg-border" />
           </>
         )}

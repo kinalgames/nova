@@ -26,14 +26,6 @@ describe('conversation — appended messages & typing', () => {
   })
 })
 
-describe('inspector — advanced detail', () => {
-  it('reveals raw tool names and the token block', async () => {
-    renderWithStore(<App />, (s) => s.set({ inspector: true, advanced: true }))
-    expect(await screen.findByText('CÔNG CỤ ĐÃ DÙNG')).toBeInTheDocument()
-    expect(screen.getByText('TOKEN')).toBeInTheDocument()
-  })
-})
-
 describe('app — accent override', () => {
   it('applies a concrete accent colour as a CSS variable override', async () => {
     const { container } = renderWithStore(<App />, (s) => s.set({ accent: '#3B5BA9' }))
@@ -52,5 +44,15 @@ describe('preview — uploaded image (object URL)', () => {
     const img = within(dialog).getByRole('img')
     expect(img).toHaveAttribute('src', 'blob:mock')
     expect(img).toHaveAttribute('alt', 'ảnh.png')
+  })
+})
+
+describe('top bar — token detail disclosure', () => {
+  it('exposes the exact token count on the meter and reveals it on focus', async () => {
+    renderWithStore(<App />)
+    const meter = await screen.findByRole('button', { name: /84k \/ 200k token/ })
+    expect(meter).toBeInTheDocument()
+    meter.focus()
+    expect(await screen.findByText('84k / 200k token · còn 58%')).toBeInTheDocument()
   })
 })

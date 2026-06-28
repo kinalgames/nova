@@ -1,7 +1,6 @@
 import { useStore } from '../state/store'
 import { css } from '../css'
 import { Composer } from '../components/Composer'
-import { Inspector } from '../components/Inspector'
 import { Icon } from '../components/Icon'
 
 export function ConversationView() {
@@ -41,18 +40,6 @@ export function ConversationView() {
 
         <Composer />
       </div>
-
-      {/* inspector */}
-      {v.inspectorInline && (
-        <div style={css('width:300px;flex-shrink:0;border-left:1px solid var(--border);background:var(--panel);overflow-y:auto;animation:fadeUp .16s ease')}>
-          <Inspector advanced={v.advanced} tokenPct={v.tokenPct} tokenLabel={v.tokenLabel} onClose={v.toggleInspector} />
-        </div>
-      )}
-      {v.showReopen && (
-        <button type="button" onClick={v.toggleInspector} style={css('position:absolute;top:14px;right:16px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;cursor:pointer;background:var(--panel);z-index:4;white-space:nowrap;font:inherit;text-align:left')}>
-          <Icon n="info" size={14} /> Ngữ cảnh
-        </button>
-      )}
     </div>
   )
 }
@@ -145,7 +132,6 @@ function Trace() {
           {/* think */}
           <div style={css('position:relative')}>
             <span style={css('position:absolute;left:-29px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--bg);border:2px dashed var(--border)')} />
-            {v.advanced && <div style={css("font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:var(--faint);margin-bottom:4px")}>SUY NGHĨ</div>}
             <div style={css('font-size:14.5px;color:var(--muted);font-style:italic;line-height:1.55')}>Cần số liệu benchmark mới nhất trước khi so sánh. Tìm web đã.</div>
           </div>
           {/* web_search */}
@@ -281,15 +267,27 @@ function DoneAnswer() {
   )
 }
 
+function NovaThinking() {
+  return (
+    <span
+      role="img"
+      aria-label="Nova đang làm việc"
+      style={css('position:relative;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0')}
+    >
+      <span style={css('position:absolute;inset:0;border-radius:50%;background:var(--accent-line);animation:pulseRing 1.6s ease-out infinite')} />
+      <span style={css('position:relative;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;animation:breathe 2.4s ease-in-out infinite')}>
+        <Icon n="nova" size={13} />
+      </span>
+    </span>
+  )
+}
+
 function StreamBlock() {
   const { v } = useStore()
   return (
     <div style={css('margin-top:18px')}>
       <div style={css('display:flex;align-items:center;gap:10px;margin-bottom:12px')}>
-        <span style={css('position:relative;width:18px;height:18px;display:flex;align-items:center;justify-content:center')}>
-          <span style={css('position:absolute;width:18px;height:18px;border-radius:50%;background:var(--accent-line);animation:pulseRing 1.6s ease-out infinite')} />
-          <span style={css('width:8px;height:8px;border-radius:50%;background:var(--accent)')} />
-        </span>
+        <NovaThinking />
         <span style={css('font-size:14px;color:var(--text-2)')}>Đang viết câu trả lời…</span>
       </div>
       <div style={css('font-size:18px;line-height:1.75')}>
@@ -370,10 +368,7 @@ function SentMessages() {
       ))}
       {v.typing && (
         <div style={css('margin-top:24px;display:flex;align-items:center;gap:10px')}>
-          <span style={css('position:relative;width:18px;height:18px;display:flex;align-items:center;justify-content:center')}>
-            <span style={css('position:absolute;width:18px;height:18px;border-radius:50%;background:var(--accent-line);animation:pulseRing 1.6s ease-out infinite')} />
-            <span style={css('width:8px;height:8px;border-radius:50%;background:var(--accent)')} />
-          </span>
+          <NovaThinking />
           <span style={css('font-size:14px;color:var(--text-2)')}>{v.typingLabel}</span>
         </div>
       )}

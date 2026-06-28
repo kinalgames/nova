@@ -72,9 +72,8 @@ function initialState(): NovaState {
   const p = loadPersisted()
   return {
     view: 'conversation',
-    advanced: p.advanced ?? false,
+    advanced: p.advanced ?? true,
     palette: false,
-    inspector: false,
     quiet: false,
     traceOpen: false,
     drawerOpen: false,
@@ -446,7 +445,7 @@ function deriveValues(
         badgeBg: p.badgeBg,
         help: p.help,
         tools: p.tools.map((t) => ({ t })),
-        showTools: adv && p.tools.length > 0,
+        showTools: p.tools.length > 0,
         on,
         toggle: () => tog(p.id),
         trackBg: on ? accent : 'var(--border)',
@@ -521,10 +520,6 @@ function deriveValues(
       })),
     }
   })
-  const activeProviderName =
-    (provDefs.find((p) => p.id === s.activeProvider) || ({} as { name?: string }))
-      .name || 'Claude'
-
   // sidebar data
   const sideProjDefs = [
     { id: 'chung', name: 'Chung', dot: 'var(--faint)', count: '31' },
@@ -648,18 +643,15 @@ function deriveValues(
     quiet: s.quiet,
     notQuiet: !s.quiet,
     showMeter: isDesktop,
-    meterLabel: adv ? 'ngữ cảnh' : 'bộ nhớ',
+    meterLabel: 'bộ nhớ',
     modelLabel: s.model === 'opus' ? 'Thông minh' : 'Nhanh',
     modelAMode: 'Thông minh',
     modelBMode: 'Nhanh',
-    modelADesc: adv ? 'Opus 4.8 · claude‑opus‑4 · trả lời sâu' : 'Opus 4.8 · trả lời sâu',
-    modelBDesc: adv
-      ? 'Haiku 4.8 · claude‑haiku‑4 · phản hồi nhanh'
-      : 'Haiku 4.8 · phản hồi nhanh',
+    modelADesc: 'Opus 4.8 · trả lời sâu',
+    modelBDesc: 'Haiku 4.8 · phản hồi nhanh',
     checkA: s.model === 'opus' ? '✓' : '',
     checkB: s.model === 'haiku' ? '✓' : '',
-    activeProviderName,
-    modelMenuLabel: adv ? 'MÔ HÌNH · ' + activeProviderName : 'CHẾ ĐỘ TRỢ LÝ',
+    modelMenuLabel: 'CHẾ ĐỘ TRỢ LÝ',
     // conversation states
     respState: rs,
     isStream: rs === 'stream',
@@ -670,13 +662,9 @@ function deriveValues(
     traceIconFg: accent,
     traceSummary:
       rs === 'stream'
-        ? adv
-          ? 'Đang dùng công cụ…'
-          : 'Nova đang tra cứu và tính toán…'
-        : adv
-          ? 'Đã suy nghĩ và dùng 5 công cụ · 6.4 giây'
-          : 'Nova đã tra cứu web và cập nhật tài liệu của bạn',
-    traceCaret: s.traceOpen ? 'Ẩn' : adv ? 'Chi tiết' : 'Xem Nova đã làm gì',
+        ? 'Nova đang tra cứu và tính toán…'
+        : 'Nova đã tra cứu web và cập nhật tài liệu của bạn',
+    traceCaret: s.traceOpen ? 'Ẩn' : 'Xem Nova đã làm gì',
     toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
     traceOpen: s.traceOpen,
     setStream: () => set({ respState: 'stream' }),
@@ -688,10 +676,6 @@ function deriveValues(
     stFgDone: stFg('done'),
     stBgError: stBg('error'),
     stFgError: stFg('error'),
-    // inspector
-    inspectorInline: isDesktop && s.inspector && s.view === 'conversation',
-    showReopen: !s.inspector && s.view === 'conversation' && isDesktop,
-    toggleInspector: () => set((x) => ({ inspector: !x.inspector })),
     // composer
     chatProject: s.chatProject,
     staged: activeStaged,
@@ -835,10 +819,10 @@ function deriveValues(
     stHumorBd: s.styles.humor ? accent : 'var(--border)',
     stHumorBg: s.styles.humor ? 'var(--accent-soft)' : 'transparent',
     stHumorFg: s.styles.humor ? accent : 'var(--muted)',
-    bashLabel: adv ? 'Bash' : 'Chạy lệnh',
+    bashLabel: 'Chạy lệnh',
     showComposerHint: true,
     // bottom bar
-    showBar: s.showShortcutsBar && s.barOn && adv && !s.quiet && isDesktop,
+    showBar: s.showShortcutsBar && s.barOn && !s.quiet && isDesktop,
     // sizing
     heroSize: isMobile ? '38px' : '52px',
     pageTitle: isMobile ? '34px' : '44px',
@@ -879,7 +863,8 @@ function deriveValues(
     typingLabel: s.typingLabel,
     activeCount,
     tokenPct: s.tokenPct,
-    tokenLabel: adv ? '84k / 200k' : 'còn 58%',
+    tokenLabel: 'còn 58%',
+    tokenDetail: '84k / 200k token · còn 58%',
     copyLabel: s.copied ? 'Đã chép' : 'Sao chép',
     copied: s.copied,
     quietClock: '24:13',

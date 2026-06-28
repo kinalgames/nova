@@ -12,6 +12,11 @@ describe('ConversationView — response states', () => {
     expect(screen.getByText('Dừng')).toBeInTheDocument()
   })
 
+  it('streaming shows an animated Nova working indicator', async () => {
+    renderWithStore(<App />, (s) => s.set({ respState: 'stream' }))
+    expect(await screen.findByLabelText('Nova đang làm việc')).toBeInTheDocument()
+  })
+
   it('error shows the interrupted banner with a retry', async () => {
     renderWithStore(<App />, (s) => s.set({ respState: 'error' }))
     expect(await screen.findByText('Phản hồi bị gián đoạn')).toBeInTheDocument()
@@ -27,6 +32,12 @@ describe('ConversationView — response states', () => {
     renderWithStore(<App />, (s) => s.set({ advanced: true, traceOpen: true, respState: 'done' }))
     expect(await screen.findByText('web_search')).toBeInTheDocument()
     expect(screen.getByText('read_file')).toBeInTheDocument()
+  })
+
+  it('trace shows the thinking step but no "SUY NGHĨ" label', async () => {
+    renderWithStore(<App />, (s) => s.set({ advanced: true, traceOpen: true, respState: 'done' }))
+    expect(await screen.findByText(/Cần số liệu benchmark/)).toBeInTheDocument()
+    expect(screen.queryByText('SUY NGHĨ')).not.toBeInTheDocument()
   })
 
   it('a fresh chat shows the empty state', async () => {

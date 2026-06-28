@@ -87,12 +87,7 @@ describe('store — preview formats', () => {
   })
 })
 
-describe('store — inspector & sidebar / drawer', () => {
-  it('toggles the inspector', () => {
-    const { result } = setup()
-    act(() => result.current.v.toggleInspector())
-    expect(result.current.s.inspector).toBe(true)
-  })
+describe('store — sidebar / drawer', () => {
   it('collapses the sidebar', () => {
     const { result } = setup()
     act(() => result.current.v.collapseSidebar())
@@ -382,15 +377,18 @@ describe('store — composer canSend & stop', () => {
   })
 })
 
-describe('store — advanced / alternate-state derived paths', () => {
-  it('takes the advanced + haiku + ollama branches', () => {
+describe('store — labels are unified (advanced no longer rebrands them)', () => {
+  it('keeps friendly labels even with advanced on (+ haiku / ollama coverage)', () => {
     const { result } = setup()
     act(() =>
       result.current.set({ advanced: true, model: 'haiku', activeProvider: 'ollama' }),
     )
-    expect(result.current.v.bashLabel).toBe('Bash')
-    expect(result.current.v.tokenLabel).toBe('84k / 200k')
-    expect(result.current.v.modelMenuLabel).toContain('MÔ HÌNH')
+    expect(result.current.v.bashLabel).toBe('Chạy lệnh')
+    expect(result.current.v.tokenLabel).toBe('còn 58%')
+    expect(result.current.v.meterLabel).toBe('bộ nhớ')
+    expect(result.current.v.modelMenuLabel).toBe('CHẾ ĐỘ TRỢ LÝ')
+    expect(result.current.v.modelADesc).toBe('Opus 4.8 · trả lời sâu')
+    expect(result.current.v.traceCaret).toBe('Xem Nova đã làm gì')
     expect(result.current.v.modelLabel).toBe('Nhanh')
     // ollama uses an endpoint field, not an API key
     const ollama = result.current.v.providers.find((p) => p.name.includes('máy'))

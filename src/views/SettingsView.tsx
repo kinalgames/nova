@@ -18,7 +18,7 @@ export function SettingsView() {
             <span style={css('width:36px;height:36px;border-radius:10px;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0')}><Icon n="command" size={17} /></span>
             <div style={css('flex:1;min-width:0')}>
               <div style={css('font-size:16px;font-weight:500')}>Chế độ nâng cao</div>
-              <div style={css('font-size:13px;color:var(--muted);margin-top:2px;line-height:1.45')}>Hé lộ chi tiết kỹ thuật trong cùng giao diện: tên công cụ, token, nhà cung cấp &amp; API, system prompt, phím tắt.</div>
+              <div style={css('font-size:13px;color:var(--muted);margin-top:2px;line-height:1.45')}>Chế độ dành cho người dùng chuyên nghiệp. Bật để xem thêm chi tiết kỹ thuật trong từng bước.</div>
             </div>
             <Switch.Root
               checked={v.advanced}
@@ -98,14 +98,12 @@ export function SettingsView() {
             <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} style={css(`border:1px solid ${v.themeAutoBd};background:${v.themeAutoBg};color:${v.themeAutoFg};border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font:inherit`)}>Tự động</button>
           </div>
         </div>
-        {v.advanced && (
-          <ToggleRow
-            title="Thanh phím tắt dưới cùng"
-            sub="Hiện gợi ý phím tắt (chỉ desktop)"
-            on={v.barOn}
-            onToggle={v.toggleBar}
-          />
-        )}
+        <ToggleRow
+          title="Thanh phím tắt dưới cùng"
+          sub="Hiện gợi ý phím tắt (chỉ desktop)"
+          on={v.barOn}
+          onToggle={v.toggleBar}
+        />
 
         {/* focus */}
         <div style={css("font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--faint);margin:22px 0 6px")}>CHẾ ĐỘ TẬP TRUNG</div>

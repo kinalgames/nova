@@ -28,10 +28,10 @@ describe('views render on navigation', () => {
     expect(await screen.findByText('HƯỚNG DẪN HỆ THỐNG')).toBeInTheDocument()
   })
 
-  it('Nova in advanced mode shows each skill preset with its tool tags', async () => {
-    renderWithStore(<App />, (s) => s.set({ view: 'assistant', advanced: true }))
+  it('Nova shows each skill preset with its tool tags (no advanced needed)', async () => {
+    renderWithStore(<App />, (s) => s.set({ view: 'assistant', advanced: false }))
     expect(await screen.findByText('KỸ NĂNG CỦA NOVA')).toBeInTheDocument()
-    // advanced reveals the per-skill tool chips (PresetCard showTools branch)
+    // tool chips are promoted: visible for everyone, not gated behind advanced
     expect(screen.getAllByText('Đọc web').length).toBeGreaterThan(0)
   })
 
@@ -41,9 +41,14 @@ describe('views render on navigation', () => {
     expect(screen.getByText('NOVA DÙNG MÔ HÌNH')).toBeInTheDocument()
   })
 
-  it('Settings in advanced mode reveals the custom-provider row + skill chips', async () => {
+  it('Settings in advanced mode reveals the custom-provider row', async () => {
     renderWithStore(<App />, (s) => s.set({ view: 'settings', advanced: true }))
     expect(await screen.findByText(/Thêm nhà cung cấp tùy chỉnh/)).toBeInTheDocument()
+  })
+
+  it('Settings shows the shortcuts-bar toggle without advanced', async () => {
+    renderWithStore(<App />, (s) => s.set({ view: 'settings', advanced: false }))
+    expect(await screen.findByText('Thanh phím tắt dưới cùng')).toBeInTheDocument()
   })
 })
 
@@ -55,11 +60,6 @@ describe('sidebar states', () => {
 })
 
 describe('overlays render on demand', () => {
-  it('Inspector opens with the context panel', async () => {
-    renderWithStore(<App />, (s) => s.set({ inspector: true }))
-    expect(await screen.findByText('TÀI LIỆU TRONG CHAT')).toBeInTheDocument()
-  })
-
   it('quiet (focus) mode takes over the screen', async () => {
     renderWithStore(<App />, (s) => s.v.enterQuiet())
     expect(await screen.findByText(/TẬP TRUNG/)).toBeInTheDocument()

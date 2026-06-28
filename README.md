@@ -65,12 +65,14 @@ Every screen and control from the design, fully interactive:
 - **Projects**, **Project config** (instructions, files, skill presets),
   **Nova** (style, skills, system prompt), **Settings** (advanced toggle,
   providers, theme, focus duration, account).
-- **Inspector**, **command palette (⌘K)**, **quiet/focus mode (⌘.)**,
+- **Command palette (⌘K)**, **quiet/focus mode (⌘.)**,
   **file/media preview** (image · pdf · code · csv · md), **auth**
   (login / signup / onboarding).
-- **Simple vs Advanced** mode — Advanced only _reveals_ extra technical detail
-  (raw tool names, exit codes, tokens, API keys, system prompt) in the same
-  layout; it never hides anything from basic users.
+- **Advanced (pro) mode** — a single toggle (currently on by default) that
+  _reveals_ the raw tool-call trace inline (tool names, exit codes, raw I/O).
+  Everything else is unified into one friendly wording for everyone: skill
+  tool-chips and the shortcuts bar are always visible, and the exact token
+  count is one hover away on the context meter.
 
 ### Production-like behavior (fake services)
 
