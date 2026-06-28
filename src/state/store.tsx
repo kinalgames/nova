@@ -328,7 +328,7 @@ export function StoreProvider({
       set({ palette: false, drawerOpen: false })
       switch (view) {
         case 'home':
-          navigate({ to: '/' })
+          navigate({ to: '/new' })
           break
         case 'conversation':
           navigate({ to: '/chat/$convId', params: { convId: navRef.current.activeConv } })
@@ -695,6 +695,9 @@ function deriveValues(
           set({ activeConv: c.id, palette: false, drawerOpen: false })
           navigate({ to: '/chat/$convId', params: { convId: c.id } })
         },
+        // side-effects only — the <Link> performs the navigation, so a
+        // middle-click / cmd-click can open the conversation in a new tab
+        onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),
         rename: () => {
           const next =
             typeof window !== 'undefined' && window.prompt
@@ -759,6 +762,7 @@ function deriveValues(
     isConv: nav.view === 'conversation',
     isProjects: nav.view === 'projects',
     isProjectCfg: nav.view === 'projectcfg',
+    activeConv,
     // sidebar
     showSidebar: isDesktop,
     sidebarW: s.sidebarCollapsed ? '62px' : '256px',
@@ -1007,6 +1011,7 @@ function deriveValues(
         dot: accent,
         threads: '12 luồng',
         when: '2 giờ trước',
+        projectId: 'aurora',
         open: () => go('conversation'),
         config: () => go('projectcfg'),
       },

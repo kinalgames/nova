@@ -6,7 +6,7 @@ beforeEach(() => localStorage.clear())
 
 describe('views render on navigation', () => {
   it('Home shows the greeting and intent suggestions', async () => {
-    await renderApp((s) => s.v.goHome())
+    await renderApp(undefined, { path: '/new' })
     expect(await screen.findByText(/Mình là Nova/)).toBeInTheDocument()
     expect(screen.getByText('Lên kế hoạch')).toBeInTheDocument()
   })

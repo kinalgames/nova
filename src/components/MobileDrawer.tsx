@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { Link } from '@tanstack/react-router'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
@@ -72,17 +73,18 @@ export function MobileDrawer() {
                 className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-black/[0.035]"
                 style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
               >
-                <button
-                  type="button"
-                  onClick={c.open}
+                <Link
+                  to="/chat/$convId"
+                  params={{ convId: c.id }}
+                  onClick={c.onSelect}
                   disabled={c.deleting}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-none bg-transparent text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 bg-transparent text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-disabled:cursor-default"
                 >
                   <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
                     {c.title}
                   </span>
                   {c.pinned && <Icon n="pin" size={12} fill="currentColor" className="flex-shrink-0 text-faint" />}
-                </button>
+                </Link>
                 {c.deleting ? (
                   <button
                     type="button"

@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useStore } from '../state/store'
 import { Icon } from './../components/Icon'
 
@@ -19,10 +20,10 @@ export function ProjectsView() {
           </button>
         </div>
         <div className="mb-6 text-body text-muted">Mỗi dự án có hướng dẫn và kỹ năng riêng cho Nova.</div>
-        <button
-          type="button"
-          onClick={v.goConv}
-          className="mb-2.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-panel p-4 text-left"
+        <Link
+          to="/chat/$convId"
+          params={{ convId: v.activeConv }}
+          className="mb-2.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-panel p-4 text-left no-underline text-text"
         >
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-border text-text-2">
@@ -36,37 +37,37 @@ export function ProjectsView() {
             </div>
           </div>
           <span className="shrink-0 font-mono text-eyebrow text-faint">31 luồng</span>
-        </button>
+        </Link>
         {v.projects.map((p, i) => (
           <div
             key={i}
             className="flex items-center justify-between gap-2.5 border-b border-border px-1 py-4"
           >
-            <button
-              type="button"
-              onClick={p.open}
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 border-none bg-transparent text-left"
+            <Link
+              to="/chat/$convId"
+              params={{ convId: v.activeConv }}
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 bg-transparent text-left no-underline text-text"
             >
               <span className="size-2.5 shrink-0 rounded-xs" style={{ background: p.dot }} />
               <div className="min-w-0">
                 <div className="truncate text-lead">{p.name}</div>
                 <div className="mt-0.5 truncate text-ui text-muted">{p.desc}</div>
               </div>
-            </button>
+            </Link>
             <div className="flex shrink-0 items-center gap-3">
               <span className="text-right font-mono text-eyebrow leading-normal text-faint">
                 {p.threads}
                 <br />
                 {p.when}
               </span>
-              <button
-                type="button"
+              <Link
+                to="/projects/$projectId"
+                params={{ projectId: p.projectId }}
                 aria-label={`Cấu hình ${p.name}`}
-                onClick={p.config}
-                className="flex cursor-pointer border-none bg-transparent text-faint"
+                className="flex cursor-pointer bg-transparent text-faint no-underline"
               >
                 <Icon n="settings" size={16} />
-              </button>
+              </Link>
             </div>
           </div>
         ))}

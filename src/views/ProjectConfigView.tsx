@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useStore } from '../state/store'
 import { PresetCard } from '../components/PresetCard'
 import { Icon } from '../components/Icon'
@@ -12,13 +13,12 @@ export function ProjectConfigView() {
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
       <div className="w-[640px] max-w-full" style={{ padding: v.pagePad }}>
-        <button
-          type="button"
-          onClick={v.goProjects}
-          className="mb-3 inline-flex cursor-pointer items-center gap-1.5 border-none bg-transparent text-left text-ui text-muted"
+        <Link
+          to="/projects"
+          className="mb-3 inline-flex cursor-pointer items-center gap-1.5 bg-transparent text-left text-ui text-muted no-underline"
         >
           <Icon n="back" size={15} /> Tất cả dự án
-        </button>
+        </Link>
         <div className="mb-1.5 flex items-center gap-3">
           <span className="size-3 rounded-xs bg-accent" />
           <div className="font-display tracking-[-.01em]" style={{ fontSize: v.pageTitle }}>
