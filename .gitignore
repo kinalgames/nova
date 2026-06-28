@@ -21,3 +21,6 @@ test-results
 # IDE
 .idea
 .vscode
+
+# per-conversation git worktrees
+.worktrees/
