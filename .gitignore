@@ -12,6 +12,9 @@ yarn-error.log*
 
 *.tsbuildinfo
 
+# TanStack Router generated route tree
+src/routeTree.gen.ts
+
 # test/tooling artifacts
 coverage
 playwright-report
