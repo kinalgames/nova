@@ -22,6 +22,7 @@ import {
 } from '../data/defs'
 import type {
   AuthView,
+  Block,
   LiveProviderStatus,
   NovaState,
   PreviewKind,
@@ -377,6 +378,20 @@ export function StoreProvider({
       clearTimeout(t2.current)
       clearInterval(tc.current)
 
+      const stagedNow = prev.staged[conv] ?? []
+      const userBlocks: Block[] = [{ type: 'text', text: t }]
+      if (stagedNow.length)
+        userBlocks.push({
+          type: 'files',
+          items: stagedNow.map((f) => ({
+            kind: f.kind,
+            name: f.name,
+            meta: f.size,
+            image: f.kind === 'image',
+            open: f.kind,
+          })),
+        })
+
       const projName =
         prev.projects.find(
           (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
@@ -397,7 +412,7 @@ export function StoreProvider({
             ...x.threads,
             [conv]: [
               ...(x.threads[conv] ?? []),
-              { who: 'NOVA', color: 'var(--accent)', text: '', isNova: true },
+              { id: uid(), role: 'assistant', who: 'NOVA', blocks: [{ type: 'text', size: 'lead', text: '' }] },
             ],
           },
         }))
@@ -408,7 +423,7 @@ export function StoreProvider({
             const thread = (x.threads[conv] ?? []).slice()
             thread[thread.length - 1] = {
               ...thread[thread.length - 1],
-              text: words.slice(0, i).join(' '),
+              blocks: [{ type: 'text', size: 'lead', text: words.slice(0, i).join(' ') }],
             }
             return { threads: { ...x.threads, [conv]: thread } }
           })
@@ -425,7 +440,7 @@ export function StoreProvider({
           ...prev.threads,
           [conv]: [
             ...(prev.threads[conv] ?? []),
-            { who: 'MINH', color: 'var(--muted)', text: t, isNova: false },
+            { id: uid(), role: 'user', who: 'MINH', blocks: userBlocks },
           ],
         },
         // sending consumes this conversation's staged attachments

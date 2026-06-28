@@ -1,4 +1,5 @@
 import type { PresetId, ProviderId, ProviderStatus } from '../data/defs'
+import type { IconName } from '../components/Icon'
 
 export type LiveProviderStatus = ProviderStatus | 'testing' | 'error'
 
@@ -32,11 +33,68 @@ export interface StagedFile {
   demo?: boolean
 }
 
-export interface SentMsg {
+export type BlockTone = 'danger' | 'success' | 'warn' | 'muted' | 'accent'
+
+/** one step in the collapsible tool-use trace */
+export interface TraceStep {
+  kind: 'think' | 'tool' | 'note' | 'quote' | 'code' | 'done'
+  /** think-step body text */
+  text?: string
+  /** timeline node style on the rail */
+  node?: 'accent' | 'danger' | 'dashed' | 'check'
+  /** step title (think text / node label / done label) */
+  title?: string
+  /** muted detail after the title */
+  detail?: string
+  /** tool row (advanced view): name + icon + query + result */
+  tool?: string
+  toolIcon?: IconName
+  query?: string
+  result?: string
+  resultTone?: BlockTone
+  /** quoted page excerpt */
+  quote?: string
+  /** terminal code lines */
+  code?: string[]
+}
+
+export interface MsgAttachment {
+  kind: PreviewKind
+  name: string
+  meta?: string
+  /** render as a gradient image tile rather than a file pill */
+  image?: boolean
+  /** which preview the chip opens */
+  open?: PreviewKind
+}
+
+export interface MsgAction {
+  icon: IconName
+  label: string
+  action: 'copy' | 'retry' | PreviewKind
+}
+
+/** a renderable content block inside a message */
+export type Block =
+  | { type: 'text'; text: string; size?: 'body' | 'lead' }
+  | { type: 'files'; label?: string; items: MsgAttachment[] }
+  | { type: 'trace'; summary: string; meta?: string; steps: TraceStep[] }
+  | { type: 'table'; head: string[]; rows: { text: string; tone?: BlockTone }[][] }
+  | { type: 'sources'; items: { n: number; label: string; open: PreviewKind }[] }
+  | { type: 'actions'; items: MsgAction[] }
+
+/** assistant in-flight states (the demo switcher maps to the last message) */
+export type MsgState = 'streaming' | 'error' | 'approval'
+
+export interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  /** display label, e.g. MINH / NOVA */
   who: string
-  color: string
-  text: string
-  isNova: boolean
+  state?: MsgState
+  /** approval-card payload, shown when state === 'approval' */
+  approval?: { tool: string; command: string }
+  blocks: Block[]
 }
 
 export interface Conversation {
@@ -90,7 +148,7 @@ export interface NovaState {
   /** conversation ids in their optimistic-delete undo window */
   deleting: string[]
   activeConv: string
-  threads: Record<string, SentMsg[]>
+  threads: Record<string, Message[]>
   thinkingLevel: ThinkLevel
   theme: Theme
   focusDur: '15' | '25' | '50'

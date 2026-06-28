@@ -11,8 +11,8 @@ describe('conversation — appended messages & typing', () => {
         activeConv: 'c1',
         threads: {
           c1: [
-            { who: 'MINH', color: 'var(--muted)', text: 'Câu hỏi của mình', isNova: false },
-            { who: 'NOVA', color: 'var(--accent)', text: 'Nova trả lời đây', isNova: true },
+            { id: 'b1', role: 'user', who: 'MINH', blocks: [{ type: 'text', text: 'Câu hỏi của mình' }] },
+            { id: 'b2', role: 'assistant', who: 'NOVA', blocks: [{ type: 'text', text: 'Nova trả lời đây' }] },
           ],
         },
         typing: true,

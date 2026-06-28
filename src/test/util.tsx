@@ -9,7 +9,11 @@ import {
 } from '@tanstack/react-router'
 import { routeTree } from '../routeTree.gen'
 import { StoreProvider, type Store } from '../state/store'
-import type { NovaState } from '../state/types'
+import type { Message, NovaState } from '../state/types'
+
+/** the concatenated text of a message's text blocks (test convenience) */
+export const msgText = (m?: Message) =>
+  (m?.blocks.find((b) => b.type === 'text') as { text: string } | undefined)?.text ?? ''
 
 /** userEvent without the realistic inter-event delay — same behaviour, faster. */
 export const makeUser = () => userEvent.setup({ delay: null, pointerEventsCheck: 0 })

@@ -1,8 +1,64 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
-import { renderApp } from '../test/util'
+import { makeUser, renderApp } from '../test/util'
 
 beforeEach(() => localStorage.clear())
+
+describe('ConversationView — data-driven message blocks', () => {
+  it('renders the demo from data: text, table, sources, file blocks', async () => {
+    await renderApp(undefined, { path: '/chat/c1' })
+    expect(await screen.findByText('Kích hoạt 72h')).toBeInTheDocument() // table head
+    expect((await screen.findAllByText('plan.md')).length).toBeGreaterThan(0) // file block
+    expect(screen.getByText(/techreview/)).toBeInTheDocument() // source chip
+  })
+
+  it('a non-image file pill opens its preview', async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/chat/c1' })
+    await user.click(await screen.findByRole('button', { name: /plan\.md 2\.1 KB/ }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('the moodboard image tile opens a preview', async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/chat/c1' })
+    await user.click(await screen.findByText('moodboard.png'))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('message actions run (copy marks copied, open shows a preview)', async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, { path: '/chat/c1' })
+    await user.click((await screen.findAllByRole('button', { name: /Sao chép/ }))[0])
+    expect(store().s.copied).toBe(true)
+    await user.click((await screen.findAllByRole('button', { name: /Mở plan\.md/ }))[0])
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('a source chip opens its preview', async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/chat/c1' })
+    await user.click(await screen.findByRole('button', { name: /techreview/ }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('trace hides raw tool rows when advanced is off', async () => {
+    await renderApp((s) => s.set({ advanced: false, traceOpen: true }), { path: '/chat/c1' })
+    expect(await screen.findByText(/Cần số liệu benchmark/)).toBeInTheDocument()
+    expect(screen.queryByText('web_search')).not.toBeInTheDocument()
+  })
+
+  it('a sent message with a staged attachment renders a file block', async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/chat/c1' })
+    // c1 seeds two staged demo attachments; send consumes them into the message
+    await user.type(screen.getByRole('textbox', { name: 'Nhắn cho Nova' }), 'kèm theo tệp')
+    await user.click(screen.getByRole('button', { name: 'Gửi' }))
+    expect(await screen.findByText('kèm theo tệp')).toBeInTheDocument()
+    // the staged Brief pdf is now part of the sent message
+    expect((await screen.findAllByText('Brief-Aurora.pdf')).length).toBeGreaterThan(0)
+  })
+})
 
 describe('ConversationView — response states', () => {
   it('streaming shows the live "writing" indicator and a stop control', async () => {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
-import { renderStore } from '../test/util'
+import { msgText, renderStore } from '../test/util'
 
 function setup() {
   return renderStore()
@@ -152,8 +152,8 @@ describe('store — per-conversation threads', () => {
     await act(async () => result.current.v.send())
     await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.threads[id].length).toBeGreaterThan(1)
-    // the demo conversation's thread is untouched
-    expect(result.current.s.threads.c1).toHaveLength(0)
+    // the demo conversation's seeded thread (4 messages) is untouched
+    expect(result.current.s.threads.c1).toHaveLength(4)
   })
 
   it('deleting the active conversation switches to another (after the undo window)', async () => {
@@ -268,7 +268,7 @@ describe('store — copy & search input', () => {
         preventDefault: () => {},
       } as React.KeyboardEvent),
     )
-    expect(result.current.v.sent.at(-1)?.text).toBe('gửi bằng Enter')
+    expect(msgText(result.current.v.sent.at(-1))).toBe('gửi bằng Enter')
   })
 })
 
@@ -331,14 +331,14 @@ describe('store — streaming chat engine', () => {
     // after the thinking pause, an empty Nova bubble appears and starts filling
     await act(async () => vi.advanceTimersByTime(700))
     const nova = result.current.v.sent.at(-1)
-    expect(nova?.isNova).toBe(true)
-    const partial = nova?.text ?? ''
+    expect(nova?.role).toBe('assistant')
+    const partial = msgText(nova)
     await act(async () => vi.advanceTimersByTime(120))
-    expect((result.current.v.sent.at(-1)?.text ?? '').length).toBeGreaterThan(partial.length)
+    expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(partial.length)
     // streaming completes
     await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.typing).toBe(false)
-    expect((result.current.v.sent.at(-1)?.text ?? '').length).toBeGreaterThan(0)
+    expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(0)
   })
 
   it('a fresh chat hides the demo thread and shows the real exchange', async () => {
@@ -352,7 +352,7 @@ describe('store — streaming chat engine', () => {
     await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.v.isEmptyChat).toBe(false)
     expect(result.current.v.hasDemo).toBe(false)
-    expect(result.current.v.sent.some((m) => m.isNova)).toBe(true)
+    expect(result.current.v.sent.some((m) => m.role === 'assistant')).toBe(true)
   })
 })
 

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { PERSIST_KEY } from './store'
-import { renderStore } from '../test/util'
+import { msgText, renderStore } from '../test/util'
 
 function setup() {
   return renderStore()
@@ -111,14 +111,14 @@ describe('store — composer send', () => {
     act(() => result.current.v.send())
     // user message in flight
     expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
-    expect(result.current.v.sent.at(-1)?.text).toBe('Tóm tắt giúp mình')
+    expect(msgText(result.current.v.sent.at(-1))).toBe('Tóm tắt giúp mình')
     expect(result.current.s.typing).toBe(true)
     expect(result.current.s.draft).toBe('')
     // Nova answers after the scripted delay
     act(() => vi.advanceTimersByTime(2000))
     expect(result.current.s.typing).toBe(false)
     expect(result.current.v.sent.at(-1)?.who).toBe('NOVA')
-    expect(result.current.v.sent.at(-1)?.isNova).toBe(true)
+    expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
   })
 
   it('ignores send when the draft is empty (no message, no typing)', async () => {
