@@ -1,7 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 const navRow =
   'flex w-full cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-[14px] outline-none hover:bg-black/[0.035] focus-visible:bg-black/[0.05]'
@@ -65,12 +67,47 @@ export function MobileDrawer() {
               GẦN ĐÂY · AURORA
             </div>
             {v.sideConvs.map((c) => (
-              <button key={c.id} onClick={c.open} className={navRow} style={{ background: c.bg }}>
-                <span className="size-[5px] rounded-full" style={{ background: c.dot }} />
-                <span className="flex-1 truncate text-[13.5px]" style={{ color: c.fg }}>
-                  {c.title}
-                </span>
-              </button>
+              <div
+                key={c.id}
+                className="flex items-center gap-2.5 rounded-[9px] px-2.5 py-2 hover:bg-black/[0.035]"
+                style={{ background: c.bg }}
+              >
+                <button
+                  type="button"
+                  onClick={c.open}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 border-none bg-transparent text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span className="size-[5px] rounded-full" style={{ background: c.dot }} />
+                  <span className="flex-1 truncate text-[13.5px]" style={{ color: c.fg }}>
+                    {c.title}
+                  </span>
+                </button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Tùy chọn cuộc trò chuyện"
+                      className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      <Icon n="more" size={16} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content align="end" sideOffset={4} className={MENU_CONTENT}>
+                      <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
+                        Đổi tên
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
+                        Ghim lên đầu
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Separator className={MENU_SEP} />
+                      <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
+                        Xóa
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+              </div>
             ))}
           </div>
 

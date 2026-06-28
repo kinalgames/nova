@@ -34,3 +34,26 @@ describe('ConversationView — response states', () => {
     expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()
   })
 })
+
+describe('ConversationView — demo content is scoped to the demo conversation', () => {
+  it('does not leak the scripted answer into a real conversation', async () => {
+    renderWithStore(<App />, (s) => s.set({ activeConv: 'c2', respState: 'done' }))
+    // the real c2 thread is shown
+    expect(await screen.findByText(/Viết giúp mình đoạn mở đầu/)).toBeInTheDocument()
+    // the Aurora benchmark answer (demo-only) must NOT appear
+    expect(screen.queryByText(/đối chiếu khảo sát với 6 đối thủ/)).not.toBeInTheDocument()
+    // nor the demo state switcher
+    expect(screen.queryByText('demo:')).not.toBeInTheDocument()
+  })
+
+  it('a fresh chat shows only the empty state, no scripted answer', async () => {
+    renderWithStore(<App />, (s) => s.v.pNewChat())
+    expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()
+    expect(screen.queryByText(/đối chiếu khảo sát với 6 đối thủ/)).not.toBeInTheDocument()
+  })
+
+  it('shows the demo state switcher on the demo conversation', async () => {
+    renderWithStore(<App />)
+    expect(await screen.findByText('demo:')).toBeInTheDocument()
+  })
+})

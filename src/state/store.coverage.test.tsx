@@ -331,6 +331,57 @@ describe('store — streaming chat engine', () => {
   })
 })
 
+describe('store — per-conversation attachments', () => {
+  it('swaps the staged tray per conversation; sending clears it', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    const open = (id: string) =>
+      result.current.v.sideConvs.find((c) => c.id === id)!.open()
+    // demo conv c1 seeds two attachments
+    expect(result.current.v.staged).toHaveLength(2)
+    // a real conversation starts with an empty tray
+    act(() => open('c2'))
+    expect(result.current.v.staged).toHaveLength(0)
+    // back on c1, sending consumes its tray
+    act(() => open('c1'))
+    act(() => result.current.set({ draft: 'gửi đi' }))
+    act(() => result.current.v.send())
+    expect(result.current.v.staged).toHaveLength(0)
+  })
+})
+
+describe('store — top bar reflects the active conversation', () => {
+  it('headerTitle follows the open conversation', () => {
+    const { result } = setup()
+    expect(result.current.v.headerTitle).toBe('Đối chiếu benchmark đối thủ')
+    act(() => result.current.v.sideConvs.find((c) => c.id === 'c2')!.open())
+    expect(result.current.v.headerTitle).toBe('Đoạn mở đầu trang đích')
+  })
+})
+
+describe('store — composer canSend & stop', () => {
+  it('canSend reflects a non-empty trimmed draft', () => {
+    const { result } = setup()
+    expect(result.current.v.canSend).toBe(false)
+    act(() => result.current.set({ draft: '   ' }))
+    expect(result.current.v.canSend).toBe(false)
+    act(() => result.current.set({ draft: 'xin chào' }))
+    expect(result.current.v.canSend).toBe(true)
+  })
+
+  it('stop halts an in-flight streamed reply for good', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    act(() => result.current.set({ draft: 'Viết email' }))
+    act(() => result.current.v.send())
+    expect(result.current.s.typing).toBe(true)
+    act(() => result.current.v.stop())
+    expect(result.current.s.typing).toBe(false)
+    act(() => vi.advanceTimersByTime(5000))
+    expect(result.current.s.typing).toBe(false)
+  })
+})
+
 describe('store — advanced / alternate-state derived paths', () => {
   it('takes the advanced + haiku + ollama branches', () => {
     const { result } = setup()

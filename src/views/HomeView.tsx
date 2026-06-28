@@ -31,7 +31,7 @@ export function HomeView() {
             placeholder="Nhắn cho Nova…"
             style={css('flex:1;min-width:0;font-size:18px;color:var(--text)')}
           />
-          <button type="button" aria-label="Gửi" onClick={v.send} className="tap" style={css('border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}>
+          <button type="button" aria-label="Gửi" onClick={v.send} disabled={!v.canSend} className="tap" style={css(`border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:var(--bg);transition:opacity .12s;cursor:${v.canSend ? 'pointer' : 'default'};opacity:${v.canSend ? '1' : '.38'}`)}>
             <Icon n="send" size={17} stroke={2} />
           </button>
         </div>

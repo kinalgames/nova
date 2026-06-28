@@ -15,16 +15,19 @@ export function ConversationView() {
         <div ref={v.scrollRef} tabIndex={0} role="region" aria-label="Hội thoại" style={css('flex:1;min-height:0;overflow-y:auto;display:flex;justify-content:center;scroll-behavior:smooth')}>
           <div style={css(`width:680px;max-width:100%;padding:${v.convPad}`)}>
             {v.isEmptyChat && <EmptyChat />}
+            {/* the scripted showcase (thread + state blocks + switcher) belongs to
+                the demo conversation only; real conversations show their own thread */}
             {v.hasDemo && <DemoThread />}
-            {v.isDone && <DoneAnswer />}
-            {v.isStream && <StreamBlock />}
-            {v.isError && <ErrorBlock />}
-            {v.respApproval && <ApprovalBlock />}
+            {v.hasDemo && v.isDone && <DoneAnswer />}
+            {v.hasDemo && v.isStream && <StreamBlock />}
+            {v.hasDemo && v.isError && <ErrorBlock />}
+            {v.hasDemo && v.respApproval && <ApprovalBlock />}
             <SentMessages />
           </div>
         </div>
 
-        {/* demo state switcher */}
+        {/* demo state switcher — only on the scripted demo conversation */}
+        {v.hasDemo && (
         <div style={css('flex-shrink:0;display:flex;justify-content:center;padding:4px 12px 0')}>
           <div style={css('display:inline-flex;align-items:center;gap:4px;background:var(--fill);border-radius:10px;padding:3px;font-size:11.5px')}>
             <span style={css('color:var(--muted);padding:0 6px')}>demo:</span>
@@ -34,6 +37,7 @@ export function ConversationView() {
             <button type="button" onClick={v.setError} style={css(`padding:5px 10px;border-radius:8px;cursor:pointer;background:${v.stBgError};color:${v.stFgError};border:none;font:inherit;text-align:left`)}>Lỗi</button>
           </div>
         </div>
+        )}
 
         <Composer />
       </div>

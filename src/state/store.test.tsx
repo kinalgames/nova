@@ -18,9 +18,9 @@ describe('store — initial state', () => {
     expect(result.current.v.dark).toBe(false)
   })
 
-  it('seeds two demo attachments', () => {
+  it('seeds two demo attachments on the demo conversation', () => {
     const { result } = setup()
-    expect(result.current.s.staged).toHaveLength(2)
+    expect(result.current.v.staged).toHaveLength(2)
     expect(result.current.v.hasStaged).toBe(true)
   })
 })
@@ -120,20 +120,21 @@ describe('store — composer send', () => {
     expect(result.current.v.sent.at(-1)?.isNova).toBe(true)
   })
 
-  it('falls back to a default prompt when the draft is empty', () => {
-    vi.useFakeTimers()
+  it('ignores send when the draft is empty (no message, no typing)', () => {
     const { result } = setup()
+    const before = result.current.v.sent.length
     act(() => result.current.v.send())
-    expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
-    expect(result.current.v.sent.at(-1)?.text).toMatch(/tiếp tục/i)
+    expect(result.current.v.sent.length).toBe(before)
+    expect(result.current.s.typing).toBe(false)
+    expect(result.current.v.canSend).toBe(false)
   })
 })
 
 describe('store — attachments', () => {
   it('removes a staged file by id', () => {
     const { result } = setup()
-    const id = result.current.s.staged[0].id
+    const id = result.current.v.staged[0].id
     act(() => result.current.v.removeStaged(id))
-    expect(result.current.s.staged.find((f) => f.id === id)).toBeUndefined()
+    expect(result.current.v.staged.find((f) => f.id === id)).toBeUndefined()
   })
 })

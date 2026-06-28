@@ -126,10 +126,13 @@ function initialState(): NovaState {
       writing: true,
       data: false,
     },
-    staged: [
-      { id: 'demo-img', kind: 'image', name: 'moodboard.png', size: '820 KB', demo: true },
-      { id: 'demo-pdf', kind: 'pdf', name: 'Brief-Aurora.pdf', size: '1.2 MB', demo: true },
-    ],
+    staged: {
+      // the demo conversation's tray showcases the staged-attachment UI
+      c1: [
+        { id: 'demo-img', kind: 'image', name: 'moodboard.png', size: '820 KB', demo: true },
+        { id: 'demo-pdf', kind: 'pdf', name: 'Brief-Aurora.pdf', size: '1.2 MB', demo: true },
+      ],
+    },
     accent: p.accent ?? ACCENT_DEFAULT,
     showShortcutsBar: true,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -275,7 +278,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const send = useCallback(() => {
     setS((prev) => {
-      const t = (prev.draft || '').trim() || 'Tiếp tục giúp mình phần tiếp theo nhé.'
+      // empty composer is a no-op: never send a message the user didn't write
+      const t = (prev.draft || '').trim()
+      if (!t) return prev
       const conv = prev.activeConv
       clearTimeout(t1.current)
       clearTimeout(t2.current)
@@ -329,6 +334,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             { who: 'MINH', color: 'var(--muted)', text: t, isNova: false },
           ],
         },
+        // sending consumes this conversation's staged attachments
+        staged: { ...prev.staged, [conv]: [] },
         draft: '',
         typing: true,
         typingLabel: prev.thinkingLevel === 'off' ? 'Đang viết câu trả lời…' : 'Nova đang suy nghĩ…',
@@ -347,6 +354,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     tc.current = setTimeout(() => set({ copied: false }), 1400)
   }, [set])
 
+  // stop an in-flight real streamed reply (clears the thinking/streaming timers)
+  const stop = useCallback(() => {
+    clearTimeout(t1.current)
+    clearTimeout(t2.current)
+    clearInterval(tc.current)
+    set({ typing: false })
+  }, [set])
+
   const addUpload = useCallback(
     (file: File) => {
       const isImg = file.type.startsWith('image/')
@@ -363,7 +378,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
           : `${Math.max(1, Math.round(file.size / 1024))} KB`
       const item: StagedFile = { id: uid(), kind, name: file.name, size, url }
-      set((x) => ({ staged: [...x.staged, item] }))
+      set((x) => ({
+        staged: { ...x.staged, [x.activeConv]: [...(x.staged[x.activeConv] ?? []), item] },
+      }))
     },
     [set],
   )
@@ -371,8 +388,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dark = s.theme === 'dark' || (s.theme === 'auto' && prefersDark)
 
   const v = useMemo(
-    () => deriveValues(s, set, { go, send, copyCode, dark, scrollRef }),
-    [s, set, go, send, copyCode, dark],
+    () => deriveValues(s, set, { go, send, stop, copyCode, dark, scrollRef }),
+    [s, set, go, send, stop, copyCode, dark],
   )
 
   const store: Store = useMemo(
@@ -392,18 +409,20 @@ function deriveValues(
   extra: {
     go: (v: ViewName) => void
     send: () => void
+    stop: () => void
     copyCode: () => void
     dark: boolean
     scrollRef: React.RefObject<HTMLDivElement | null>
   },
 ) {
-  const { go, send, copyCode, dark, scrollRef } = extra
+  const { go, send, stop, copyCode, dark, scrollRef } = extra
   const accent = s.accent ?? ACCENT_DEFAULT
   const adv = s.advanced
   const isMobile = s.vw < 880
   const isDesktop = !isMobile
   const rs = s.respState
   const activeThread = s.threads[s.activeConv] ?? []
+  const activeStaged = s.staged[s.activeConv] ?? []
   const activeIsDemo = !!s.conversations.find((c) => c.id === s.activeConv)?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
@@ -622,7 +641,9 @@ function deriveValues(
     openDrawer: () => set({ drawerOpen: true }),
     closeDrawer: () => set({ drawerOpen: false }),
     // top
-    headerTitle: s.chatProject === 'Chung' ? 'Chung · Mặc định' : 'Aurora · Ra mắt',
+    // the top bar reflects the conversation currently open, not a fixed project
+    headerTitle:
+      s.conversations.find((c) => c.id === s.activeConv)?.title ?? 'Cuộc trò chuyện',
     palette: s.palette,
     quiet: s.quiet,
     notQuiet: !s.quiet,
@@ -673,10 +694,15 @@ function deriveValues(
     toggleInspector: () => set((x) => ({ inspector: !x.inspector })),
     // composer
     chatProject: s.chatProject,
-    staged: s.staged,
-    hasStaged: s.staged.length > 0,
+    staged: activeStaged,
+    hasStaged: activeStaged.length > 0,
     removeStaged: (id: string) =>
-      set((x) => ({ staged: x.staged.filter((f) => f.id !== id) })),
+      set((x) => ({
+        staged: {
+          ...x.staged,
+          [x.activeConv]: (x.staged[x.activeConv] ?? []).filter((f) => f.id !== id),
+        },
+      })),
     openLightbox: () => set({ preview: { kind: 'image', name: 'moodboard.png' } }),
     openStaged: (f: StagedFile) =>
       set({ preview: { kind: f.kind, name: f.name, url: f.url } }),
@@ -879,6 +905,8 @@ function deriveValues(
       }
     },
     send,
+    stop,
+    canSend: s.draft.trim().length > 0,
     copyCode,
     pConvAurora: () => go('conversation'),
     pProjects: () => go('projects'),

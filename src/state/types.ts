@@ -98,7 +98,8 @@ export interface NovaState {
   providerStatus: Record<ProviderId, LiveProviderStatus>
   projPresets: Record<PresetId, boolean>
   presetDefault: Record<PresetId, boolean>
-  staged: StagedFile[]
+  /** staged attachments, keyed by conversation id (per-conversation tray) */
+  staged: Record<string, StagedFile[]>
   accent: string
   showShortcutsBar: boolean
   vw: number

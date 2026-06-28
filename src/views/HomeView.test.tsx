@@ -15,6 +15,15 @@ describe('<HomeView>', () => {
     expect(await screen.findByRole('textbox', { name: 'Nhắn cho Nova' })).toBeInTheDocument()
   })
 
+  it('disables the send button until the input has text', async () => {
+    const user = makeUser()
+    renderWithStore(<App />, (s) => s.v.goHome())
+    const send = await screen.findByRole('button', { name: 'Gửi' })
+    expect(send).toBeDisabled()
+    await user.type(screen.getByRole('textbox', { name: 'Nhắn cho Nova' }), 'chào')
+    expect(send).toBeEnabled()
+  })
+
   it('greets by time of day (morning)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(2025, 0, 1, 8, 0, 0))

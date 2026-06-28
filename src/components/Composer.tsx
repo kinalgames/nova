@@ -187,9 +187,30 @@ export function Composer() {
               placeholder="Trả lời Nova…"
               style={css('flex:1;min-width:0;font-size:17px;color:var(--text);padding:9px 0')}
             />
-            <button type="button" aria-label="Gửi" onClick={v.send} className="tap" style={css('border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}>
-              <Icon n="send" size={17} stroke={2} />
-            </button>
+            {v.typing ? (
+              <button
+                type="button"
+                aria-label="Dừng"
+                onClick={v.stop}
+                className="tap"
+                style={css('border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}
+              >
+                <Icon n="stop" size={14} fill="currentColor" stroke={0} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label="Gửi"
+                onClick={v.send}
+                disabled={!v.canSend}
+                className="tap"
+                style={css(
+                  `border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:var(--bg);transition:opacity .12s;cursor:${v.canSend ? 'pointer' : 'default'};opacity:${v.canSend ? '1' : '.38'}`,
+                )}
+              >
+                <Icon n="send" size={17} stroke={2} />
+              </button>
+            )}
           </div>
 
           {/* context row */}
@@ -265,7 +286,7 @@ export function Composer() {
               </DropdownMenu.Root>
               {v.showComposerHint && (
                 <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--faint);white-space:nowrap")}>
-                  {v.activeCount} công cụ · ⏎ gửi
+                  {v.activeCount} công cụ{v.isDesktop ? ' · ⏎ gửi' : ''}
                 </span>
               )}
             </div>

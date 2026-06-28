@@ -37,4 +37,15 @@ describe('overlay open/close wiring', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Đóng' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
+
+  it('mobile drawer exposes per-conversation actions (rename / pin / delete)', async () => {
+    const user = makeUser()
+    renderWithStore(<App />, (s) => s.set({ vw: 375, drawerOpen: true }))
+    const dialog = await screen.findByRole('dialog')
+    const more = within(dialog).getAllByRole('button', { name: 'Tùy chọn cuộc trò chuyện' })
+    expect(more.length).toBeGreaterThan(0)
+    await user.click(more[0])
+    expect(await screen.findByRole('menuitem', { name: 'Đổi tên' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Xóa' })).toBeInTheDocument()
+  })
 })
