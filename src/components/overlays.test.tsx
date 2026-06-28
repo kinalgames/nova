@@ -25,7 +25,7 @@ describe('overlay open/close wiring', () => {
     const user = makeUser()
     await renderApp((s) => s.set({ vw: 375, drawerOpen: true }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: /Aurora/ }))
+    await user.click(within(dialog).getByRole('link', { name: /Aurora/ }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 

@@ -27,7 +27,7 @@ export function TopBar() {
         )}
         <button
           type="button"
-          onClick={v.goProjectCfg}
+          onClick={v.goProject}
           className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent font-[inherit]"
         >
           <span className="size-[9px] flex-shrink-0 rounded-xs bg-accent" />

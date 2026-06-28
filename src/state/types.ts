@@ -2,7 +2,7 @@ import type { PresetId, ProviderId, ProviderStatus } from '../data/defs'
 
 export type LiveProviderStatus = ProviderStatus | 'testing' | 'error'
 
-export type ViewName = 'home' | 'conversation' | 'projects' | 'projectcfg'
+export type ViewName = 'home' | 'conversation' | 'projects' | 'project' | 'projectcfg'
 
 export type SettingsTab = 'general' | 'providers' | 'assistant'
 
@@ -42,10 +42,24 @@ export interface SentMsg {
 export interface Conversation {
   id: string
   title: string
+  /** the project this conversation belongs to (default 'chung') */
+  projectId: string
   /** the seeded showcase conversation that renders the scripted tool-trace */
   demo?: boolean
   /** user-pinned to the top of the recent list */
   pinned?: boolean
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string
+  /** accent dot colour token */
+  accent: string
+  /** the catch-all project ('chung') — cannot be renamed or deleted */
+  isDefault?: boolean
+  /** per-project skill presets */
+  presets: Record<PresetId, boolean>
 }
 
 export interface StyleFlags {
@@ -71,12 +85,12 @@ export interface NovaState {
   sidebarCollapsed: boolean
   preview: Preview | null
   respState: RespState
+  projects: Project[]
   conversations: Conversation[]
   /** conversation ids in their optimistic-delete undo window */
   deleting: string[]
   activeConv: string
   threads: Record<string, SentMsg[]>
-  chatProject: 'Aurora' | 'Chung'
   thinkingLevel: ThinkLevel
   theme: Theme
   focusDur: '15' | '25' | '50'
@@ -93,7 +107,6 @@ export interface NovaState {
   activeProvider: ProviderId
   providerKeys: Record<ProviderId, string>
   providerStatus: Record<ProviderId, LiveProviderStatus>
-  projPresets: Record<PresetId, boolean>
   presetDefault: Record<PresetId, boolean>
   /** staged attachments, keyed by conversation id (per-conversation tray) */
   staged: Record<string, StagedFile[]>

@@ -89,13 +89,14 @@ export function Sidebar() {
         {v.sidebarExpanded && (
           <div className="px-2 pb-2 font-mono text-eyebrow tracking-[.14em] text-label">DỰ ÁN</div>
         )}
-        {v.sideProjects.map((p, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={p.open}
+        {v.sideProjects.map((p) => (
+          <Link
+            key={p.id}
+            to="/projects/$projectId"
+            params={{ projectId: p.id }}
             data-hover="soft"
-            className="mb-px flex w-full cursor-pointer items-center gap-2.5 rounded-sm border-none px-2.5 py-2"
+            aria-label={`Dự án ${p.name}`}
+            className="mb-px flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 no-underline"
             style={{ justifyContent: v.railJustify, background: p.bg }}
           >
             <span className="size-[9px] shrink-0 rounded-xs" style={{ background: p.dot }} />
@@ -107,12 +108,12 @@ export function Sidebar() {
                 <span className="font-mono text-micro text-faint">{p.count}</span>
               </>
             )}
-          </button>
+          </Link>
         ))}
         {v.sidebarExpanded && (
           <>
             <div className="px-2 pb-2 pt-4 font-mono text-eyebrow tracking-[.14em] text-label">
-              GẦN ĐÂY · AURORA
+              GẦN ĐÂY · {v.currentProjectName.toUpperCase()}
             </div>
             {v.sideConvs.map((c) => (
               <div

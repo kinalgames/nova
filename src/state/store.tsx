@@ -12,6 +12,7 @@ import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import {
   convDefs,
   presetDefs,
+  projectDefs,
   provDefs,
   seedThreads,
   statusMap,
@@ -44,13 +45,17 @@ export interface NavState {
   settingsTab: SettingsTab
   /** the conversation in the URL, or the cached last one when off a chat route */
   activeConv: string
+  /** the project addressed by /projects/:projectId (view or config) */
+  projectId?: string
 }
 
 type Navigate = ReturnType<typeof useNavigate>
 
 function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
   if (pathname.startsWith('/chat/')) return { view: 'conversation', authView: null }
-  if (pathname.startsWith('/projects/')) return { view: 'projectcfg', authView: null }
+  if (pathname.startsWith('/projects/') && pathname.endsWith('/config'))
+    return { view: 'projectcfg', authView: null }
+  if (pathname.startsWith('/projects/')) return { view: 'project', authView: null }
   if (pathname === '/projects') return { view: 'projects', authView: null }
   if (pathname === '/login') return { view: 'home', authView: 'login' }
   if (pathname === '/signup') return { view: 'home', authView: 'signup' }
@@ -60,7 +65,7 @@ function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
 
 // bump the version suffix whenever the persisted shape changes so stale data
 // from an older schema is ignored rather than corrupting the new state
-export const PERSIST_KEY = 'nova.flow.settings.v2'
+export const PERSIST_KEY = 'nova.flow.settings.v3'
 
 interface Persisted {
   theme?: Theme
@@ -75,7 +80,7 @@ interface Persisted {
   providerStatus?: NovaState['providerStatus']
   tools?: NovaState['tools']
   styles?: NovaState['styles']
-  projPresets?: Record<PresetId, boolean>
+  projects?: NovaState['projects']
   presetDefault?: Record<PresetId, boolean>
   conversations?: NovaState['conversations']
   activeConv?: string
@@ -105,11 +110,19 @@ function initialState(): NovaState {
     sidebarCollapsed: false,
     preview: null,
     respState: 'done',
+    projects:
+      p.projects ??
+      projectDefs.map((d) => ({
+        ...d,
+        presets:
+          d.id === 'aurora'
+            ? { code: false, design: true, research: true, writing: true, data: false }
+            : { code: false, design: false, research: false, writing: false, data: false },
+      })),
     conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
     deleting: [],
     activeConv: p.activeConv ?? 'c1',
     threads: p.threads ?? { ...seedThreads },
-    chatProject: 'Aurora',
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
@@ -136,13 +149,6 @@ function initialState(): NovaState {
         ProviderId,
         LiveProviderStatus
       >),
-    projPresets: p.projPresets ?? {
-      code: false,
-      design: true,
-      research: true,
-      writing: true,
-      data: false,
-    },
     presetDefault: p.presetDefault ?? {
       code: false,
       design: false,
@@ -224,7 +230,7 @@ export function StoreProvider({
       providerStatus: s.providerStatus,
       tools: s.tools,
       styles: s.styles,
-      projPresets: s.projPresets,
+      projects: s.projects,
       presetDefault: s.presetDefault,
       conversations: s.conversations,
       activeConv: s.activeConv,
@@ -248,7 +254,7 @@ export function StoreProvider({
     s.providerStatus,
     s.tools,
     s.styles,
-    s.projPresets,
+    s.projects,
     s.presetDefault,
     s.conversations,
     s.activeConv,
@@ -308,6 +314,7 @@ export function StoreProvider({
     projectId?: string
   }
   const routeConvId = params.convId
+  const routeProjectId = params.projectId
 
   const { view, authView } = useMemo(() => pathToView(pathname), [pathname])
   const nav: NavState = useMemo(
@@ -317,8 +324,9 @@ export function StoreProvider({
       settingsOpen: settingsTabSearch != null,
       settingsTab: settingsTabSearch ?? 'general',
       activeConv: routeConvId ?? s.activeConv,
+      projectId: routeProjectId,
     }),
-    [view, authView, settingsTabSearch, routeConvId, s.activeConv],
+    [view, authView, settingsTabSearch, routeConvId, routeProjectId, s.activeConv],
   )
   const navRef = useRef(nav)
   navRef.current = nav
@@ -336,9 +344,20 @@ export function StoreProvider({
         case 'projects':
           navigate({ to: '/projects' })
           break
-        case 'projectcfg':
-          navigate({ to: '/projects/$projectId', params: { projectId: 'aurora' } })
+        case 'project': {
+          const pid =
+            sRef.current.conversations.find((c) => c.id === navRef.current.activeConv)
+              ?.projectId ?? 'chung'
+          navigate({ to: '/projects/$projectId', params: { projectId: pid } })
           break
+        }
+        case 'projectcfg': {
+          const pid =
+            sRef.current.conversations.find((c) => c.id === navRef.current.activeConv)
+              ?.projectId ?? 'chung'
+          navigate({ to: '/projects/$projectId/config', params: { projectId: pid } })
+          break
+        }
       }
     },
     [set, navigate],
@@ -358,10 +377,14 @@ export function StoreProvider({
       clearTimeout(t2.current)
       clearInterval(tc.current)
 
+      const projName =
+        prev.projects.find(
+          (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
+        )?.name ?? 'Chung'
       const reply = composeReply(t, {
         model: prev.model,
         thinking: prev.thinkingLevel,
-        project: prev.chatProject,
+        project: projName,
       })
       const words = reply.split(' ')
       const step = tokenInterval(prev.model)
@@ -558,6 +581,107 @@ function deriveValues(
 ) {
   const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete, nav, navigate } = extra
   const activeConv = nav.activeConv
+  const activeConvObj = s.conversations.find((c) => c.id === activeConv)
+  const activeProjectId = activeConvObj?.projectId ?? 'chung'
+  const activeProject = s.projects.find((p) => p.id === activeProjectId) ?? s.projects[0]
+  const convCount = (pid: string) => s.conversations.filter((c) => c.projectId === pid).length
+  // the project addressed by the URL (project view / config routes)
+  const viewProject = s.projects.find((p) => p.id === nav.projectId) ?? activeProject
+  // where the user currently *is*: the viewed project on /projects routes,
+  // otherwise the active conversation's project. Drives the sidebar scope and
+  // which project/conversation reads as active.
+  const currentProjectId = viewProject?.id ?? 'chung'
+  const currentProjectName = viewProject?.name ?? 'Chung'
+
+  // ----- project CRUD (fake store — no backend) -----
+  const createProject = (name: string, description: string) => {
+    const id = uid()
+    set((x) => ({
+      projects: [
+        ...x.projects,
+        { id, name, description, accent: ACCENT_DEFAULT, presets: { ...x.presetDefault } },
+      ],
+    }))
+    navigate({ to: '/projects/$projectId', params: { projectId: id } })
+  }
+  const editProject = (id: string, patch: { name?: string; description?: string }) =>
+    set((x) => ({ projects: x.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
+  const deleteProject = (id: string) => {
+    set((x) => ({
+      projects: x.projects.filter((p) => p.id !== id),
+      // never orphan conversations — reassign them to the default project
+      conversations: x.conversations.map((c) =>
+        c.projectId === id ? { ...c, projectId: 'chung' } : c,
+      ),
+    }))
+    navigate({ to: '/projects' })
+  }
+  const moveConv = (convId: string, projectId: string) =>
+    set((x) => ({
+      conversations: x.conversations.map((c) => (c.id === convId ? { ...c, projectId } : c)),
+    }))
+  const toggleProjectPreset = (projectId: string, pid: PresetId) =>
+    set((x) => ({
+      projects: x.projects.map((p) =>
+        p.id === projectId ? { ...p, presets: { ...p.presets, [pid]: !p.presets[pid] } } : p,
+      ),
+    }))
+  const startChat = (projectId: string) => {
+    const id = uid()
+    set((x) => ({
+      conversations: [{ id, title: 'Cuộc trò chuyện mới', projectId }, ...x.conversations],
+      threads: { ...x.threads, [id]: [] },
+      activeConv: id,
+      respState: 'done',
+      palette: false,
+      drawerOpen: false,
+    }))
+    navigate({ to: '/chat/$convId', params: { convId: id } })
+  }
+
+  const sortConvs = (list: NovaState['conversations']) =>
+    [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+  const mapConv = (c: NovaState['conversations'][number]) => {
+    // bg-highlight only when this conversation is the one actually open; the
+    // busy pulse follows the generating conversation across any route
+    const isActive = nav.view === 'conversation' && c.id === activeConv
+    return {
+      id: c.id,
+      title: c.title,
+      active: isActive,
+      pinned: !!c.pinned,
+      busy: c.id === activeConv && s.typing,
+      deleting: s.deleting.includes(c.id),
+      bg: isActive ? 'var(--accent-soft)' : 'transparent',
+      fg: isActive ? 'var(--text)' : 'var(--text-2)',
+      onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),
+      open: () => {
+        set({ activeConv: c.id, palette: false, drawerOpen: false })
+        navigate({ to: '/chat/$convId', params: { convId: c.id } })
+      },
+      rename: () => {
+        const next =
+          typeof window !== 'undefined' && window.prompt
+            ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
+            : null
+        if (next && next.trim())
+          set((x) => ({
+            conversations: x.conversations.map((k) =>
+              k.id === c.id ? { ...k, title: next.trim() } : k,
+            ),
+          }))
+      },
+      pin: () =>
+        set((x) => ({
+          conversations: x.conversations.map((k) =>
+            k.id === c.id ? { ...k, pinned: !k.pinned } : k,
+          ),
+        })),
+      del: () => delConv(c.id),
+      undo: () => undoDelete(c.id),
+    }
+  }
+
   const accent = s.accent ?? ACCENT_DEFAULT
   const adv = s.advanced
   const accentText = 'var(--accent-text)'
@@ -566,7 +690,7 @@ function deriveValues(
   const rs = s.respState
   const activeThread = s.threads[activeConv] ?? []
   const activeStaged = s.staged[activeConv] ?? []
-  const activeIsDemo = !!s.conversations.find((c) => c.id === activeConv)?.demo
+  const activeIsDemo = !!activeConvObj?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
   const toolToggle = (k: keyof NovaState['tools']) => () =>
@@ -599,14 +723,12 @@ function deriveValues(
       }
     })
 
-  const togProj = (id: PresetId) =>
-    set((x) => ({ projPresets: { ...x.projPresets, [id]: !x.projPresets[id] } }))
   const togDef = (id: PresetId) =>
     set((x) => ({ presetDefault: { ...x.presetDefault, [id]: !x.presetDefault[id] } }))
 
   const projActiveNames =
     presetDefs
-      .filter((p) => s.projPresets[p.id])
+      .filter((p) => viewProject.presets[p.id])
       .map((p) => p.name)
       .join(' · ') || 'cơ bản'
 
@@ -665,71 +787,25 @@ function deriveValues(
     }
   })
   // sidebar data
-  const sideProjDefs = [
-    { id: 'chung', name: 'Chung', dot: 'var(--faint)', count: '31' },
-    { id: 'aurora', name: 'Aurora', dot: accent, count: '12' },
-  ]
-  const activeProj = 'aurora'
-  const sideProjects = sideProjDefs.map((p) => ({
+  const sideProjects = s.projects.map((p) => ({
+    id: p.id,
     name: p.name,
-    dot: p.dot,
-    count: p.count,
-    bg: p.id === activeProj ? 'var(--accent-soft)' : 'transparent',
-    fg: p.id === activeProj ? 'var(--text)' : 'var(--text-2)',
-    open: () => go('conversation'),
+    dot: p.accent,
+    count: String(convCount(p.id)),
+    bg: p.id === currentProjectId ? 'var(--accent-soft)' : 'transparent',
+    fg: p.id === currentProjectId ? 'var(--text)' : 'var(--text-2)',
   }))
-  const sideConvs = [...s.conversations]
-    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-    .map((c) => {
-      const isActive = c.id === activeConv
-      return {
-        id: c.id,
-        title: c.title,
-        active: isActive,
-        pinned: !!c.pinned,
-        busy: isActive && s.typing,
-        deleting: s.deleting.includes(c.id),
-        bg: isActive ? 'var(--accent-soft)' : 'transparent',
-        fg: isActive ? 'var(--text)' : 'var(--text-2)',
-        open: () => {
-          set({ activeConv: c.id, palette: false, drawerOpen: false })
-          navigate({ to: '/chat/$convId', params: { convId: c.id } })
-        },
-        // side-effects only — the <Link> performs the navigation, so a
-        // middle-click / cmd-click can open the conversation in a new tab
-        onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),
-        rename: () => {
-          const next =
-            typeof window !== 'undefined' && window.prompt
-              ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
-              : null
-          if (next && next.trim())
-            set((x) => ({
-              conversations: x.conversations.map((k) =>
-                k.id === c.id ? { ...k, title: next.trim() } : k,
-              ),
-            }))
-        },
-        pin: () =>
-          set((x) => ({
-            conversations: x.conversations.map((k) =>
-              k.id === c.id ? { ...k, pinned: !k.pinned } : k,
-            ),
-          })),
-        del: () => delConv(c.id),
-        undo: () => undoDelete(c.id),
-      }
-    })
+  const sideConvs = sortConvs(
+    s.conversations.filter((c) => c.projectId === currentProjectId),
+  ).map(mapConv)
 
-  const pickProjects = [
-    { name: 'Aurora', dot: accent, id: 'Aurora' as const },
-    { name: 'Chung (mặc định)', dot: 'var(--faint)', id: 'Chung' as const },
-  ].map((p) => ({
+  const pickProjects = s.projects.map((p) => ({
+    id: p.id,
     name: p.name,
-    dot: p.dot,
-    bg: s.chatProject === p.id ? 'var(--accent-soft)' : 'transparent',
-    check: s.chatProject === p.id ? '✓' : '',
-    pick: () => set({ chatProject: p.id }),
+    dot: p.accent,
+    bg: p.id === activeProjectId ? 'var(--accent-soft)' : 'transparent',
+    check: p.id === activeProjectId ? '✓' : '',
+    pick: () => moveConv(activeConv, p.id),
   }))
 
   const suggestions = suggestionDefs.map((g) => ({
@@ -761,6 +837,7 @@ function deriveValues(
     isHome: nav.view === 'home',
     isConv: nav.view === 'conversation',
     isProjects: nav.view === 'projects',
+    isProject: nav.view === 'project',
     isProjectCfg: nav.view === 'projectcfg',
     activeConv,
     // sidebar
@@ -838,7 +915,7 @@ function deriveValues(
     stBgError: stBg('error'),
     stFgError: stFg('error'),
     // composer
-    chatProject: s.chatProject,
+    chatProject: activeProject?.name ?? 'Chung',
     staged: activeStaged,
     hasStaged: activeStaged.length > 0,
     removeStaged: (id: string) =>
@@ -1001,21 +1078,34 @@ function deriveValues(
     // data
     suggestions,
     providers,
-    presetsProj: mkPreset(s.projPresets, togProj),
+    presetsProj: mkPreset(viewProject.presets, (pid) => toggleProjectPreset(viewProject.id, pid)),
     presetsLib: mkPreset(s.presetDefault, togDef),
     projActiveNames,
-    projects: [
-      {
-        name: 'Aurora · Ra mắt sản phẩm',
-        desc: 'Dự án mẫu — đủ tình huống chat, công cụ, lỗi & trạng thái',
-        dot: accent,
-        threads: '12 luồng',
-        when: '2 giờ trước',
-        projectId: 'aurora',
-        open: () => go('conversation'),
-        config: () => go('projectcfg'),
-      },
-    ],
+    projects: s.projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      dot: p.accent,
+      isDefault: !!p.isDefault,
+      count: convCount(p.id),
+      threads: `${convCount(p.id)} luồng`,
+    })),
+    activeProjectId,
+    activeProjectName: activeProject?.name ?? 'Chung',
+    currentProjectName,
+    viewProjectId: viewProject?.id ?? 'chung',
+    viewProjectName: viewProject?.name ?? 'Chung',
+    viewProjectDescription: viewProject?.description ?? '',
+    viewProjectAccent: viewProject?.accent ?? 'var(--faint)',
+    viewProjectIsDefault: !!viewProject?.isDefault,
+    viewProjectCount: convCount(viewProject?.id ?? 'chung'),
+    viewProjectConvs: sortConvs(
+      s.conversations.filter((c) => c.projectId === (viewProject?.id ?? 'chung')),
+    ).map(mapConv),
+    createProject,
+    editProject,
+    deleteProject,
+    newChatInProject: startChat,
     // advanced toggle
     advTrackBg: adv ? accent : 'var(--border)',
     advKnobTx: adv ? 'translateX(19px)' : 'translateX(0)',
@@ -1040,6 +1130,7 @@ function deriveValues(
     goHome: () => go('home'),
     goConv: () => go('conversation'),
     goProjects: () => go('projects'),
+    goProject: () => go('project'),
     goProjectCfg: () => go('projectcfg'),
     goAssistant: () => {
       set({ palette: false, drawerOpen: false })
@@ -1077,18 +1168,7 @@ function deriveValues(
       set({ palette: false })
       navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'general' }) })
     },
-    pNewChat: () => {
-      const id = uid()
-      set((x) => ({
-        conversations: [{ id, title: 'Cuộc trò chuyện mới' }, ...x.conversations],
-        threads: { ...x.threads, [id]: [] },
-        activeConv: id,
-        respState: 'done',
-        palette: false,
-        drawerOpen: false,
-      }))
-      navigate({ to: '/chat/$convId', params: { convId: id } })
-    },
+    pNewChat: () => startChat(activeProjectId),
     pQuiet: () => set({ quiet: true, palette: false }),
     openLogin: () => navigate({ to: '/login' }),
   }

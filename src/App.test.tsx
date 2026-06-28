@@ -39,6 +39,31 @@ describe('App — shell & navigation', () => {
   })
 })
 
+describe('App — root redirect', () => {
+  it('redirects the root to a conversation', async () => {
+    await renderApp(undefined, { path: '/' })
+    expect(
+      await screen.findByRole('textbox', { name: 'Nhắn cho Nova' }),
+    ).toBeInTheDocument()
+  })
+
+  it('redirects the root to the persisted last conversation', async () => {
+    localStorage.setItem(
+      'nova.flow.settings.v3',
+      JSON.stringify({
+        activeConv: 'c3',
+        conversations: [
+          { id: 'c1', title: 'a', projectId: 'aurora' },
+          { id: 'c3', title: 'b', projectId: 'aurora' },
+        ],
+        threads: { c3: [] },
+      }),
+    )
+    const { store } = await renderApp(undefined, { path: '/' })
+    expect(store().v.headerTitle).toBe('b')
+  })
+})
+
 describe('App — sending a message', () => {
   it('appends the typed message to the conversation', async () => {
     const user = makeUser()

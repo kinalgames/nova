@@ -56,16 +56,24 @@ export function MobileDrawer() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 pt-3.5">
             <div className="px-2 pb-2 font-mono text-eyebrow tracking-[0.14em] text-label">DỰ ÁN</div>
-            {v.sideProjects.map((p, i) => (
-              <button key={i} onClick={p.open} className={navRow} style={{ background: p.bg }}>
+            {v.sideProjects.map((p) => (
+              <Link
+                key={p.id}
+                to="/projects/$projectId"
+                params={{ projectId: p.id }}
+                onClick={v.closeDrawer}
+                aria-label={`Dự án ${p.name}`}
+                className={`${navRow} no-underline`}
+                style={{ background: p.bg }}
+              >
                 <span className="size-[9px] rounded-xs" style={{ background: p.dot }} />
                 <span className="flex-1" style={{ color: p.fg }}>
                   {p.name}
                 </span>
-              </button>
+              </Link>
             ))}
             <div className="px-2 pb-2 pt-4 font-mono text-eyebrow tracking-[0.14em] text-label">
-              GẦN ĐÂY · AURORA
+              GẦN ĐÂY · {v.currentProjectName.toUpperCase()}
             </div>
             {v.sideConvs.map((c) => (
               <div

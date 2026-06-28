@@ -182,17 +182,45 @@ export const suggestionDefs: SuggestionDef[] = [
   },
 ]
 
+export interface ProjectDef {
+  id: string
+  name: string
+  description: string
+  /** accent dot colour token */
+  accent: string
+  /** the catch-all project — cannot be renamed or deleted */
+  isDefault?: boolean
+}
+
+export const projectDefs: ProjectDef[] = [
+  {
+    id: 'chung',
+    name: 'Chung',
+    description: 'Cuộc trò chuyện chưa thuộc dự án nào sẽ ở đây.',
+    accent: 'var(--faint)',
+    isDefault: true,
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora',
+    description:
+      'Ra mắt Aurora vào Q3. Đối tượng là người làm việc sâu, ghét phân tâm. Giọng tự tin, không phô trương. Luôn tham chiếu Định-vị-v2.md khi nói về thông điệp.',
+    accent: 'var(--accent)',
+  },
+]
+
 export interface SideConvDef {
   id: string
   title: string
+  projectId: string
   demo?: boolean
 }
 
 export const convDefs: SideConvDef[] = [
-  { id: 'c1', title: 'Đối chiếu benchmark đối thủ', demo: true },
-  { id: 'c2', title: 'Đoạn mở đầu trang đích' },
-  { id: 'c3', title: 'Lịch nội dung 6 tuần' },
-  { id: 'c4', title: 'Phân tích khảo sát' },
+  { id: 'c1', title: 'Đối chiếu benchmark đối thủ', projectId: 'aurora', demo: true },
+  { id: 'c2', title: 'Đoạn mở đầu trang đích', projectId: 'aurora' },
+  { id: 'c3', title: 'Lịch nội dung 6 tuần', projectId: 'aurora' },
+  { id: 'c4', title: 'Phân tích khảo sát', projectId: 'chung' },
 ]
 
 const M = (who: string, text: string, isNova = false) => ({

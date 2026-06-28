@@ -234,7 +234,7 @@ describe('store — preset toggles', () => {
     expect(proj.on).toBe(false)
     expect(result.current.v.projActiveNames).not.toContain('Lập trình')
     await act(async () => proj.toggle())
-    expect(result.current.s.projPresets.code).toBe(true)
+    expect(result.current.s.projects.find((p) => p.id === 'aurora')?.presets.code).toBe(true)
     expect(result.current.v.projActiveNames).toContain('Lập trình')
   })
 })
@@ -435,11 +435,12 @@ describe('store — labels are unified (advanced no longer rebrands them)', () =
 })
 
 describe('store — projects + closeMenus', () => {
-  it('a project row opens the conversation / its config', async () => {
+  it('navigates to a project view and its config', async () => {
     const { result } = await setup()
-    await act(async () => result.current.v.projects[0].open())
-    expect(result.current.v.isConv).toBe(true)
-    await act(async () => result.current.v.projects[0].config())
+    expect(result.current.v.projects.length).toBeGreaterThan(0)
+    await act(async () => result.current.v.goProject())
+    expect(result.current.v.isProject).toBe(true)
+    await act(async () => result.current.v.goProjectCfg())
     expect(result.current.v.isProjectCfg).toBe(true)
   })
   it('closeMenus closes the palette', async () => {
@@ -455,5 +456,85 @@ describe('store — projects + closeMenus', () => {
     expect(result.current.v.isHome).toBe(true)
     await act(async () => result.current.v.goConv())
     expect(result.current.v.isConv).toBe(true)
+  })
+})
+
+describe('store — projects (CRUD + membership)', () => {
+  it('lists seeded projects with real conversation counts', async () => {
+    const { result } = await setup()
+    const ids = result.current.v.projects.map((p) => p.id)
+    expect(ids).toContain('chung')
+    expect(ids).toContain('aurora')
+    // seed: c1–c3 belong to Aurora, c4 to Chung
+    expect(result.current.v.projects.find((p) => p.id === 'aurora')?.count).toBe(3)
+    expect(result.current.v.projects.find((p) => p.id === 'chung')?.count).toBe(1)
+  })
+
+  it('creates a project, seeds its presets from the library, and opens it', async () => {
+    const { result } = await setup()
+    const before = result.current.v.projects.length
+    await act(async () => result.current.v.createProject('Phong Thần', 'Game ra mắt'))
+    expect(result.current.v.projects.length).toBe(before + 1)
+    const created = result.current.s.projects.at(-1)
+    expect(created?.name).toBe('Phong Thần')
+    expect(created?.description).toBe('Game ra mắt')
+    expect(created?.presets).toEqual(result.current.s.presetDefault)
+    expect(result.current.v.isProject).toBe(true)
+  })
+
+  it('edits a project name and description', async () => {
+    const { result } = await setup()
+    await act(async () =>
+      result.current.v.editProject('aurora', { name: 'Aurora 2', description: 'Mới' }),
+    )
+    const p = result.current.s.projects.find((x) => x.id === 'aurora')
+    expect(p?.name).toBe('Aurora 2')
+    expect(p?.description).toBe('Mới')
+  })
+
+  it('deleting a project reassigns its conversations to Chung', async () => {
+    const { result } = await setup()
+    expect(
+      result.current.s.conversations.filter((c) => c.projectId === 'aurora').length,
+    ).toBeGreaterThan(0)
+    await act(async () => result.current.v.deleteProject('aurora'))
+    expect(result.current.s.projects.find((p) => p.id === 'aurora')).toBeUndefined()
+    expect(result.current.s.conversations.every((c) => c.projectId !== 'aurora')).toBe(true)
+    expect(result.current.s.conversations.some((c) => c.projectId === 'chung')).toBe(true)
+  })
+
+  it('the composer picker moves the active conversation between projects', async () => {
+    const { result } = await setup()
+    expect(result.current.v.activeProjectName).toBe('Aurora')
+    const chung = result.current.v.pickProjects.find((p) => p.id === 'chung')!
+    await act(async () => chung.pick())
+    expect(result.current.s.conversations.find((c) => c.id === 'c1')?.projectId).toBe('chung')
+    expect(result.current.v.activeProjectName).toBe('Chung')
+  })
+
+  it('the sidebar recent list is scoped to the active project', async () => {
+    const { result } = await setup()
+    const ids = result.current.v.sideConvs.map((c) => c.id)
+    expect(ids).toContain('c1')
+    expect(ids).not.toContain('c4')
+  })
+
+  it('a new chat inherits the active project; newChatInProject targets a given one', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.pNewChat())
+    const a = result.current.s.activeConv
+    expect(result.current.s.conversations.find((c) => c.id === a)?.projectId).toBe('aurora')
+    await act(async () => result.current.v.newChatInProject('chung'))
+    const b = result.current.s.activeConv
+    expect(result.current.s.conversations.find((c) => c.id === b)?.projectId).toBe('chung')
+  })
+
+  it('toggling a per-project preset is isolated to that project', async () => {
+    const { result } = await setup()
+    const aurora0 = result.current.s.projects.find((p) => p.id === 'aurora')?.presets.code
+    await act(async () => result.current.v.presetsProj[0].toggle())
+    expect(result.current.s.projects.find((p) => p.id === 'aurora')?.presets.code).toBe(!aurora0)
+    // Chung is untouched
+    expect(result.current.s.projects.find((p) => p.id === 'chung')?.presets.code).toBe(false)
   })
 })
