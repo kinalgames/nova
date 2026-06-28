@@ -1,21 +1,20 @@
 import { useRef } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useStore } from '../state/store'
-import { css } from '../css'
 import { Icon } from './Icon'
 import type { StagedFile } from '../state/types'
 
 const POPUP =
-  'z-40 max-w-[78vw] rounded-[14px] border border-border bg-panel p-[7px] shadow-pop ' +
+  'z-40 max-w-[78vw] rounded-md border border-border bg-panel p-1.5 shadow-pop ' +
   'origin-bottom animate-[fadeUp_140ms_var(--ease-paper)]'
-const POPUP_LABEL = 'px-3 pb-[5px] pt-2 font-mono text-[9.5px] tracking-[0.14em] text-label'
+const POPUP_LABEL = 'px-3 pb-1 pt-2 font-mono text-eyebrow tracking-[0.14em] text-label'
 const ROW =
-  'flex cursor-pointer select-none items-center gap-3 rounded-[9px] px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
+  'flex cursor-pointer select-none items-center gap-3 rounded-sm px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
 const TOOL_ROW =
-  'flex cursor-pointer select-none items-center gap-2.5 rounded-[9px] px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
+  'flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
 
 const badgeStyle: Record<string, { bg: string; fg: string; label: string }> = {
-  pdf: { bg: 'var(--danger-bg)', fg: 'var(--danger-strong)', label: 'PDF' },
+  pdf: { bg: 'var(--danger-bg)', fg: 'var(--danger-text)', label: 'PDF' },
   code: { bg: 'var(--info-bg)', fg: 'var(--info)', label: 'PY' },
   csv: { bg: 'var(--success-bg)', fg: 'var(--success)', label: 'CSV' },
   md: { bg: 'var(--fill)', fg: 'var(--accent)', label: 'MD' },
@@ -29,18 +28,19 @@ function StagedItem({ f }: { f: StagedFile }) {
       ? `center/cover url(${f.url})`
       : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)'
     return (
-      <div style={css('position:relative;width:54px;height:54px;flex-shrink:0')}>
+      <div className="relative size-[54px] shrink-0">
         <button
           type="button"
           aria-label={`Mở ${f.name}`}
           onClick={() => v.openStaged(f)}
-          style={css(`display:block;width:54px;height:54px;border-radius:10px;background:${bg};cursor:pointer;border:1px solid rgba(0,0,0,.06);padding:0`)}
+          className="block size-[54px] cursor-pointer rounded-sm border border-[rgba(0,0,0,.06)] p-0"
+          style={{ background: bg }}
         />
         <button
           type="button"
           aria-label={`Bỏ ${f.name}`}
           onClick={() => v.removeStaged(f.id)}
-          style={css('border:none;position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1')}
+          className="absolute -right-1.5 -top-1.5 z-[1] flex size-[18px] cursor-pointer items-center justify-center rounded-full border-none bg-ink text-on-ink"
         >
           <Icon n="close" size={11} stroke={2.25} />
         </button>
@@ -49,24 +49,29 @@ function StagedItem({ f }: { f: StagedFile }) {
   }
   const b = badgeStyle[f.kind] || badgeStyle.pdf
   return (
-    <div style={css('position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:7px 11px 7px 9px')}>
+    <div className="relative flex items-center gap-2 rounded-sm border border-border bg-panel py-1.5 pl-2 pr-3">
       <button
         type="button"
         aria-label={`Mở ${f.name}`}
         onClick={() => v.openStaged(f)}
-        style={css('display:flex;align-items:center;gap:8px;min-width:0;background:transparent;border:none;cursor:pointer;text-align:left;font:inherit')}
+        className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent text-left"
       >
-        <span style={css(`width:24px;height:28px;border-radius:4px;background:${b.bg};color:${b.fg};font-family:var(--font-mono);font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0`)}>{b.label}</span>
+        <span
+          className="flex h-7 w-6 shrink-0 items-center justify-center rounded-xs font-mono text-micro"
+          style={{ background: b.bg, color: b.fg }}
+        >
+          {b.label}
+        </span>
         <div>
-          <div style={css('font-size:12.5px')}>{f.name}</div>
-          <div style={css('font-size:10.5px;color:var(--muted)')}>{f.size}</div>
+          <div className="text-small">{f.name}</div>
+          <div className="text-eyebrow text-muted">{f.size}</div>
         </div>
       </button>
       <button
         type="button"
         aria-label={`Bỏ ${f.name}`}
         onClick={() => v.removeStaged(f.id)}
-        style={css('background:transparent;border:none;margin-left:4px;color:var(--faint);cursor:pointer;display:flex')}
+        className="ml-1 flex cursor-pointer border-none bg-transparent text-faint"
       >
         <Icon n="close" size={14} />
       </button>
@@ -86,19 +91,19 @@ export function Composer() {
   }
 
   return (
-    <div style={css('flex-shrink:0;display:flex;justify-content:center;padding:10px 12px 14px;position:relative')}>
-      <div style={css('width:680px;max-width:100%;position:relative')}>
-        <div style={css('border:1px solid var(--border);border-radius:16px;background:var(--panel);padding:10px 10px 8px')}>
+    <div className="relative flex shrink-0 justify-center px-3 pb-3 pt-2.5">
+      <div className="relative w-[680px] max-w-full">
+        <div className="field rounded-lg border border-border bg-panel px-2.5 pb-2 pt-2.5">
           {/* staged attachments */}
           {v.hasStaged && (
-            <div style={css('display:flex;gap:8px;flex-wrap:wrap;padding:4px 4px 10px')}>
+            <div className="flex flex-wrap gap-2 px-1 pb-2.5 pt-1">
               {v.staged.map((f) => (
                 <StagedItem key={f.id} f={f} />
               ))}
             </div>
           )}
 
-          <div style={css('display:flex;align-items:flex-end;gap:8px')}>
+          <div className="flex items-end gap-2">
             {/* hidden real file inputs */}
             <input ref={imgInput} type="file" accept="image/*" multiple onChange={onFiles} className="hidden" />
             <input ref={fileInput} type="file" multiple onChange={onFiles} className="hidden" />
@@ -107,7 +112,7 @@ export function Composer() {
                 <button
                   type="button"
                   aria-label="Thêm vào chat"
-                  className="tap flex size-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="tap flex size-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <Icon n="plus" size={20} />
                 </button>
@@ -121,36 +126,36 @@ export function Composer() {
                 >
                   <div className={POPUP_LABEL}>THÊM VÀO CHAT</div>
                   <DropdownMenu.Item onSelect={() => imgInput.current?.click()} className={ROW}>
-                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-fill text-accent">
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-fill text-accent">
                       <Icon n="image" size={15} />
                     </span>
-                    <div className="text-[14px] text-text">Tải ảnh lên</div>
+                    <div className="text-ui text-text">Tải ảnh lên</div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={() => fileInput.current?.click()} className={ROW}>
-                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-border text-text-2">
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-border text-text-2">
                       <Icon n="file" size={15} />
                     </span>
                     <div>
-                      <div className="text-[14px] text-text">Tải tệp lên</div>
-                      <div className="text-[11.5px] text-muted">PDF, tài liệu, mã, bảng tính</div>
+                      <div className="text-ui text-text">Tải tệp lên</div>
+                      <div className="text-meta text-muted">PDF, tài liệu, mã, bảng tính</div>
                     </div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={v.goProjects} className={ROW}>
-                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-accent-soft text-accent">
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-accent-soft text-accent">
                       <Icon n="folder" size={15} />
                     </span>
                     <div>
-                      <div className="text-[14px] text-text">Thêm từ dự án</div>
-                      <div className="text-[11.5px] text-muted">Tài liệu trong Aurora</div>
+                      <div className="text-ui text-text">Thêm từ dự án</div>
+                      <div className="text-meta text-muted">Tài liệu trong Aurora</div>
                     </div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={v.openLightbox} className={ROW}>
-                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-[7px] bg-border text-text-2">
+                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-border text-text-2">
                       <Icon n="expand" size={15} />
                     </span>
-                    <div className="text-[14px] text-text">Chụp màn hình</div>
+                    <div className="text-ui text-text">Chụp màn hình</div>
                   </DropdownMenu.Item>
-                  <DropdownMenu.Separator className="mx-2 my-[5px] h-px bg-border" />
+                  <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border" />
                   <div className={POPUP_LABEL}>CÔNG CỤ CỦA NOVA</div>
                   {(
                     [
@@ -172,7 +177,7 @@ export function Composer() {
                       <span className="flex w-5 justify-center">
                         <Icon n={icon} size={16} />
                       </span>
-                      <span className="flex-1 text-[14px]">{label}</span>
+                      <span className="flex-1 text-ui">{label}</span>
                       {check && <Icon n="check" size={14} className="text-accent" />}
                     </DropdownMenu.Item>
                   ))}
@@ -185,15 +190,14 @@ export function Composer() {
               onKeyDown={v.onKey}
               aria-label="Nhắn cho Nova"
               placeholder="Trả lời Nova…"
-              style={css('flex:1;min-width:0;font-size:17px;color:var(--text);padding:9px 0')}
+              className="min-w-0 flex-1 py-2 text-lead text-text"
             />
             {v.typing ? (
               <button
                 type="button"
                 aria-label="Dừng"
                 onClick={v.stop}
-                className="tap"
-                style={css('border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--bg)')}
+                className="tap flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-ink text-bg"
               >
                 <Icon n="stop" size={14} fill="currentColor" stroke={0} />
               </button>
@@ -203,10 +207,7 @@ export function Composer() {
                 aria-label="Gửi"
                 onClick={v.send}
                 disabled={!v.canSend}
-                className="tap"
-                style={css(
-                  `border:none;width:36px;height:36px;flex-shrink:0;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:var(--bg);transition:opacity .12s;cursor:${v.canSend ? 'pointer' : 'default'};opacity:${v.canSend ? '1' : '.38'}`,
-                )}
+                className="tap flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-ink text-bg opacity-100 transition-opacity duration-[120ms] disabled:cursor-default disabled:opacity-[.38]"
               >
                 <Icon n="send" size={17} stroke={2} />
               </button>
@@ -214,15 +215,15 @@ export function Composer() {
           </div>
 
           {/* context row */}
-          <div style={css('display:flex;align-items:center;justify-content:space-between;padding:8px 4px 2px')}>
+          <div className="flex items-center justify-between px-1 pb-0.5 pt-2">
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button
                   type="button"
                   aria-label={`Dự án: ${v.chatProject}`}
-                  className="flex cursor-pointer items-center gap-[7px] rounded-[8px] border border-border bg-bg px-[9px] py-[5px] text-[12.5px] text-text-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-bg px-2 py-1 text-small text-text-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  <span className="size-2 rounded-[2px] bg-accent" />
+                  <span className="size-2 rounded-xs bg-accent" />
                   {v.chatProject}
                   <Icon n="caret" size={12} className="text-faint" />
                 </button>
@@ -234,10 +235,10 @@ export function Composer() {
                     <DropdownMenu.Item
                       key={i}
                       onSelect={pp.pick}
-                      className="flex cursor-pointer select-none items-center gap-2.5 rounded-[9px] px-2.5 py-2.5 text-[14px] text-text outline-none data-[highlighted]:bg-black/[0.04]"
+                      className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2.5 text-ui text-text outline-none data-[highlighted]:bg-black/[0.04]"
                       style={{ background: pp.bg }}
                     >
-                      <span className="size-[9px] rounded-[3px]" style={{ background: pp.dot }} />
+                      <span className="size-[9px] rounded-xs" style={{ background: pp.dot }} />
                       <span className="flex-1">{pp.name}</span>
                       {pp.check && <Icon n="check" size={13} className="text-accent" />}
                     </DropdownMenu.Item>
@@ -246,13 +247,13 @@ export function Composer() {
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
 
-            <div style={css('display:flex;align-items:center;gap:12px')}>
+            <div className="flex items-center gap-3">
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
                     type="button"
                     aria-label={`Mức suy nghĩ: ${v.thinkLabel}`}
-                    className="inline-flex cursor-pointer items-center gap-[5px] whitespace-nowrap border-none bg-transparent text-[11.5px] text-text-2 outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap border-none bg-transparent text-meta text-text-2 outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     <Icon n="think" size={13} /> Suy nghĩ: {v.thinkLabel}{' '}
                     <Icon n="caret" size={12} className="text-faint" />
@@ -272,11 +273,11 @@ export function Composer() {
                       <DropdownMenu.Item
                         key={i}
                         onSelect={pick}
-                        className="flex cursor-pointer select-none items-center gap-2.5 rounded-[9px] px-2.5 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]"
+                        className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]"
                       >
                         <div className="flex-1">
-                          <div className="text-[14px] text-text">{label}</div>
-                          <div className="text-[11.5px] text-muted">{sub}</div>
+                          <div className="text-ui text-text">{label}</div>
+                          <div className="text-meta text-muted">{sub}</div>
                         </div>
                         {check && <Icon n="check" size={13} className="text-accent" />}
                       </DropdownMenu.Item>
@@ -285,7 +286,7 @@ export function Composer() {
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
               {v.showComposerHint && (
-                <span style={css("font-family:var(--font-mono);font-size:11px;color:var(--faint);white-space:nowrap")}>
+                <span className="whitespace-nowrap font-mono text-eyebrow text-faint">
                   {v.activeCount} công cụ{v.isDesktop ? ' · ⏎ gửi' : ''}
                 </span>
               )}

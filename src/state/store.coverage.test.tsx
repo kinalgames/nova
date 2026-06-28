@@ -120,9 +120,9 @@ describe('store — palette actions', () => {
     act(() => result.current.v.pConvAurora())
     expect(result.current.v.isConv).toBe(true)
     act(() => result.current.v.pAssistant())
-    expect(result.current.v.isAssistant).toBe(true)
+    expect(result.current.s.settingsTab).toBe('assistant')
     act(() => result.current.v.pSettings())
-    expect(result.current.v.isSettings).toBe(true)
+    expect(result.current.s.settingsTab).toBe('general')
     act(() => result.current.v.pQuiet())
     expect(result.current.s.quiet).toBe(true)
   })
@@ -156,36 +156,43 @@ describe('store — per-conversation threads', () => {
     expect(result.current.s.threads.c1).toHaveLength(0)
   })
 
-  it('deleting the active conversation switches to another', () => {
+  it('deleting the active conversation switches to another (after the undo window)', () => {
+    vi.useFakeTimers()
     const { result } = setup()
     expect(result.current.s.activeConv).toBe('c1')
     act(() => result.current.v.sideConvs.find((c) => c.id === 'c1')!.del())
+    act(() => vi.advanceTimersByTime(5000))
     expect(result.current.s.activeConv).not.toBe('c1')
     expect(result.current.s.conversations.find((c) => c.id === 'c1')).toBeUndefined()
   })
 
   it('deleting a non-active conversation keeps the active one', () => {
+    vi.useFakeTimers()
     const { result } = setup()
     act(() => result.current.v.sideConvs.find((c) => c.id === 'c2')!.del())
+    act(() => vi.advanceTimersByTime(5000))
     expect(result.current.s.activeConv).toBe('c1')
     expect(result.current.s.conversations.find((c) => c.id === 'c2')).toBeUndefined()
   })
 })
 
 describe('store — recent conversations (rename / pin / delete)', () => {
-  it('deletes a conversation by id', () => {
+  it('deletes a conversation by id (after the undo window)', () => {
+    vi.useFakeTimers()
     const { result } = setup()
     const target = result.current.v.sideConvs[1]
     const len = result.current.v.sideConvs.length
     act(() => target.del())
+    act(() => vi.advanceTimersByTime(5000))
     expect(result.current.v.sideConvs).toHaveLength(len - 1)
     expect(result.current.v.sideConvs.find((c) => c.id === target.id)).toBeUndefined()
   })
-  it('pins a conversation to the top', () => {
+  it('pins a conversation to the top and flags it', () => {
     const { result } = setup()
     const target = result.current.v.sideConvs[2]
     act(() => target.pin())
     expect(result.current.v.sideConvs[0].id).toBe(target.id)
+    expect(result.current.v.sideConvs[0].pinned).toBe(true)
   })
   it('renames via prompt and persists', () => {
     const orig = window.prompt
@@ -195,6 +202,28 @@ describe('store — recent conversations (rename / pin / delete)', () => {
     act(() => target.rename())
     expect(result.current.v.sideConvs.find((c) => c.id === target.id)?.title).toBe('Tên mới')
     window.prompt = orig
+  })
+})
+
+describe('store — optimistic conversation delete + undo', () => {
+  it('del flags the conversation as deleting and keeps it during the undo window', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    act(() => result.current.v.sideConvs.find((c) => c.id === 'c3')!.del())
+    expect(result.current.v.sideConvs.find((c) => c.id === 'c3')?.deleting).toBe(true)
+    expect(result.current.s.conversations.find((c) => c.id === 'c3')).toBeDefined()
+    act(() => vi.advanceTimersByTime(5000))
+    expect(result.current.s.conversations.find((c) => c.id === 'c3')).toBeUndefined()
+  })
+
+  it('undo cancels a pending delete and restores the conversation', () => {
+    vi.useFakeTimers()
+    const { result } = setup()
+    act(() => result.current.v.sideConvs.find((c) => c.id === 'c3')!.del())
+    act(() => result.current.v.sideConvs.find((c) => c.id === 'c3')!.undo())
+    act(() => vi.advanceTimersByTime(6000))
+    expect(result.current.s.conversations.find((c) => c.id === 'c3')).toBeDefined()
+    expect(result.current.v.sideConvs.find((c) => c.id === 'c3')?.deleting).toBe(false)
   })
 })
 
@@ -388,7 +417,7 @@ describe('store — labels are unified (advanced no longer rebrands them)', () =
     expect(result.current.v.meterLabel).toBe('bộ nhớ')
     expect(result.current.v.modelMenuLabel).toBe('CHẾ ĐỘ TRỢ LÝ')
     expect(result.current.v.modelADesc).toBe('Opus 4.8 · trả lời sâu')
-    expect(result.current.v.traceCaret).toBe('Xem Nova đã làm gì')
+    expect(result.current.v.traceCaret).toBe('5 công cụ · 6.4 giây')
     expect(result.current.v.modelLabel).toBe('Nhanh')
     // ollama uses an endpoint field, not an API key
     const ollama = result.current.v.providers.find((p) => p.name.includes('máy'))

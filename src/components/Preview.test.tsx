@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
 import { renderWithStore } from '../test/util'
 
@@ -31,5 +31,14 @@ describe('<Preview> — formats', () => {
     const { rerender } = renderWithStore(<App />, (s) => s.v.openPdf())
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     void rerender
+  })
+
+  it('clicking the dark backdrop (not the media) closes the preview', async () => {
+    renderWithStore(<App />, (s) => s.v.openMd())
+    const dialog = await screen.findByRole('dialog')
+    const media = dialog.querySelector('.paper-doc') as HTMLElement
+    const backdrop = media.parentElement as HTMLElement
+    fireEvent.click(backdrop)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

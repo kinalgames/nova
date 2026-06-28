@@ -42,7 +42,7 @@ npm run test:coverage  # coverage, gated at 95/91/95/96 (stmts/branches/funcs/li
 npm run test:e2e       # Playwright + @axe-core (structural a11y hard-gated to 0)
 ```
 
-The unit suite (~140 tests) covers the store logic, real Radix interaction, and
+The unit suite (~150 tests) covers the store logic, real Radix interaction, and
 full-view render, and runs in a few seconds. The e2e suite hard-gates zero
 structural WCAG 2 A/AA violations and tracks contrast against a ratchet baseline.
 
@@ -87,8 +87,8 @@ Every screen and control from the design, fully interactive:
 - **File download / open** — `src/services/files.ts` produces real `Blob`
   downloads and opens previews in a new tab.
 - **Auth** — the login form validates email and password before proceeding.
-- **Theme & settings persistence** — light / dark / auto (auto follows the OS
-  `prefers-color-scheme`); model, providers, thinking level, tool toggles,
+- **Theme & settings persistence** — light / dark (a swatch picker; dark is a
+  `.dark` class, not `prefers-color-scheme`); model, providers, thinking level, tool toggles,
   answer styles, skill presets, focus duration, conversations and threads all
   persist. The storage key is versioned (`PERSIST_KEY`), so a persisted-shape
   change invalidates incompatible older data instead of corrupting state.
@@ -100,9 +100,8 @@ src/
   state/        store (React context) + derived values, types
   data/         static definitions (presets, providers, suggestions, seed threads)
   services/     fake service layer — chat (streaming), files (download/open)
-  components/   sidebar, top bar, composer, inspector, overlays, Icon, ToggleRow
-  views/        home, conversation, projects, project config, nova, settings
-  css.ts        helper: inline-CSS string -> React style object
+  components/   sidebar, top bar, composer, settings dialog, overlays, Icon, ToggleRow
+  views/        home, conversation, projects, project config
   test/         shared test harness + setup
   index.css     design tokens (:root + .dark) and Tailwind theme mapping
   App.tsx       layout composition

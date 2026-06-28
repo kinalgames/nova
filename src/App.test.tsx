@@ -20,17 +20,20 @@ describe('App — shell & navigation', () => {
     expect(screen.getByRole('button', { name: 'Gửi' })).toBeInTheDocument()
   })
 
-  it('navigates to Settings via the sidebar', async () => {
+  it('navigates to Settings via the account menu', async () => {
     const user = makeUser()
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Cài đặt' }))
+    await user.click(screen.getByRole('button', { name: /Tài khoản/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Cài đặt' }))
     expect(await screen.findByText('Chế độ nâng cao')).toBeInTheDocument()
   })
 
-  it('navigates to Nova via the sidebar', async () => {
+  it('reaches the assistant config via the settings dialog Trợ lý tab', async () => {
     const user = makeUser()
     renderApp()
-    await user.click(screen.getByRole('button', { name: 'Nova' }))
+    await user.click(screen.getByRole('button', { name: /Tài khoản/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Cài đặt' }))
+    await user.click(await screen.findByRole('tab', { name: 'Trợ lý' }))
     expect(await screen.findByText('PHONG CÁCH TRẢ LỜI')).toBeInTheDocument()
   })
 

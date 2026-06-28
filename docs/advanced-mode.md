@@ -18,7 +18,7 @@ cho mọi người. Inspector panel bị bỏ vì chain‑summary inline (pill `
 
 ## Tech stack
 React 19 · TypeScript strict · Zustand‑style store (`useStore` → view‑model `v`) ·
-Tailwind v4 + helper `css()` · Radix UI · Vitest + Testing Library · Playwright.
+Tailwind v4 (utility classes; design tokens via `@theme inline`) · Radix UI · Vitest + Testing Library · Playwright.
 
 ## Global constraints — wording (copy verbatim)
 | Khoá | Giá trị duy nhất |

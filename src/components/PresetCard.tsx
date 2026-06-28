@@ -1,5 +1,4 @@
 import * as Switch from '@radix-ui/react-switch'
-import { css } from '../css'
 import { Icon, type IconName } from './Icon'
 
 export interface PresetVM {
@@ -21,14 +20,20 @@ export interface PresetVM {
 
 export function PresetCard({ pr }: { pr: PresetVM }) {
   return (
-    <div style={css(`border:1px solid ${pr.border};background:${pr.bg};border-radius:13px;padding:14px 15px`)}>
-      <div style={css('display:flex;align-items:center;gap:12px')}>
-        <span style={css(`width:34px;height:34px;border-radius:9px;background:${pr.badgeBg};color:${pr.color};display:flex;align-items:center;justify-content:center;flex-shrink:0`)}>
+    <div
+      className="rounded-md border px-4 py-3"
+      style={{ borderColor: pr.border, background: pr.bg }}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className="flex size-[34px] shrink-0 items-center justify-center rounded-sm"
+          style={{ background: pr.badgeBg, color: pr.color }}
+        >
           <Icon n={pr.glyph} size={17} />
         </span>
-        <div style={css('flex:1;min-width:0')}>
-          <div style={css('font-size:15.5px')}>{pr.name}</div>
-          <div style={css('font-size:13px;color:var(--muted);margin-top:2px;line-height:1.4')}>{pr.help}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-body">{pr.name}</div>
+          <div className="mt-0.5 text-small leading-snug text-muted">{pr.help}</div>
         </div>
         <Switch.Root
           checked={pr.on}
@@ -40,9 +45,12 @@ export function PresetCard({ pr }: { pr: PresetVM }) {
         </Switch.Root>
       </div>
       {pr.showTools && (
-        <div style={css('margin-top:11px;display:flex;flex-wrap:wrap;gap:6px;padding-left:46px')}>
+        <div className="mt-3 flex flex-wrap gap-1.5 pl-12">
           {pr.tools.map((tl, i) => (
-            <span key={i} style={css("font-family:var(--font-mono);font-size:10.5px;color:var(--muted);background:var(--fill);border-radius:6px;padding:3px 8px")}>
+            <span
+              key={i}
+              className="rounded-xs bg-fill px-2 py-0.5 font-mono text-eyebrow text-muted"
+            >
               {tl.t}
             </span>
           ))}

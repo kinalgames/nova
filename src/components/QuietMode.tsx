@@ -1,46 +1,54 @@
 import { useStore } from '../state/store'
-import { css } from '../css'
 import { Icon } from './Icon'
 
 export function QuietMode() {
   const { v } = useStore()
   if (!v.quiet) return null
   return (
-    <div style={css('position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;animation:dim .35s ease')}>
-      <div style={css('position:absolute;inset:0;box-shadow:inset 0 0 200px var(--accent-soft);pointer-events:none')} />
-      <div style={css('height:64px;display:flex;align-items:center;justify-content:center;gap:10px')}>
-        <span style={css('width:6px;height:6px;border-radius:50%;background:var(--accent);animation:breathe 3s ease-in-out infinite')} />
-        <span style={css("font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--muted)")}>TẬP TRUNG · {v.quietClock}</span>
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg animate-[dim_.35s_ease]">
+      <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_200px_var(--accent-soft)]" />
+      <div className="flex h-16 items-center justify-center gap-2.5">
+        <span className="size-1.5 rounded-full bg-accent animate-[breathe_3s_ease-in-out_infinite]" />
+        <span className="font-mono text-eyebrow tracking-[.14em] text-muted">TẬP TRUNG · {v.quietClock}</span>
       </div>
-      <div style={css('flex:1;min-height:0;overflow-y:auto;display:flex;justify-content:center')}>
-        <div style={css('width:620px;max-width:100%;padding:30px 22px')}>
-          <div style={css("font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--muted);margin-bottom:10px")}>MINH</div>
-          <div style={css('font-size:18px;line-height:1.6')}>
+      <div className="flex min-h-0 flex-1 justify-center overflow-y-auto">
+        <div className="w-[620px] max-w-full px-5 py-8">
+          <div className="mb-2.5 font-mono text-eyebrow tracking-[.12em] text-muted">MINH</div>
+          <div className="text-lead leading-normal">
             Viết phần <em>Rủi ro</em> cho kế hoạch — gọn, có cách giảm thiểu.
           </div>
-          <div style={css('height:26px')} />
-          <div style={css('display:flex;align-items:center;gap:9px;margin-bottom:12px')}>
-            <span style={css('width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center')}><Icon n="nova" size={13} /></span>
-            <span style={css("font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--accent)")}>NOVA</span>
+          <div className="h-[26px]" />
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex size-[22px] items-center justify-center rounded-full bg-accent text-bg">
+              <Icon n="nova" size={13} />
+            </span>
+            <span className="font-mono text-eyebrow tracking-[.12em] text-accent-text">NOVA</span>
           </div>
-          <div style={css('font-size:18px;line-height:1.75')}>
+          <div className="text-lead leading-relaxed">
             Bốn rủi ro lớn nhất và cách giảm thiểu:
             <br />
             <br />
-            1 · <b style={css('font-weight:600')}>Thông điệp loãng.</b> Chốt một câu định vị duy nhất.
+            1 · <b className="font-semibold">Thông điệp loãng.</b> Chốt một câu định vị duy nhất.
             <br />
-            2 · <b style={css('font-weight:600')}>Trễ nội dung.</b> Duyệt theo lô, deadline cứng.
+            2 · <b className="font-semibold">Trễ nội dung.</b> Duyệt theo lô, deadline cứng.
             <br />
-            3 · <b style={css('font-weight:600')}>Kênh phân tán.</b> Chọn đúng hai kênh.
+            3 · <b className="font-semibold">Kênh phân tán.</b> Chọn đúng hai kênh.
             <br />
-            4 · <b style={css('font-weight:600')}>Đo lường mơ hồ.</b> Định nghĩa "kích hoạt" trước.
+            4 · <b className="font-semibold">Đo lường mơ hồ.</b> Định nghĩa "kích hoạt" trước.
           </div>
         </div>
       </div>
-      <div style={css('min-height:80px;display:flex;align-items:center;justify-content:center;padding:14px 22px')}>
-        <div style={css('width:620px;max-width:100%;display:flex;align-items:center;gap:12px;opacity:.85')}>
-          <input placeholder="Tiếp tục trong im lặng…" style={css('flex:1;min-width:0;font-size:17px;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:8px')} />
-          <button type="button" onClick={v.exitQuiet} style={css('font-size:12.5px;color:var(--muted);border:1px solid var(--border);border-radius:9px;padding:8px 13px;cursor:pointer;flex-shrink:0;background:transparent;text-align:left;font:inherit')}>
+      <div className="flex min-h-20 items-center justify-center px-5 py-3">
+        <div className="flex w-[620px] max-w-full items-center gap-3 opacity-[.85]">
+          <input
+            placeholder="Tiếp tục trong im lặng…"
+            className="min-w-0 flex-1 border-b border-border pb-2 text-lead text-text"
+          />
+          <button
+            type="button"
+            onClick={v.exitQuiet}
+            className="shrink-0 cursor-pointer rounded-sm border border-border bg-transparent px-3 py-2 text-left text-small text-muted"
+          >
             Thoát
           </button>
         </div>

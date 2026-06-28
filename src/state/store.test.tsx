@@ -29,11 +29,11 @@ describe('store — navigation', () => {
   it('go* handlers switch the active view and the isX flags follow', () => {
     const { result } = setup()
     act(() => result.current.v.goSettings())
-    expect(result.current.s.view).toBe('settings')
-    expect(result.current.v.isSettings).toBe(true)
+    expect(result.current.s.settingsOpen).toBe(true)
+    expect(result.current.s.settingsTab).toBe('general')
     act(() => result.current.v.goAssistant())
-    expect(result.current.v.isAssistant).toBe(true)
-    expect(result.current.v.isSettings).toBe(false)
+    expect(result.current.s.settingsTab).toBe('assistant')
+    expect(result.current.s.settingsOpen).toBe(true)
   })
 })
 

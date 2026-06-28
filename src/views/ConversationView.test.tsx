@@ -40,6 +40,13 @@ describe('ConversationView — response states', () => {
     expect(screen.queryByText('SUY NGHĨ')).not.toBeInTheDocument()
   })
 
+  it('expanded trace ends with a "Hoàn tất" checkpoint when done', async () => {
+    renderWithStore(<App />, (s) => s.set({ traceOpen: true, respState: 'done' }))
+    const nodes = await screen.findAllByText('Hoàn tất')
+    // the trace terminal checkpoint lives in the timeline, not the demo switcher button
+    expect(nodes.some((n) => !n.closest('button'))).toBe(true)
+  })
+
   it('a fresh chat shows the empty state', async () => {
     renderWithStore(<App />, (s) => s.v.pNewChat())
     expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()

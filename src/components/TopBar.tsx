@@ -4,10 +4,10 @@ import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
 const menuContent =
-  'z-40 min-w-[18rem] max-w-[92vw] overflow-hidden rounded-[14px] border border-border bg-panel p-0 shadow-overlay ' +
+  'z-40 min-w-[18rem] max-w-[92vw] overflow-hidden rounded-md border border-border bg-panel p-0 shadow-overlay ' +
   'animate-[fadeUp_140ms_var(--ease-paper)] origin-top'
 const menuItem =
-  'flex cursor-pointer select-none items-start gap-[11px] px-4 py-[11px] text-[15px] outline-none data-[highlighted]:bg-black/[0.035]'
+  'flex cursor-pointer select-none items-start gap-3 px-4 py-3 text-body outline-none data-[highlighted]:bg-black/[0.035]'
 
 export function TopBar() {
   const { v } = useStore()
@@ -30,15 +30,15 @@ export function TopBar() {
           onClick={v.goProjectCfg}
           className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent font-[inherit]"
         >
-          <span className="size-[9px] flex-shrink-0 rounded-[3px] bg-accent" />
-          <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] text-text">
+          <span className="size-[9px] flex-shrink-0 rounded-xs bg-accent" />
+          <span className="overflow-hidden text-ellipsis whitespace-nowrap text-body text-text">
             {v.headerTitle}
           </span>
           <Icon n="caret" size={14} className="text-faint" />
         </button>
       </div>
 
-      <div className="flex flex-shrink-0 items-center gap-[9px]">
+      <div className="flex flex-shrink-0 items-center gap-2">
         {v.showMeter && (
           <>
             <HoverCard.Root openDelay={120} closeDelay={80}>
@@ -48,21 +48,21 @@ export function TopBar() {
                   aria-label={`${v.meterLabel} — ${v.tokenDetail}`}
                   className="flex cursor-help items-center gap-2 border-none bg-transparent p-0 font-[inherit] outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 >
-                  <span className="font-mono text-[11px] text-faint">{v.meterLabel}</span>
-                  <div className="h-[5px] w-[84px] overflow-hidden rounded-[3px] bg-border">
+                  <span className="font-mono text-eyebrow text-faint">{v.meterLabel}</span>
+                  <div className="h-[5px] w-[84px] overflow-hidden rounded-xs bg-border">
                     <div
                       className="h-full bg-accent transition-[width] duration-500"
                       style={{ width: v.tokenPct }}
                     />
                   </div>
-                  <span className="font-mono text-[11px] text-muted">{v.tokenLabel}</span>
+                  <span className="font-mono text-eyebrow text-muted">{v.tokenLabel}</span>
                 </button>
               </HoverCard.Trigger>
               <HoverCard.Portal>
                 <HoverCard.Content
                   align="end"
                   sideOffset={10}
-                  className="z-40 rounded-[10px] border border-border bg-panel px-3 py-2 font-mono text-[11.5px] text-text shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
+                  className="z-40 rounded-sm border border-border bg-panel px-3 py-2 font-mono text-meta text-text shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
                 >
                   {v.tokenDetail}
                 </HoverCard.Content>
@@ -77,23 +77,28 @@ export function TopBar() {
             <button
               type="button"
               aria-label={`Chế độ trả lời: ${v.modelLabel}`}
-              className="flex cursor-pointer items-center gap-[7px] rounded-[9px] border border-border bg-panel px-[11px] py-[7px] text-[13px] text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-small text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <span className="size-1.5 rounded-full bg-accent" />
-              <span className="whitespace-nowrap">{v.modelLabel}</span>
+              <span className="grid text-left">
+                <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-nowrap">
+                  Thông minh
+                </span>
+                <span className="col-start-1 row-start-1 whitespace-nowrap">{v.modelLabel}</span>
+              </span>
               <Icon n="caret" size={13} className="text-faint" />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content align="end" sideOffset={8} className={menuContent}>
-              <div className="px-4 pb-[7px] pt-[13px] font-mono text-[10px] tracking-[0.14em] text-faint">
+              <div className="px-4 pb-1.5 pt-3 font-mono text-micro tracking-[0.14em] text-faint">
                 {v.modelMenuLabel}
               </div>
               <DropdownMenu.Item onSelect={v.pickOpus} className={menuItem}>
                 <span className="mt-1.5 size-[7px] rounded-full bg-accent" />
                 <div className="flex-1">
-                  <div className="text-[15px] text-text">{v.modelAMode}</div>
-                  <div className="text-[13px] text-muted">{v.modelADesc}</div>
+                  <div className="text-body text-text">{v.modelAMode}</div>
+                  <div className="text-small text-muted">{v.modelADesc}</div>
                 </div>
                 {v.checkA && <Icon n="check" size={14} className="mt-1 text-accent" />}
               </DropdownMenu.Item>
@@ -103,14 +108,14 @@ export function TopBar() {
               >
                 <span className="mt-1.5 size-[7px] rounded-full bg-border" />
                 <div className="flex-1">
-                  <div className="text-[15px] text-text">{v.modelBMode}</div>
-                  <div className="text-[13px] text-muted">{v.modelBDesc}</div>
+                  <div className="text-body text-text">{v.modelBMode}</div>
+                  <div className="text-small text-muted">{v.modelBDesc}</div>
                 </div>
                 {v.checkB && <Icon n="check" size={14} className="mt-1 text-accent" />}
               </DropdownMenu.Item>
               <DropdownMenu.Item
-                onSelect={v.pSettings}
-                className="flex cursor-pointer select-none items-center gap-2 border-t border-border px-4 py-3 text-[13px] text-muted outline-none data-[highlighted]:bg-black/[0.035]"
+                onSelect={() => v.openSettings('providers')}
+                className="flex cursor-pointer select-none items-center gap-2 border-t border-border px-4 py-3 text-small text-muted outline-none data-[highlighted]:bg-black/[0.035]"
               >
                 <Icon n="settings" size={14} /> Đổi nhà cung cấp →
               </DropdownMenu.Item>
@@ -122,7 +127,7 @@ export function TopBar() {
           type="button"
           aria-label="Vào chế độ tập trung"
           onClick={v.enterQuiet}
-          className="flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-border bg-panel px-[11px] py-[7px] font-[inherit] text-[13px] text-text-2"
+          className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 font-[inherit] text-small text-text-2"
         >
           <Icon n="focus" size={15} />
           {v.isDesktop && <span className="whitespace-nowrap">Tập trung</span>}

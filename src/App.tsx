@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { useStore } from './state/store'
-import { css } from './css'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
 import { MobileDrawer } from './components/MobileDrawer'
@@ -12,49 +11,47 @@ import { HomeView } from './views/HomeView'
 import { ConversationView } from './views/ConversationView'
 import { ProjectsView } from './views/ProjectsView'
 import { ProjectConfigView } from './views/ProjectConfigView'
-import { NovaView } from './views/NovaView'
-import { SettingsView } from './views/SettingsView'
+import { SettingsDialog } from './components/SettingsDialog'
 
 export default function App() {
   const { v } = useStore()
-  const rootStyle = css(
-    `position:fixed;inset:0;background:var(--bg);font-family:var(--font-body);color:var(--text);display:flex;overflow:hidden`,
-  )
   // accent is user-configurable, so it stays a dynamic override; everything
   // else (paper, ink, borders, semantic roles, dark mode) lives in CSS tokens.
   const accentVar = v.accent?.startsWith('#') ? ({ ['--accent' as string]: v.accent } as CSSProperties) : undefined
   return (
-    <div className={v.dark ? 'dark' : undefined} style={accentVar ? { ...rootStyle, ...accentVar } : rootStyle}>
+    <div
+      className={`fixed inset-0 flex overflow-hidden bg-bg font-sans text-text${v.themeClass ? ` ${v.themeClass}` : ''}`}
+      style={accentVar}
+    >
       <Sidebar />
 
       {/* MAIN COLUMN */}
-      <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;position:relative')}>
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <TopBar />
 
         {/* VIEW AREA */}
-        <div style={css('flex:1;min-height:0;position:relative')}>
+        <main className="relative min-h-0 flex-1" aria-label="Nội dung">
           <HomeView />
           <ConversationView />
           <ProjectsView />
           <ProjectConfigView />
-          <NovaView />
-          <SettingsView />
-        </div>
+        </main>
 
         {/* bottom shortcut hints (advanced desktop) */}
         {v.showBar && (
-          <div style={css('flex-shrink:0;height:30px;display:flex;align-items:center;justify-content:center;gap:18px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10.5px;color:var(--faint)')}>
+          <footer className="flex h-[30px] shrink-0 items-center justify-center gap-4 border-t border-border font-mono text-eyebrow text-faint">
             <span>⌘K lệnh</span>
             <span>⌘. tập trung</span>
             <span>⏎ gửi</span>
             <span>⌥↑ lịch sử</span>
-          </div>
+          </footer>
         )}
       </div>
 
       <MobileDrawer />
       <CommandPalette />
       <Preview />
+      <SettingsDialog />
       <QuietMode />
       <Auth />
 

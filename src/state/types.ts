@@ -2,13 +2,9 @@ import type { PresetId, ProviderId, ProviderStatus } from '../data/defs'
 
 export type LiveProviderStatus = ProviderStatus | 'testing' | 'error'
 
-export type ViewName =
-  | 'home'
-  | 'conversation'
-  | 'projects'
-  | 'projectcfg'
-  | 'assistant'
-  | 'settings'
+export type ViewName = 'home' | 'conversation' | 'projects' | 'projectcfg'
+
+export type SettingsTab = 'general' | 'providers' | 'assistant'
 
 export type RespState = 'done' | 'stream' | 'error' | 'approval'
 export type ThinkLevel = 'off' | 'low' | 'normal' | 'high'
@@ -48,6 +44,8 @@ export interface Conversation {
   title: string
   /** the seeded showcase conversation that renders the scripted tool-trace */
   demo?: boolean
+  /** user-pinned to the top of the recent list */
+  pinned?: boolean
 }
 
 export interface StyleFlags {
@@ -66,6 +64,8 @@ export interface ToolFlags {
 
 export interface NovaState {
   view: ViewName
+  settingsOpen: boolean
+  settingsTab: SettingsTab
   advanced: boolean
   palette: boolean
   quiet: boolean
@@ -76,6 +76,8 @@ export interface NovaState {
   preview: Preview | null
   respState: RespState
   conversations: Conversation[]
+  /** conversation ids in their optimistic-delete undo window */
+  deleting: string[]
   activeConv: string
   threads: Record<string, SentMsg[]>
   chatProject: 'Aurora' | 'Chung'

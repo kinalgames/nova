@@ -6,7 +6,7 @@ import { Icon } from './Icon'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 const navRow =
-  'flex w-full cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-[14px] outline-none hover:bg-black/[0.035] focus-visible:bg-black/[0.05]'
+  'flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-black/[0.035] focus-visible:bg-black/[0.05]'
 
 export function MobileDrawer() {
   const { v } = useStore()
@@ -26,10 +26,10 @@ export function MobileDrawer() {
           <VisuallyHidden asChild>
             <Dialog.Title>Điều hướng</Dialog.Title>
           </VisuallyHidden>
-          <div className="flex h-14 flex-shrink-0 items-center justify-between pl-[18px] pr-3.5">
-            <div className="flex items-center gap-[9px]">
+          <div className="flex h-14 flex-shrink-0 items-center justify-between pl-4 pr-3.5">
+            <div className="flex items-center gap-2">
               <div className="size-[13px] rounded-full bg-ink shadow-[inset_-3px_-3px_0_var(--side)]" />
-              <span className="font-display text-[21px]">Nova</span>
+              <span className="font-display text-h3">Nova</span>
             </div>
             <Dialog.Close asChild>
               <button
@@ -54,68 +54,87 @@ export function MobileDrawer() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 pt-3.5">
-            <div className="px-2 pb-2 font-mono text-[9.5px] tracking-[0.14em] text-label">DỰ ÁN</div>
+            <div className="px-2 pb-2 font-mono text-eyebrow tracking-[0.14em] text-label">DỰ ÁN</div>
             {v.sideProjects.map((p, i) => (
               <button key={i} onClick={p.open} className={navRow} style={{ background: p.bg }}>
-                <span className="size-[9px] rounded-[3px]" style={{ background: p.dot }} />
+                <span className="size-[9px] rounded-xs" style={{ background: p.dot }} />
                 <span className="flex-1" style={{ color: p.fg }}>
                   {p.name}
                 </span>
               </button>
             ))}
-            <div className="px-2 pb-2 pt-[18px] font-mono text-[9.5px] tracking-[0.14em] text-label">
+            <div className="px-2 pb-2 pt-4 font-mono text-eyebrow tracking-[0.14em] text-label">
               GẦN ĐÂY · AURORA
             </div>
             {v.sideConvs.map((c) => (
               <div
                 key={c.id}
-                className="flex items-center gap-2.5 rounded-[9px] px-2.5 py-2 hover:bg-black/[0.035]"
-                style={{ background: c.bg }}
+                className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-black/[0.035]"
+                style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
               >
                 <button
                   type="button"
                   onClick={c.open}
-                  className="flex min-w-0 flex-1 items-center gap-2.5 border-none bg-transparent text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  disabled={c.deleting}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-none bg-transparent text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default"
                 >
-                  <span className="size-[5px] rounded-full" style={{ background: c.dot }} />
-                  <span className="flex-1 truncate text-[13.5px]" style={{ color: c.fg }}>
+                  <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
                     {c.title}
                   </span>
+                  {c.pinned && <Icon n="pin" size={12} fill="currentColor" className="flex-shrink-0 text-faint" />}
                 </button>
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Tùy chọn cuộc trò chuyện"
-                      className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                      <Icon n="more" size={16} />
-                    </button>
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content align="end" sideOffset={4} className={MENU_CONTENT}>
-                      <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
-                        Đổi tên
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
-                        Ghim lên đầu
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Separator className={MENU_SEP} />
-                      <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
-                        Xóa
-                      </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Root>
+                {c.deleting ? (
+                  <button
+                    type="button"
+                    onClick={c.undo}
+                    className="tap flex-shrink-0 cursor-pointer rounded-md border-none bg-transparent px-1 text-small text-accent-text outline-none"
+                  >
+                    Hoàn tác
+                  </button>
+                ) : c.busy ? (
+                  <span
+                    role="img"
+                    aria-label="Đang trả lời"
+                    className="relative mr-1 flex size-[7px] flex-shrink-0 items-center justify-center"
+                  >
+                    <span
+                      className="absolute inset-0 rounded-full bg-[var(--accent-line)]"
+                      style={{ animation: 'pulseRing 1.6s ease-out infinite' }}
+                    />
+                    <span className="size-[5px] rounded-full bg-accent" />
+                  </span>
+                ) : (
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Tùy chọn cuộc trò chuyện"
+                        className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <Icon n="more" size={16} />
+                      </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.Content align="end" sideOffset={4} className={MENU_CONTENT}>
+                        <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
+                          Đổi tên
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
+                          {c.pinned ? 'Bỏ ghim' : 'Ghim lên đầu'}
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Separator className={MENU_SEP} />
+                        <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
+                          Xóa
+                        </DropdownMenu.Item>
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Root>
+                )}
               </div>
             ))}
           </div>
 
           <div className="flex-shrink-0 border-t border-border px-3 pb-3.5 pt-2">
-            <button onClick={v.goAssistant} className={navRow} style={{ color: v.novaFg }}>
-              <Icon n="nova" size={16} />
-              <span>Nova</span>
-            </button>
             <button onClick={v.goSettings} className={navRow} style={{ color: v.setFg }}>
               <Icon n="settings" size={16} />
               <span>Cài đặt</span>

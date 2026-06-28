@@ -21,7 +21,7 @@ export function ToggleRow({ title, sub, on, onToggle, last }: ToggleRowProps) {
     >
       <div className="min-w-0">
         <div className="text-base text-text">{title}</div>
-        <div className="text-[13px] text-muted">{sub}</div>
+        <div className="text-small text-muted">{sub}</div>
       </div>
       <Switch.Root
         checked={on}

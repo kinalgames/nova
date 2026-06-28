@@ -22,6 +22,7 @@ import type {
   LiveProviderStatus,
   NovaState,
   PreviewKind,
+  SettingsTab,
   StagedFile,
   Theme,
   ThinkLevel,
@@ -72,6 +73,8 @@ function initialState(): NovaState {
   const p = loadPersisted()
   return {
     view: 'conversation',
+    settingsOpen: false,
+    settingsTab: 'general',
     advanced: p.advanced ?? true,
     palette: false,
     quiet: false,
@@ -82,6 +85,7 @@ function initialState(): NovaState {
     preview: null,
     respState: 'done',
     conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
+    deleting: [],
     activeConv: p.activeConv ?? 'c1',
     threads: p.threads ?? { ...seedThreads },
     chatProject: 'Aurora',
@@ -168,6 +172,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const t1 = useRef<ReturnType<typeof setTimeout>>(undefined)
   const t2 = useRef<ReturnType<typeof setTimeout>>(undefined)
   const tc = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const delTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const set = useCallback((u: Updater) => {
     setS((prev) => ({ ...prev, ...(typeof u === 'function' ? u(prev) : u) }))
@@ -226,15 +231,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('resize', onResize)
   }, [set])
 
-  // prefers-color-scheme tracking (for theme: auto)
-  useEffect(() => {
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-    if (!mq) return
-    const onChange = (e: MediaQueryListEvent) => setPrefersDark(e.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-
   // global keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -266,6 +262,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearTimeout(t1.current)
       clearTimeout(t2.current)
       clearInterval(tc.current)
+      Object.values(delTimers.current).forEach((t) => clearTimeout(t))
     },
     [],
   )
@@ -384,11 +381,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [set],
   )
 
+  // optimistic conversation delete: flag it, then remove for real after a 5s
+  // undo window so an accidental delete is recoverable
+  const delConv = useCallback(
+    (id: string) => {
+      set((x) => ({ deleting: x.deleting.includes(id) ? x.deleting : [...x.deleting, id] }))
+      clearTimeout(delTimers.current[id])
+      delTimers.current[id] = setTimeout(() => {
+        delete delTimers.current[id]
+        set((x) => {
+          const conversations = x.conversations.filter((k) => k.id !== id)
+          const threads = { ...x.threads }
+          delete threads[id]
+          const activeConv =
+            x.activeConv === id ? (conversations[0]?.id ?? '') : x.activeConv
+          return { conversations, threads, activeConv, deleting: x.deleting.filter((d) => d !== id) }
+        })
+      }, 5000)
+    },
+    [set],
+  )
+
+  const undoDelete = useCallback(
+    (id: string) => {
+      clearTimeout(delTimers.current[id])
+      delete delTimers.current[id]
+      set((x) => ({ deleting: x.deleting.filter((d) => d !== id) }))
+    },
+    [set],
+  )
+
+  // prefers-color-scheme tracking (for theme: auto)
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
+    if (!mq) return
+    const onChange = (e: MediaQueryListEvent) => setPrefersDark(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
   const dark = s.theme === 'dark' || (s.theme === 'auto' && prefersDark)
 
   const v = useMemo(
-    () => deriveValues(s, set, { go, send, stop, copyCode, dark, scrollRef }),
-    [s, set, go, send, stop, copyCode, dark],
+    () => deriveValues(s, set, { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete }),
+    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete],
   )
 
   const store: Store = useMemo(
@@ -412,11 +448,14 @@ function deriveValues(
     copyCode: () => void
     dark: boolean
     scrollRef: React.RefObject<HTMLDivElement | null>
+    delConv: (id: string) => void
+    undoDelete: (id: string) => void
   },
 ) {
-  const { go, send, stop, copyCode, dark, scrollRef } = extra
+  const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete } = extra
   const accent = s.accent ?? ACCENT_DEFAULT
   const adv = s.advanced
+  const accentText = 'var(--accent-text)'
   const isMobile = s.vw < 880
   const isDesktop = !isMobile
   const rs = s.respState
@@ -428,7 +467,7 @@ function deriveValues(
   const toolToggle = (k: keyof NovaState['tools']) => () =>
     set((x) => ({ tools: { ...x.tools, [k]: !x.tools[k] } }))
   const chk = (k: keyof NovaState['tools']) => (s.tools[k] ? '✓' : '')
-  const rowFg = (k: keyof NovaState['tools']) => (s.tools[k] ? accent : 'var(--text-2)')
+  const rowFg = (k: keyof NovaState['tools']) => (s.tools[k] ? accentText : 'var(--text-2)')
   const activeCount = tk.filter((k) => s.tools[k]).length
 
   const mkPreset = (
@@ -468,8 +507,8 @@ function deriveValues(
 
   const liveStatusMap: Record<LiveProviderStatus, { badge: string; fg: string; bg: string }> = {
     ...statusMap,
-    testing: { badge: 'Đang kiểm tra…', fg: 'var(--warn)', bg: 'var(--warn-bg)' },
-    error: { badge: 'Khóa không hợp lệ', fg: 'var(--danger)', bg: 'var(--danger-bg)' },
+    testing: { badge: 'Đang kiểm tra…', fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
+    error: { badge: 'Khóa không hợp lệ', fg: 'var(--danger-text)', bg: 'var(--danger-bg)' },
   }
   const setProviderKey = (id: ProviderId, value: string) =>
     set((x) => ({ providerKeys: { ...x.providerKeys, [id]: value } }))
@@ -514,7 +553,7 @@ function deriveValues(
       fieldAction: p.field === 'key' ? 'Lưu & kiểm tra' : 'Kiểm tra',
       models: p.models.map((m, i) => ({
         name: m,
-        fg: i === 0 ? accent : 'var(--muted)',
+        fg: i === 0 ? accentText : 'var(--muted)',
         bg: i === 0 ? 'var(--accent-soft)' : 'var(--panel)',
         bd: i === 0 ? 'var(--accent-line)' : 'var(--border)',
       })),
@@ -534,45 +573,43 @@ function deriveValues(
     fg: p.id === activeProj ? 'var(--text)' : 'var(--text-2)',
     open: () => go('conversation'),
   }))
-  const sideConvs = s.conversations.map((c) => {
-    const isActive = c.id === s.activeConv
-    return {
-      id: c.id,
-      title: c.title,
-      dot: isActive ? accent : 'var(--border)',
-      bg: isActive ? 'var(--accent-soft)' : 'transparent',
-      fg: isActive ? 'var(--text)' : 'var(--text-2)',
-      open: () => set({ activeConv: c.id, view: 'conversation', palette: false, drawerOpen: false }),
-      rename: () => {
-        const next =
-          typeof window !== 'undefined' && window.prompt
-            ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
-            : null
-        if (next && next.trim())
+  const sideConvs = [...s.conversations]
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+    .map((c) => {
+      const isActive = c.id === s.activeConv
+      return {
+        id: c.id,
+        title: c.title,
+        active: isActive,
+        pinned: !!c.pinned,
+        busy: isActive && s.typing,
+        deleting: s.deleting.includes(c.id),
+        bg: isActive ? 'var(--accent-soft)' : 'transparent',
+        fg: isActive ? 'var(--text)' : 'var(--text-2)',
+        open: () =>
+          set({ activeConv: c.id, view: 'conversation', palette: false, drawerOpen: false }),
+        rename: () => {
+          const next =
+            typeof window !== 'undefined' && window.prompt
+              ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
+              : null
+          if (next && next.trim())
+            set((x) => ({
+              conversations: x.conversations.map((k) =>
+                k.id === c.id ? { ...k, title: next.trim() } : k,
+              ),
+            }))
+        },
+        pin: () =>
           set((x) => ({
             conversations: x.conversations.map((k) =>
-              k.id === c.id ? { ...k, title: next.trim() } : k,
+              k.id === c.id ? { ...k, pinned: !k.pinned } : k,
             ),
-          }))
-      },
-      pin: () =>
-        set((x) => ({
-          conversations: [
-            ...x.conversations.filter((k) => k.id === c.id),
-            ...x.conversations.filter((k) => k.id !== c.id),
-          ],
-        })),
-      del: () =>
-        set((x) => {
-          const conversations = x.conversations.filter((k) => k.id !== c.id)
-          const threads = { ...x.threads }
-          delete threads[c.id]
-          const activeConv =
-            x.activeConv === c.id ? (conversations[0]?.id ?? '') : x.activeConv
-          return { conversations, threads, activeConv }
-        }),
-    }
-  })
+          })),
+        del: () => delConv(c.id),
+        undo: () => undoDelete(c.id),
+      }
+    })
 
   const pickProjects = [
     { name: 'Aurora', dot: accent, id: 'Aurora' as const },
@@ -615,8 +652,6 @@ function deriveValues(
     isConv: s.view === 'conversation',
     isProjects: s.view === 'projects',
     isProjectCfg: s.view === 'projectcfg',
-    isAssistant: s.view === 'assistant',
-    isSettings: s.view === 'settings',
     // sidebar
     showSidebar: isDesktop,
     sidebarW: s.sidebarCollapsed ? '62px' : '256px',
@@ -628,10 +663,14 @@ function deriveValues(
     sideProjects,
     sideConvs,
     pickProjects,
-    novaBg: s.view === 'assistant' ? 'var(--accent-soft)' : 'transparent',
-    novaFg: s.view === 'assistant' ? accent : 'var(--text-2)',
-    setBg: s.view === 'settings' ? 'var(--accent-soft)' : 'transparent',
-    setFg: s.view === 'settings' ? accent : 'var(--text-2)',
+    setBg: s.settingsOpen ? 'var(--accent-soft)' : 'transparent',
+    setFg: s.settingsOpen ? accentText : 'var(--text-2)',
+    settingsOpen: s.settingsOpen,
+    settingsTab: s.settingsTab,
+    openSettings: (tab: SettingsTab) =>
+      set({ settingsOpen: true, settingsTab: tab, palette: false, drawerOpen: false }),
+    closeSettings: () => set({ settingsOpen: false }),
+    setSettingsTab: (tab: SettingsTab) => set({ settingsTab: tab }),
     drawerOpen: s.drawerOpen,
     openDrawer: () => set({ drawerOpen: true }),
     closeDrawer: () => set({ drawerOpen: false }),
@@ -664,7 +703,7 @@ function deriveValues(
       rs === 'stream'
         ? 'Nova đang tra cứu và tính toán…'
         : 'Nova đã tra cứu web và cập nhật tài liệu của bạn',
-    traceCaret: s.traceOpen ? 'Ẩn' : 'Xem Nova đã làm gì',
+    traceCaret: s.traceOpen ? 'Ẩn' : rs === 'stream' ? '' : '5 công cụ · 6.4 giây',
     toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
     traceOpen: s.traceOpen,
     setStream: () => set({ respState: 'stream' }),
@@ -727,11 +766,13 @@ function deriveValues(
     scrollRef,
     // theme: CSS owns the palette; we only signal which sheet we're on
     dark,
+    themeClass: dark ? 'dark' : '',
     // auth
     isOnboarding: s.authView === 'onboarding',
     isLoginForm: s.authView === 'login' || s.authView === 'signup',
     finishOnboarding: () => set({ authView: null }),
     showAuth: !!s.authView,
+    loggedIn: s.authView === null,
     isLogin: s.authView !== 'signup',
     logout: () => set({ authView: 'login' }),
     doLogin: () =>
@@ -775,50 +816,54 @@ function deriveValues(
     setThinkNormal: () => set({ thinkingLevel: 'normal' }),
     setThinkHigh: () => set({ thinkingLevel: 'high' }),
     // theme controls
-    themeVal: s.theme,
     focusVal: s.focusDur,
     setLight: () => set({ theme: 'light' }),
     setDark: () => set({ theme: 'dark' }),
     setAuto: () => set({ theme: 'auto' }),
+    themeVal: s.theme,
     themeLightBd: s.theme === 'light' ? accent : 'var(--border)',
     themeLightBg: s.theme === 'light' ? 'var(--accent-soft)' : 'transparent',
-    themeLightFg: s.theme === 'light' ? accent : 'var(--muted)',
+    themeLightFg: s.theme === 'light' ? accentText : 'var(--muted)',
     themeDarkBd: s.theme === 'dark' ? accent : 'var(--border)',
     themeDarkBg: s.theme === 'dark' ? 'var(--accent-soft)' : 'transparent',
-    themeDarkFg: s.theme === 'dark' ? accent : 'var(--muted)',
+    themeDarkFg: s.theme === 'dark' ? accentText : 'var(--muted)',
     themeAutoBd: s.theme === 'auto' ? accent : 'var(--border)',
     themeAutoBg: s.theme === 'auto' ? 'var(--accent-soft)' : 'transparent',
-    themeAutoFg: s.theme === 'auto' ? accent : 'var(--muted)',
+    themeAutoFg: s.theme === 'auto' ? accentText : 'var(--muted)',
     // focus duration
     setF15: () => set({ focusDur: '15' }),
     setF25: () => set({ focusDur: '25' }),
     setF50: () => set({ focusDur: '50' }),
     f15Bd: s.focusDur === '15' ? accent : 'var(--border)',
     f15Bg: s.focusDur === '15' ? 'var(--accent-soft)' : 'transparent',
-    f15Fg: s.focusDur === '15' ? accent : 'var(--muted)',
+    f15Fg: s.focusDur === '15' ? accentText : 'var(--muted)',
     f25Bd: s.focusDur === '25' ? accent : 'var(--border)',
     f25Bg: s.focusDur === '25' ? 'var(--accent-soft)' : 'transparent',
-    f25Fg: s.focusDur === '25' ? accent : 'var(--muted)',
+    f25Fg: s.focusDur === '25' ? accentText : 'var(--muted)',
     f50Bd: s.focusDur === '50' ? accent : 'var(--border)',
     f50Bg: s.focusDur === '50' ? 'var(--accent-soft)' : 'transparent',
-    f50Fg: s.focusDur === '50' ? accent : 'var(--muted)',
+    f50Fg: s.focusDur === '50' ? accentText : 'var(--muted)',
     // styles
+    styleConcise: s.styles.concise,
+    styleWarm: s.styles.warm,
+    styleFormal: s.styles.formal,
+    styleHumor: s.styles.humor,
     toggleConcise: () => set((x) => ({ styles: { ...x.styles, concise: !x.styles.concise } })),
     toggleWarm: () => set((x) => ({ styles: { ...x.styles, warm: !x.styles.warm } })),
     toggleFormal: () => set((x) => ({ styles: { ...x.styles, formal: !x.styles.formal } })),
     toggleHumor: () => set((x) => ({ styles: { ...x.styles, humor: !x.styles.humor } })),
     stConciseBd: s.styles.concise ? accent : 'var(--border)',
     stConciseBg: s.styles.concise ? 'var(--accent-soft)' : 'transparent',
-    stConciseFg: s.styles.concise ? accent : 'var(--muted)',
+    stConciseFg: s.styles.concise ? accentText : 'var(--muted)',
     stWarmBd: s.styles.warm ? accent : 'var(--border)',
     stWarmBg: s.styles.warm ? 'var(--accent-soft)' : 'transparent',
-    stWarmFg: s.styles.warm ? accent : 'var(--muted)',
+    stWarmFg: s.styles.warm ? accentText : 'var(--muted)',
     stFormalBd: s.styles.formal ? accent : 'var(--border)',
     stFormalBg: s.styles.formal ? 'var(--accent-soft)' : 'transparent',
-    stFormalFg: s.styles.formal ? accent : 'var(--muted)',
+    stFormalFg: s.styles.formal ? accentText : 'var(--muted)',
     stHumorBd: s.styles.humor ? accent : 'var(--border)',
     stHumorBg: s.styles.humor ? 'var(--accent-soft)' : 'transparent',
-    stHumorFg: s.styles.humor ? accent : 'var(--muted)',
+    stHumorFg: s.styles.humor ? accentText : 'var(--muted)',
     bashLabel: 'Chạy lệnh',
     showComposerHint: true,
     // bottom bar
@@ -873,8 +918,10 @@ function deriveValues(
     goConv: () => go('conversation'),
     goProjects: () => go('projects'),
     goProjectCfg: () => go('projectcfg'),
-    goAssistant: () => go('assistant'),
-    goSettings: () => go('settings'),
+    goAssistant: () =>
+      set({ settingsOpen: true, settingsTab: 'assistant', palette: false, drawerOpen: false }),
+    goSettings: () =>
+      set({ settingsOpen: true, settingsTab: 'general', palette: false, drawerOpen: false }),
     togglePalette: () => set((x) => ({ palette: !x.palette, drawerOpen: false })),
     closeMenus: () => set({ palette: false }),
     pickOpus: () => set({ model: 'opus' }),
@@ -895,8 +942,8 @@ function deriveValues(
     copyCode,
     pConvAurora: () => go('conversation'),
     pProjects: () => go('projects'),
-    pAssistant: () => go('assistant'),
-    pSettings: () => go('settings'),
+    pAssistant: () => set({ settingsOpen: true, settingsTab: 'assistant', palette: false }),
+    pSettings: () => set({ settingsOpen: true, settingsTab: 'general', palette: false }),
     pNewChat: () =>
       set((x) => {
         const id = uid()

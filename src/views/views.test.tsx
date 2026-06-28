@@ -29,7 +29,7 @@ describe('views render on navigation', () => {
   })
 
   it('Nova shows each skill preset with its tool tags (no advanced needed)', async () => {
-    renderWithStore(<App />, (s) => s.set({ view: 'assistant', advanced: false }))
+    renderWithStore(<App />, (s) => s.set({ settingsOpen: true, settingsTab: 'assistant', advanced: false }))
     expect(await screen.findByText('KỸ NĂNG CỦA NOVA')).toBeInTheDocument()
     // tool chips are promoted: visible for everyone, not gated behind advanced
     expect(screen.getAllByText('Đọc web').length).toBeGreaterThan(0)
@@ -38,16 +38,16 @@ describe('views render on navigation', () => {
   it('Settings shows providers and the advanced card', async () => {
     renderWithStore(<App />, (s) => s.v.goSettings())
     expect(await screen.findByText('Chế độ nâng cao')).toBeInTheDocument()
-    expect(screen.getByText('NOVA DÙNG MÔ HÌNH')).toBeInTheDocument()
+    expect(screen.getByText('Thanh phím tắt dưới cùng')).toBeInTheDocument()
   })
 
   it('Settings in advanced mode reveals the custom-provider row', async () => {
-    renderWithStore(<App />, (s) => s.set({ view: 'settings', advanced: true }))
+    renderWithStore(<App />, (s) => s.set({ settingsOpen: true, settingsTab: 'providers', advanced: true }))
     expect(await screen.findByText(/Thêm nhà cung cấp tùy chỉnh/)).toBeInTheDocument()
   })
 
   it('Settings shows the shortcuts-bar toggle without advanced', async () => {
-    renderWithStore(<App />, (s) => s.set({ view: 'settings', advanced: false }))
+    renderWithStore(<App />, (s) => s.set({ settingsOpen: true, settingsTab: 'general', advanced: false }))
     expect(await screen.findByText('Thanh phím tắt dưới cùng')).toBeInTheDocument()
   })
 })

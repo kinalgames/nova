@@ -8,10 +8,11 @@ function setup() {
 beforeEach(() => localStorage.clear())
 
 describe('store — theme variants', () => {
-  it('cycles light / auto / dark', () => {
+  it('toggles light / dark', () => {
     const { result } = setup()
-    act(() => result.current.v.setAuto())
-    expect(result.current.s.theme).toBe('auto')
+    act(() => result.current.v.setDark())
+    expect(result.current.s.theme).toBe('dark')
+    expect(result.current.v.dark).toBe(true)
     act(() => result.current.v.setLight())
     expect(result.current.s.theme).toBe('light')
     expect(result.current.v.dark).toBe(false)

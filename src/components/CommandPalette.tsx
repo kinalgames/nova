@@ -4,7 +4,7 @@ import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
 const row =
-  'flex w-full cursor-pointer items-center gap-3 rounded-[10px] px-3 py-[11px] text-left text-[15px] text-text ' +
+  'flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-3 text-left text-body text-text ' +
   'outline-none hover:bg-black/[0.035] focus-visible:bg-black/[0.05]'
 
 export function CommandPalette() {
@@ -21,29 +21,29 @@ export function CommandPalette() {
         <Dialog.Content
           aria-describedby={undefined}
           style={{ top: v.paletteTop }}
-          className="fixed left-1/2 z-40 w-[560px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] overflow-hidden rounded-[16px] border border-border bg-panel shadow-overlay outline-none"
+          className="fixed left-1/2 z-40 w-[560px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] overflow-hidden rounded-lg border border-border bg-panel shadow-overlay outline-none"
         >
           <VisuallyHidden asChild>
             <Dialog.Title>Bảng lệnh</Dialog.Title>
           </VisuallyHidden>
-          <div className="flex h-[58px] items-center gap-3 border-b border-border px-[18px]">
+          <div className="flex h-[58px] items-center gap-3 border-b border-border px-4">
             <Icon n="search" size={18} className="text-faint" />
             <input
               value={v.q}
               onChange={v.onQ}
               placeholder="Tìm trang, dự án, hành động…"
-              className="min-w-0 flex-1 bg-transparent text-[17px] text-text outline-none"
+              className="min-w-0 flex-1 bg-transparent text-lead text-text outline-none"
             />
-            <span className="rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] text-faint">
+            <span className="rounded-xs border border-border px-1.5 py-0.5 font-mono text-eyebrow text-faint">
               esc
             </span>
           </div>
           <div className="max-h-[52vh] overflow-y-auto p-2">
-            <div className="px-3 pb-[5px] pt-2 font-mono text-[10px] tracking-[0.14em] text-faint">
+            <div className="px-3 pb-1 pt-2 font-mono text-micro tracking-[0.14em] text-faint">
               ĐI TỚI
             </div>
             <button onClick={v.pConvAurora} className={row}>
-              <span className="size-[9px] rounded-[3px] bg-accent" />
+              <span className="size-[9px] rounded-xs bg-accent" />
               <span className="flex-1">Dự án · Aurora</span>
             </button>
             <button onClick={v.pProjects} className={row}>
@@ -58,7 +58,7 @@ export function CommandPalette() {
               <Icon n="settings" size={16} className="text-muted" />
               <span className="flex-1">Cài đặt</span>
             </button>
-            <div className="px-3 pb-[5px] pt-3 font-mono text-[10px] tracking-[0.14em] text-faint">
+            <div className="px-3 pb-1 pt-3 font-mono text-micro tracking-[0.14em] text-faint">
               HÀNH ĐỘNG
             </div>
             <button onClick={v.pNewChat} className={row}>

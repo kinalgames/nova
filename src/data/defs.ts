@@ -138,9 +138,9 @@ export const statusMap: Record<
   ProviderStatus,
   { badge: string; fg: string; bg: string }
 > = {
-  connected: { badge: 'Đã kết nối', fg: 'var(--success)', bg: 'var(--success-bg)' },
-  add: { badge: 'Thêm khóa', fg: 'var(--warn)', bg: 'var(--warn-bg)' },
-  local: { badge: 'Cục bộ', fg: 'var(--success)', bg: 'var(--success-bg)' },
+  connected: { badge: 'Đã kết nối', fg: 'var(--success-text)', bg: 'var(--success-bg)' },
+  add: { badge: 'Thêm khóa', fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
+  local: { badge: 'Cục bộ', fg: 'var(--success-text)', bg: 'var(--success-bg)' },
 }
 
 export interface SuggestionDef {
