@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
 import {
   convDefs,
   presetDefs,
@@ -19,6 +20,7 @@ import {
   type ProviderId,
 } from '../data/defs'
 import type {
+  AuthView,
   LiveProviderStatus,
   NovaState,
   PreviewKind,
@@ -32,6 +34,29 @@ import { composeReply, thinkingDelay, tokenInterval } from '../services/chat'
 import { downloadFile, openFile, previewSample } from '../services/files'
 
 const ACCENT_DEFAULT = 'var(--accent)'
+
+/** Navigation state derived from the URL — the single source of truth for
+ *  which view/auth screen is showing and which Settings tab (if any) is open. */
+export interface NavState {
+  view: ViewName
+  authView: AuthView
+  settingsOpen: boolean
+  settingsTab: SettingsTab
+  /** the conversation in the URL, or the cached last one when off a chat route */
+  activeConv: string
+}
+
+type Navigate = ReturnType<typeof useNavigate>
+
+function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
+  if (pathname.startsWith('/chat/')) return { view: 'conversation', authView: null }
+  if (pathname.startsWith('/projects/')) return { view: 'projectcfg', authView: null }
+  if (pathname === '/projects') return { view: 'projects', authView: null }
+  if (pathname === '/login') return { view: 'home', authView: 'login' }
+  if (pathname === '/signup') return { view: 'home', authView: 'signup' }
+  if (pathname === '/onboarding') return { view: 'home', authView: 'onboarding' }
+  return { view: 'home', authView: null }
+}
 
 // bump the version suffix whenever the persisted shape changes so stale data
 // from an older schema is ignored rather than corrupting the new state
@@ -72,16 +97,12 @@ const uid = () => `f${++_uid}`
 function initialState(): NovaState {
   const p = loadPersisted()
   return {
-    view: 'conversation',
-    settingsOpen: false,
-    settingsTab: 'general',
     advanced: p.advanced ?? true,
     palette: false,
     quiet: false,
     traceOpen: false,
     drawerOpen: false,
     sidebarCollapsed: false,
-    authView: null,
     preview: null,
     respState: 'done',
     conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
@@ -161,8 +182,18 @@ export function useStore(): Store {
   return c
 }
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [s, setS] = useState<NovaState>(initialState)
+export function StoreProvider({
+  children,
+  initial,
+  onStore,
+}: {
+  children: ReactNode
+  initial?: Partial<NovaState>
+  onStore?: (store: Store) => void
+}) {
+  const [s, setS] = useState<NovaState>(() => ({ ...initialState(), ...initial }))
+  const sRef = useRef(s)
+  sRef.current = s
   const [prefersDark, setPrefersDark] = useState(
     () =>
       typeof window !== 'undefined' &&
@@ -267,17 +298,62 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const navigate = useNavigate()
+  const pathname = useRouterState({ select: (st) => st.location.pathname })
+  const settingsTabSearch = useRouterState({
+    select: (st) => (st.location.search as { settings?: SettingsTab }).settings,
+  })
+  const params = useParams({ strict: false }) as {
+    convId?: string
+    projectId?: string
+  }
+  const routeConvId = params.convId
+
+  const { view, authView } = useMemo(() => pathToView(pathname), [pathname])
+  const nav: NavState = useMemo(
+    () => ({
+      view,
+      authView,
+      settingsOpen: settingsTabSearch != null,
+      settingsTab: settingsTabSearch ?? 'general',
+      activeConv: routeConvId ?? s.activeConv,
+    }),
+    [view, authView, settingsTabSearch, routeConvId, s.activeConv],
+  )
+  const navRef = useRef(nav)
+  navRef.current = nav
+
   const go = useCallback(
-    (view: ViewName) => set({ view, palette: false, drawerOpen: false }),
-    [set],
+    (view: ViewName) => {
+      set({ palette: false, drawerOpen: false })
+      switch (view) {
+        case 'home':
+          navigate({ to: '/' })
+          break
+        case 'conversation':
+          navigate({ to: '/chat/$convId', params: { convId: navRef.current.activeConv } })
+          break
+        case 'projects':
+          navigate({ to: '/projects' })
+          break
+        case 'projectcfg':
+          navigate({ to: '/projects/$projectId', params: { projectId: 'aurora' } })
+          break
+      }
+    },
+    [set, navigate],
   )
 
   const send = useCallback(() => {
+    // empty composer is a no-op: never send a message the user didn't write
+    if (!sRef.current.draft.trim()) return
+    // the URL owns the active conversation; Home (no :convId) falls back to the
+    // last-selected cache so a Home-composed message lands somewhere sensible
+    const convId = navRef.current.activeConv
     setS((prev) => {
-      // empty composer is a no-op: never send a message the user didn't write
       const t = (prev.draft || '').trim()
       if (!t) return prev
-      const conv = prev.activeConv
+      const conv = convId
       clearTimeout(t1.current)
       clearTimeout(t2.current)
       clearInterval(tc.current)
@@ -322,7 +398,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       return {
         ...prev,
-        view: 'conversation',
         threads: {
           ...prev.threads,
           [conv]: [
@@ -337,7 +412,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         typingLabel: prev.thinkingLevel === 'off' ? 'Đang viết câu trả lời…' : 'Nova đang suy nghĩ…',
       }
     })
-  }, [set])
+    navigate({ to: '/chat/$convId', params: { convId } })
+  }, [set, navigate])
 
   const copyCode = useCallback(() => {
     set({ copied: true })
@@ -374,8 +450,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
           : `${Math.max(1, Math.round(file.size / 1024))} KB`
       const item: StagedFile = { id: uid(), kind, name: file.name, size, url }
+      const conv = navRef.current.activeConv
       set((x) => ({
-        staged: { ...x.staged, [x.activeConv]: [...(x.staged[x.activeConv] ?? []), item] },
+        staged: { ...x.staged, [conv]: [...(x.staged[conv] ?? []), item] },
       }))
     },
     [set],
@@ -389,17 +466,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearTimeout(delTimers.current[id])
       delTimers.current[id] = setTimeout(() => {
         delete delTimers.current[id]
+        const next = sRef.current.conversations.filter((k) => k.id !== id)[0]?.id ?? ''
         set((x) => {
           const conversations = x.conversations.filter((k) => k.id !== id)
           const threads = { ...x.threads }
           delete threads[id]
-          const activeConv =
-            x.activeConv === id ? (conversations[0]?.id ?? '') : x.activeConv
-          return { conversations, threads, activeConv, deleting: x.deleting.filter((d) => d !== id) }
+          return {
+            conversations,
+            threads,
+            activeConv: x.activeConv === id ? next : x.activeConv,
+            deleting: x.deleting.filter((d) => d !== id),
+          }
         })
+        // if the deleted conversation is the one in the URL, leave it
+        if (navRef.current.activeConv === id) {
+          navigate(next ? { to: '/chat/$convId', params: { convId: next } } : { to: '/' })
+        }
       }, 5000)
     },
-    [set],
+    [set, navigate],
   )
 
   const undoDelete = useCallback(
@@ -423,14 +508,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dark = s.theme === 'dark' || (s.theme === 'auto' && prefersDark)
 
   const v = useMemo(
-    () => deriveValues(s, set, { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete }),
-    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete],
+    () =>
+      deriveValues(s, set, {
+        go,
+        send,
+        stop,
+        copyCode,
+        dark,
+        scrollRef,
+        delConv,
+        undoDelete,
+        nav,
+        navigate,
+      }),
+    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate],
   )
 
   const store: Store = useMemo(
     () => ({ s, set, v, scrollRef, addUpload }),
     [s, set, v, addUpload],
   )
+
+  // expose the live store to tests (no-op in production where onStore is unset).
+  // Called during render rather than in an effect so capture does not depend on
+  // effect-flush timing, which router transitions can disrupt across tests.
+  onStore?.(store)
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>
 }
@@ -450,18 +552,21 @@ function deriveValues(
     scrollRef: React.RefObject<HTMLDivElement | null>
     delConv: (id: string) => void
     undoDelete: (id: string) => void
+    nav: NavState
+    navigate: Navigate
   },
 ) {
-  const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete } = extra
+  const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete, nav, navigate } = extra
+  const activeConv = nav.activeConv
   const accent = s.accent ?? ACCENT_DEFAULT
   const adv = s.advanced
   const accentText = 'var(--accent-text)'
   const isMobile = s.vw < 880
   const isDesktop = !isMobile
   const rs = s.respState
-  const activeThread = s.threads[s.activeConv] ?? []
-  const activeStaged = s.staged[s.activeConv] ?? []
-  const activeIsDemo = !!s.conversations.find((c) => c.id === s.activeConv)?.demo
+  const activeThread = s.threads[activeConv] ?? []
+  const activeStaged = s.staged[activeConv] ?? []
+  const activeIsDemo = !!s.conversations.find((c) => c.id === activeConv)?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
   const toolToggle = (k: keyof NovaState['tools']) => () =>
@@ -576,7 +681,7 @@ function deriveValues(
   const sideConvs = [...s.conversations]
     .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
     .map((c) => {
-      const isActive = c.id === s.activeConv
+      const isActive = c.id === activeConv
       return {
         id: c.id,
         title: c.title,
@@ -586,8 +691,10 @@ function deriveValues(
         deleting: s.deleting.includes(c.id),
         bg: isActive ? 'var(--accent-soft)' : 'transparent',
         fg: isActive ? 'var(--text)' : 'var(--text-2)',
-        open: () =>
-          set({ activeConv: c.id, view: 'conversation', palette: false, drawerOpen: false }),
+        open: () => {
+          set({ activeConv: c.id, palette: false, drawerOpen: false })
+          navigate({ to: '/chat/$convId', params: { convId: c.id } })
+        },
         rename: () => {
           const next =
             typeof window !== 'undefined' && window.prompt
@@ -648,10 +755,10 @@ function deriveValues(
     simpleMode: !adv,
     isDesktop,
     isMobile,
-    isHome: s.view === 'home',
-    isConv: s.view === 'conversation',
-    isProjects: s.view === 'projects',
-    isProjectCfg: s.view === 'projectcfg',
+    isHome: nav.view === 'home',
+    isConv: nav.view === 'conversation',
+    isProjects: nav.view === 'projects',
+    isProjectCfg: nav.view === 'projectcfg',
     // sidebar
     showSidebar: isDesktop,
     sidebarW: s.sidebarCollapsed ? '62px' : '256px',
@@ -663,21 +770,32 @@ function deriveValues(
     sideProjects,
     sideConvs,
     pickProjects,
-    setBg: s.settingsOpen ? 'var(--accent-soft)' : 'transparent',
-    setFg: s.settingsOpen ? accentText : 'var(--text-2)',
-    settingsOpen: s.settingsOpen,
-    settingsTab: s.settingsTab,
-    openSettings: (tab: SettingsTab) =>
-      set({ settingsOpen: true, settingsTab: tab, palette: false, drawerOpen: false }),
-    closeSettings: () => set({ settingsOpen: false }),
-    setSettingsTab: (tab: SettingsTab) => set({ settingsTab: tab }),
+    setBg: nav.settingsOpen ? 'var(--accent-soft)' : 'transparent',
+    setFg: nav.settingsOpen ? accentText : 'var(--text-2)',
+    settingsOpen: nav.settingsOpen,
+    settingsTab: nav.settingsTab,
+    openSettings: (tab: SettingsTab) => {
+      set({ palette: false, drawerOpen: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: tab }) })
+    },
+    closeSettings: () =>
+      navigate({
+        to: '.',
+        search: (prev) => {
+          const next = { ...prev }
+          delete next.settings
+          return next
+        },
+      }),
+    setSettingsTab: (tab: SettingsTab) =>
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: tab }) }),
     drawerOpen: s.drawerOpen,
     openDrawer: () => set({ drawerOpen: true }),
     closeDrawer: () => set({ drawerOpen: false }),
     // top
     // the top bar reflects the conversation currently open, not a fixed project
     headerTitle:
-      s.conversations.find((c) => c.id === s.activeConv)?.title ?? 'Cuộc trò chuyện',
+      s.conversations.find((c) => c.id === activeConv)?.title ?? 'Cuộc trò chuyện',
     palette: s.palette,
     quiet: s.quiet,
     notQuiet: !s.quiet,
@@ -723,7 +841,7 @@ function deriveValues(
       set((x) => ({
         staged: {
           ...x.staged,
-          [x.activeConv]: (x.staged[x.activeConv] ?? []).filter((f) => f.id !== id),
+          [activeConv]: (x.staged[activeConv] ?? []).filter((f) => f.id !== id),
         },
       })),
     openLightbox: () => set({ preview: { kind: 'image', name: 'moodboard.png' } }),
@@ -768,27 +886,27 @@ function deriveValues(
     dark,
     themeClass: dark ? 'dark' : '',
     // auth
-    isOnboarding: s.authView === 'onboarding',
-    isLoginForm: s.authView === 'login' || s.authView === 'signup',
-    finishOnboarding: () => set({ authView: null }),
-    showAuth: !!s.authView,
-    loggedIn: s.authView === null,
-    isLogin: s.authView !== 'signup',
-    logout: () => set({ authView: 'login' }),
+    isOnboarding: nav.authView === 'onboarding',
+    isLoginForm: nav.authView === 'login' || nav.authView === 'signup',
+    finishOnboarding: () => navigate({ to: '/' }),
+    showAuth: nav.authView !== null,
+    loggedIn: nav.authView === null,
+    isLogin: nav.authView !== 'signup',
+    logout: () => navigate({ to: '/login' }),
     doLogin: () =>
-      set({ authView: s.authView === 'signup' ? 'onboarding' : null }),
-    authTitle: s.authView === 'signup' ? 'Tạo tài khoản' : 'Đăng nhập',
+      navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' }),
+    authTitle: nav.authView === 'signup' ? 'Tạo tài khoản' : 'Đăng nhập',
     authSub:
-      s.authView === 'signup'
+      nav.authView === 'signup'
         ? 'Bắt đầu với Nova trong một phút.'
         : 'Tiếp tục tới không gian làm việc của bạn.',
-    authCta: s.authView === 'signup' ? 'Tạo tài khoản' : 'Tiếp tục',
-    authToggleText: s.authView === 'signup' ? 'Đã có tài khoản?' : 'Chưa có tài khoản?',
-    authToggleLink: s.authView === 'signup' ? 'Đăng nhập' : 'Đăng ký',
+    authCta: nav.authView === 'signup' ? 'Tạo tài khoản' : 'Tiếp tục',
+    authToggleText: nav.authView === 'signup' ? 'Đã có tài khoản?' : 'Chưa có tài khoản?',
+    authToggleLink: nav.authView === 'signup' ? 'Đăng nhập' : 'Đăng ký',
     authToggleAct:
-      s.authView === 'signup'
-        ? () => set({ authView: 'login' })
-        : () => set({ authView: 'signup' }),
+      nav.authView === 'signup'
+        ? () => navigate({ to: '/login' })
+        : () => navigate({ to: '/signup' }),
     // approval
     respApproval: rs === 'approval',
     setApproval: () => set({ respState: 'approval', traceOpen: false }),
@@ -918,10 +1036,14 @@ function deriveValues(
     goConv: () => go('conversation'),
     goProjects: () => go('projects'),
     goProjectCfg: () => go('projectcfg'),
-    goAssistant: () =>
-      set({ settingsOpen: true, settingsTab: 'assistant', palette: false, drawerOpen: false }),
-    goSettings: () =>
-      set({ settingsOpen: true, settingsTab: 'general', palette: false, drawerOpen: false }),
+    goAssistant: () => {
+      set({ palette: false, drawerOpen: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'assistant' }) })
+    },
+    goSettings: () => {
+      set({ palette: false, drawerOpen: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'general' }) })
+    },
     togglePalette: () => set((x) => ({ palette: !x.palette, drawerOpen: false })),
     closeMenus: () => set({ palette: false }),
     pickOpus: () => set({ model: 'opus' }),
@@ -942,22 +1064,27 @@ function deriveValues(
     copyCode,
     pConvAurora: () => go('conversation'),
     pProjects: () => go('projects'),
-    pAssistant: () => set({ settingsOpen: true, settingsTab: 'assistant', palette: false }),
-    pSettings: () => set({ settingsOpen: true, settingsTab: 'general', palette: false }),
-    pNewChat: () =>
-      set((x) => {
-        const id = uid()
-        return {
-          view: 'conversation',
-          conversations: [{ id, title: 'Cuộc trò chuyện mới' }, ...x.conversations],
-          threads: { ...x.threads, [id]: [] },
-          activeConv: id,
-          respState: 'done',
-          palette: false,
-          drawerOpen: false,
-        }
-      }),
+    pAssistant: () => {
+      set({ palette: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'assistant' }) })
+    },
+    pSettings: () => {
+      set({ palette: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'general' }) })
+    },
+    pNewChat: () => {
+      const id = uid()
+      set((x) => ({
+        conversations: [{ id, title: 'Cuộc trò chuyện mới' }, ...x.conversations],
+        threads: { ...x.threads, [id]: [] },
+        activeConv: id,
+        respState: 'done',
+        palette: false,
+        drawerOpen: false,
+      }))
+      navigate({ to: '/chat/$convId', params: { convId: id } })
+    },
     pQuiet: () => set({ quiet: true, palette: false }),
-    openLogin: () => set({ authView: 'login' }),
+    openLogin: () => navigate({ to: '/login' }),
   }
 }

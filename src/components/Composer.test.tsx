@@ -1,38 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeUser } from "../test/util"
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { makeUser, renderWithStore } from '../test/util'
+import { screen, waitFor, within } from '@testing-library/react'
 import { Composer } from './Composer'
-import { StoreProvider, useStore } from '../state/store'
+import { useStore } from '../state/store'
 
 beforeEach(() => localStorage.clear())
 
 function renderComposer() {
-  return render(
-    <StoreProvider>
-      <Composer />
-    </StoreProvider>,
-  )
+  return renderWithStore(<Composer />)
 }
 
 describe('<Composer>', () => {
   it('opens the "add to chat" menu (Radix) and lists tools', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByText('Tải ảnh lên')).toBeInTheDocument()
     expect(within(menu).getByText('Tra cứu web')).toBeInTheDocument()
   })
 
-  it('exposes the thinking-level and project menus as accessible triggers', () => {
-    renderComposer()
+  it('exposes the thinking-level and project menus as accessible triggers', async () => {
+    await renderComposer()
     expect(screen.getByRole('button', { name: /Mức suy nghĩ/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Dự án/ })).toBeInTheDocument()
   })
 
   it('reflects typing into the message field', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     const input = screen.getByRole('textbox', { name: 'Nhắn cho Nova' })
     await user.type(input, 'xin chào')
     expect(input).toHaveValue('xin chào')
@@ -40,7 +36,7 @@ describe('<Composer>', () => {
 
   it('keeps the add-to-chat menu open while toggling a tool', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
     await user.click(within(menu).getByText('Tra cứu web'))
@@ -52,7 +48,7 @@ describe('<Composer>', () => {
 describe('<Composer> — cap-menu items', () => {
   it('opens a staged file from its chip', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Mở Brief-Aurora.pdf' }))
     // openStaged ran without error; the chip is still present
     expect(screen.getByText('Brief-Aurora.pdf')).toBeInTheDocument()
@@ -60,14 +56,14 @@ describe('<Composer> — cap-menu items', () => {
 
   it('removes a staged file from its chip', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: /Bỏ Brief-Aurora\.pdf/ }))
     expect(screen.queryByText('Brief-Aurora.pdf')).not.toBeInTheDocument()
   })
 
   it('triggers the upload-file and project items (menu closes on select)', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
     await user.click(within(menu).getByText('Tải tệp lên'))
@@ -76,7 +72,7 @@ describe('<Composer> — cap-menu items', () => {
 
   it('opens and removes the staged image via its chip buttons', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Mở moodboard.png' }))
     await user.click(screen.getByRole('button', { name: 'Bỏ moodboard.png' }))
     expect(screen.queryByRole('button', { name: 'Bỏ moodboard.png' })).not.toBeInTheDocument()
@@ -84,7 +80,7 @@ describe('<Composer> — cap-menu items', () => {
 
   it('triggers the add-from-project and screenshot items', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     await user.click(within(await screen.findByRole('menu')).getByText('Thêm từ dự án'))
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
@@ -94,7 +90,7 @@ describe('<Composer> — cap-menu items', () => {
 
   it('toggles every Nova tool from the menu', async () => {
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
     for (const label of ['Đọc trang web', 'Tài liệu của bạn']) {
@@ -108,7 +104,7 @@ describe('<Composer> — real upload', () => {
   it('stages an uploaded image (object URL) with a remove control', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:mock')
     const user = makeUser()
-    renderComposer()
+    await renderComposer()
     const imgInput = document.querySelector(
       'input[type="file"][accept="image/*"]',
     ) as HTMLInputElement
@@ -127,11 +123,11 @@ function ToolProbe() {
 describe('<Composer> + store wiring', () => {
   it('actually flips the tool state in the store', async () => {
     const user = makeUser()
-    render(
-      <StoreProvider>
+    await renderWithStore(
+      <>
         <Composer />
         <ToolProbe />
-      </StoreProvider>,
+      </>,
     )
     expect(screen.getByTestId('web')).toHaveTextContent('true')
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))

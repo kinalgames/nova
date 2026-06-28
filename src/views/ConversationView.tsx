@@ -19,7 +19,6 @@ const FILE_BADGE = 'flex h-7 w-6 shrink-0 items-center justify-center rounded-xs
 
 export function ConversationView() {
   const { v } = useStore()
-  if (!v.isConv) return null
   return (
     <div className="view absolute inset-0 flex">
       <div className="flex min-w-0 flex-1 flex-col">

@@ -1,28 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { makeUser } from './test/util'
-import { render, screen, within } from '@testing-library/react'
-import App from './App'
-import { StoreProvider } from './state/store'
+import { makeUser, renderApp } from './test/util'
+import { screen, within } from '@testing-library/react'
 
-function renderApp() {
-  return render(
-    <StoreProvider>
-      <App />
-    </StoreProvider>,
-  )
-}
 beforeEach(() => localStorage.clear())
 
 describe('App — shell & navigation', () => {
-  it('renders the conversation shell with a composer by default', () => {
-    renderApp()
+  it('renders the conversation shell with a composer by default', async () => {
+    await renderApp()
     expect(screen.getByRole('textbox', { name: 'Nhắn cho Nova' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Gửi' })).toBeInTheDocument()
   })
 
   it('navigates to Settings via the account menu', async () => {
     const user = makeUser()
-    renderApp()
+    await renderApp()
     await user.click(screen.getByRole('button', { name: /Tài khoản/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Cài đặt' }))
     expect(await screen.findByText('Chế độ nâng cao')).toBeInTheDocument()
@@ -30,7 +21,7 @@ describe('App — shell & navigation', () => {
 
   it('reaches the assistant config via the settings dialog Trợ lý tab', async () => {
     const user = makeUser()
-    renderApp()
+    await renderApp()
     await user.click(screen.getByRole('button', { name: /Tài khoản/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Cài đặt' }))
     await user.click(await screen.findByRole('tab', { name: 'Trợ lý' }))
@@ -39,7 +30,7 @@ describe('App — shell & navigation', () => {
 
   it('opens the command palette (Radix dialog) from the sidebar search', async () => {
     const user = makeUser()
-    renderApp()
+    await renderApp()
     await user.click(screen.getByRole('button', { name: /Tìm/ }))
     const dialog = await screen.findByRole('dialog')
     expect(
@@ -51,7 +42,7 @@ describe('App — shell & navigation', () => {
 describe('App — sending a message', () => {
   it('appends the typed message to the conversation', async () => {
     const user = makeUser()
-    renderApp()
+    await renderApp()
     const input = screen.getByRole('textbox', { name: 'Nhắn cho Nova' })
     await user.type(input, 'Phân tích quý 4 giúp mình')
     await user.click(screen.getByRole('button', { name: 'Gửi' }))

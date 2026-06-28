@@ -1,45 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
-import { PERSIST_KEY, StoreProvider, useStore } from './store'
+import { act } from '@testing-library/react'
+import { PERSIST_KEY } from './store'
+import { renderStore } from '../test/util'
 
 function setup() {
-  return renderHook(() => useStore(), { wrapper: StoreProvider })
+  return renderStore()
 }
 
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
 
 describe('store — initial state', () => {
-  it('boots into a conversation with the default model, light theme', () => {
-    const { result } = setup()
-    expect(result.current.s.view).toBe('conversation')
+  it('boots into a conversation with the default model, light theme', async () => {
+    const { result } = await setup()
+    expect(result.current.v.isConv).toBe(true)
     expect(result.current.s.model).toBe('opus')
     expect(result.current.s.theme).toBe('light')
     expect(result.current.v.dark).toBe(false)
   })
 
-  it('seeds two demo attachments on the demo conversation', () => {
-    const { result } = setup()
+  it('seeds two demo attachments on the demo conversation', async () => {
+    const { result } = await setup()
     expect(result.current.v.staged).toHaveLength(2)
     expect(result.current.v.hasStaged).toBe(true)
   })
 })
 
 describe('store — navigation', () => {
-  it('go* handlers switch the active view and the isX flags follow', () => {
-    const { result } = setup()
+  it('go* handlers switch the active view and the isX flags follow', async () => {
+    const { result } = await setup()
     act(() => result.current.v.goSettings())
-    expect(result.current.s.settingsOpen).toBe(true)
-    expect(result.current.s.settingsTab).toBe('general')
+    expect(result.current.v.settingsOpen).toBe(true)
+    expect(result.current.v.settingsTab).toBe('general')
     act(() => result.current.v.goAssistant())
-    expect(result.current.s.settingsTab).toBe('assistant')
-    expect(result.current.s.settingsOpen).toBe(true)
+    expect(result.current.v.settingsTab).toBe('assistant')
+    expect(result.current.v.settingsOpen).toBe(true)
   })
 })
 
 describe('store — model & thinking', () => {
-  it('switches model and reflects the label', () => {
-    const { result } = setup()
+  it('switches model and reflects the label', async () => {
+    const { result } = await setup()
     act(() => result.current.v.pickHaiku())
     expect(result.current.s.model).toBe('haiku')
     expect(result.current.v.modelLabel).toBe('Nhanh')
@@ -48,8 +49,8 @@ describe('store — model & thinking', () => {
     expect(result.current.v.modelLabel).toBe('Thông minh')
   })
 
-  it('sets the thinking level and label', () => {
-    const { result } = setup()
+  it('sets the thinking level and label', async () => {
+    const { result } = await setup()
     act(() => result.current.v.setThinkHigh())
     expect(result.current.s.thinkingLevel).toBe('high')
     expect(result.current.v.thinkLabel).toBe('Cao')
@@ -59,8 +60,8 @@ describe('store — model & thinking', () => {
 })
 
 describe('store — tools', () => {
-  it('toggles a tool and updates the active count', () => {
-    const { result } = setup()
+  it('toggles a tool and updates the active count', async () => {
+    const { result } = await setup()
     const before = result.current.v.activeCount
     act(() => result.current.v.toggle_web())
     expect(result.current.s.tools.web).toBe(false)
@@ -71,8 +72,8 @@ describe('store — tools', () => {
 })
 
 describe('store — response demo states', () => {
-  it('moves through stream / error / approval / done', () => {
-    const { result } = setup()
+  it('moves through stream / error / approval / done', async () => {
+    const { result } = await setup()
     act(() => result.current.v.setStream())
     expect(result.current.v.isStream).toBe(true)
     act(() => result.current.v.setError())
@@ -85,8 +86,8 @@ describe('store — response demo states', () => {
 })
 
 describe('store — theme persistence', () => {
-  it('dark mode flips v.dark and persists to localStorage', () => {
-    const { result } = setup()
+  it('dark mode flips v.dark and persists to localStorage', async () => {
+    const { result } = await setup()
     act(() => result.current.v.setDark())
     expect(result.current.s.theme).toBe('dark')
     expect(result.current.v.dark).toBe(true)
@@ -94,18 +95,18 @@ describe('store — theme persistence', () => {
     expect(saved.theme).toBe('dark')
   })
 
-  it('restores persisted settings on a fresh mount', () => {
+  it('restores persisted settings on a fresh mount', async () => {
     localStorage.setItem(PERSIST_KEY, JSON.stringify({ model: 'haiku', advanced: true }))
-    const { result } = setup()
+    const { result } = await setup()
     expect(result.current.s.model).toBe('haiku')
     expect(result.current.s.advanced).toBe(true)
   })
 })
 
 describe('store — composer send', () => {
-  it('appends the user message immediately, then a Nova reply after the delay', () => {
+  it('appends the user message immediately, then a Nova reply after the delay', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     act(() => result.current.set({ draft: 'Tóm tắt giúp mình' }))
     act(() => result.current.v.send())
     // user message in flight
@@ -120,8 +121,8 @@ describe('store — composer send', () => {
     expect(result.current.v.sent.at(-1)?.isNova).toBe(true)
   })
 
-  it('ignores send when the draft is empty (no message, no typing)', () => {
-    const { result } = setup()
+  it('ignores send when the draft is empty (no message, no typing)', async () => {
+    const { result } = await setup()
     const before = result.current.v.sent.length
     act(() => result.current.v.send())
     expect(result.current.v.sent.length).toBe(before)
@@ -131,8 +132,8 @@ describe('store — composer send', () => {
 })
 
 describe('store — attachments', () => {
-  it('removes a staged file by id', () => {
-    const { result } = setup()
+  it('removes a staged file by id', async () => {
+    const { result } = await setup()
     const id = result.current.v.staged[0].id
     act(() => result.current.v.removeStaged(id))
     expect(result.current.v.staged.find((f) => f.id === id)).toBeUndefined()

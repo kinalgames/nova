@@ -63,16 +63,12 @@ export interface ToolFlags {
 }
 
 export interface NovaState {
-  view: ViewName
-  settingsOpen: boolean
-  settingsTab: SettingsTab
   advanced: boolean
   palette: boolean
   quiet: boolean
   traceOpen: boolean
   drawerOpen: boolean
   sidebarCollapsed: boolean
-  authView: AuthView
   preview: Preview | null
   respState: RespState
   conversations: Conversation[]

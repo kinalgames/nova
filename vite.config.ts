@@ -7,7 +7,9 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 export default defineConfig({
   plugins: [
     // must precede @vitejs/plugin-react so generated route modules are
-    // transformed by the React plugin afterwards
+    // transformed by the React plugin afterwards. Per-route code splitting keeps
+    // the initial bundle lean (unit tests run via vitest.config.ts, which omits
+    // this plugin, so route components stay eager there).
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),
     tailwindcss(),

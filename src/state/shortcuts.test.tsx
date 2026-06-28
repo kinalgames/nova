@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import App from '../App'
-import { renderWithStore } from '../test/util'
+import { renderApp } from '../test/util'
 
 beforeEach(() => localStorage.clear())
 
 describe('global keyboard shortcuts', () => {
   it('⌘K opens the command palette and Escape closes it', async () => {
-    renderWithStore(<App />)
+    await renderApp()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
@@ -16,13 +15,13 @@ describe('global keyboard shortcuts', () => {
   })
 
   it('Ctrl+K works too (non-mac)', async () => {
-    renderWithStore(<App />)
+    await renderApp()
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
   it('⌘. enters quiet/focus mode and toggles back out', async () => {
-    renderWithStore(<App />)
+    await renderApp()
     fireEvent.keyDown(window, { key: '.', metaKey: true })
     expect(await screen.findByText(/TẬP TRUNG/)).toBeInTheDocument()
     fireEvent.keyDown(window, { key: '.', metaKey: true })
@@ -30,7 +29,7 @@ describe('global keyboard shortcuts', () => {
   })
 
   it('Escape closes an open media preview', async () => {
-    renderWithStore(<App />, (s) => s.v.openPdf())
+    await renderApp((s) => s.v.openPdf())
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

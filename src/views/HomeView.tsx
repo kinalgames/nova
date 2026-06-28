@@ -11,7 +11,6 @@ function greeting(): string {
 
 export function HomeView() {
   const { v } = useStore()
-  if (!v.isHome) return null
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
       <div

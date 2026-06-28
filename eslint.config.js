@@ -46,4 +46,12 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    // file-based route modules export `Route` alongside their component by
+    // design (TanStack Router convention) — not a fast-refresh hazard here
+    files: ['src/routes/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

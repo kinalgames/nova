@@ -1,0 +1,4 @@
+# SPA fallback for client-side routing (TanStack Router, browser history).
+# Any deep link (e.g. /chat/:id, /projects/:id, /login) must serve index.html
+# so the router can resolve it. Recognised by Cloudflare Pages and Netlify.
+/*    /index.html   200

@@ -1,62 +1,62 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
-import { StoreProvider, useStore } from './store'
+import { act } from '@testing-library/react'
+import { renderStore } from '../test/util'
 
 function setup() {
-  return renderHook(() => useStore(), { wrapper: StoreProvider })
+  return renderStore()
 }
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
 
 describe('store — auth flows', () => {
-  it('toggles between login and signup, and signup login lands on onboarding', () => {
-    const { result } = setup()
-    act(() => result.current.v.openLogin())
+  it('toggles between login and signup, and signup login lands on onboarding', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.openLogin())
     expect(result.current.v.isLoginForm).toBe(true)
     expect(result.current.v.authTitle).toBe('Đăng nhập')
-    act(() => result.current.v.authToggleAct())
-    expect(result.current.s.authView).toBe('signup')
+    await act(async () => result.current.v.authToggleAct())
+    expect(result.current.v.authTitle).toBe('Tạo tài khoản')
     expect(result.current.v.authCta).toBe('Tạo tài khoản')
-    act(() => result.current.v.doLogin())
+    await act(async () => result.current.v.doLogin())
     expect(result.current.v.isOnboarding).toBe(true)
-    act(() => result.current.v.finishOnboarding())
+    await act(async () => result.current.v.finishOnboarding())
     expect(result.current.v.showAuth).toBe(false)
   })
 })
 
 describe('store — approval flow', () => {
-  it('approves and denies a tool request back to done', () => {
-    const { result } = setup()
-    act(() => result.current.v.setApproval())
+  it('approves and denies a tool request back to done', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.setApproval())
     expect(result.current.v.respApproval).toBe(true)
-    act(() => result.current.v.approveTool())
+    await act(async () => result.current.v.approveTool())
     expect(result.current.v.isDone).toBe(true)
-    act(() => result.current.v.setApproval())
-    act(() => result.current.v.denyTool())
+    await act(async () => result.current.v.setApproval())
+    await act(async () => result.current.v.denyTool())
     expect(result.current.v.isDone).toBe(true)
   })
 })
 
 describe('store — focus durations', () => {
-  it('covers 15 / 25 / 50', () => {
-    const { result } = setup()
-    act(() => result.current.v.setF15())
+  it('covers 15 / 25 / 50', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.setF15())
     expect(result.current.s.focusDur).toBe('15')
-    act(() => result.current.v.setF25())
+    await act(async () => result.current.v.setF25())
     expect(result.current.s.focusDur).toBe('25')
-    act(() => result.current.v.setF50())
+    await act(async () => result.current.v.setF50())
     expect(result.current.s.focusDur).toBe('50')
   })
 })
 
 describe('store — answer styles', () => {
-  it('toggles each style flag', () => {
-    const { result } = setup()
+  it('toggles each style flag', async () => {
+    const { result } = await setup()
     const s0 = { ...result.current.s.styles }
-    act(() => result.current.v.toggleConcise())
-    act(() => result.current.v.toggleWarm())
-    act(() => result.current.v.toggleFormal())
-    act(() => result.current.v.toggleHumor())
+    await act(async () => result.current.v.toggleConcise())
+    await act(async () => result.current.v.toggleWarm())
+    await act(async () => result.current.v.toggleFormal())
+    await act(async () => result.current.v.toggleHumor())
     expect(result.current.s.styles.concise).toBe(!s0.concise)
     expect(result.current.s.styles.warm).toBe(!s0.warm)
     expect(result.current.s.styles.formal).toBe(!s0.formal)
@@ -65,204 +65,204 @@ describe('store — answer styles', () => {
 })
 
 describe('store — thinking levels', () => {
-  it('covers low / normal and the chip flags', () => {
-    const { result } = setup()
-    act(() => result.current.v.setThinkLow())
+  it('covers low / normal and the chip flags', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.setThinkLow())
     expect(result.current.v.thinkChkLow).toBe('✓')
-    act(() => result.current.v.setThinkNormal())
+    await act(async () => result.current.v.setThinkNormal())
     expect(result.current.v.thinkChkNormal).toBe('✓')
     expect(result.current.v.showThinkChip).toBe(true)
   })
 })
 
 describe('store — preview formats', () => {
-  it('covers csv, md, image and the isPrev flags', () => {
-    const { result } = setup()
-    act(() => result.current.v.openCsv())
+  it('covers csv, md, image and the isPrev flags', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.openCsv())
     expect(result.current.v.isPrevCsv).toBe(true)
-    act(() => result.current.v.openMd())
+    await act(async () => result.current.v.openMd())
     expect(result.current.v.isPrevMd).toBe(true)
-    act(() => result.current.v.openLightbox())
+    await act(async () => result.current.v.openLightbox())
     expect(result.current.v.isPrevImage).toBe(true)
   })
 })
 
 describe('store — sidebar / drawer', () => {
-  it('collapses the sidebar', () => {
-    const { result } = setup()
-    act(() => result.current.v.collapseSidebar())
+  it('collapses the sidebar', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.collapseSidebar())
     expect(result.current.s.sidebarCollapsed).toBe(true)
   })
-  it('opens and closes the mobile drawer', () => {
-    const { result } = setup()
-    act(() => result.current.v.openDrawer())
+  it('opens and closes the mobile drawer', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.openDrawer())
     expect(result.current.s.drawerOpen).toBe(true)
-    act(() => result.current.v.closeDrawer())
+    await act(async () => result.current.v.closeDrawer())
     expect(result.current.s.drawerOpen).toBe(false)
   })
-  it('toggles the shortcuts bar', () => {
-    const { result } = setup()
-    act(() => result.current.v.toggleBar())
+  it('toggles the shortcuts bar', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.toggleBar())
     expect(result.current.s.barOn).toBe(false)
   })
 })
 
 describe('store — palette actions', () => {
-  it('new chat resets to a fresh empty conversation', () => {
-    const { result } = setup()
-    act(() => result.current.v.pNewChat())
-    expect(result.current.s.view).toBe('conversation')
+  it('new chat resets to a fresh empty conversation', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.pNewChat())
+    expect(result.current.v.isConv).toBe(true)
     expect(result.current.v.sent).toHaveLength(0)
     expect(result.current.v.isEmptyChat).toBe(true)
   })
-  it('covers the remaining palette jumps', () => {
-    const { result } = setup()
-    act(() => result.current.v.pConvAurora())
+  it('covers the remaining palette jumps', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.pConvAurora())
     expect(result.current.v.isConv).toBe(true)
-    act(() => result.current.v.pAssistant())
-    expect(result.current.s.settingsTab).toBe('assistant')
-    act(() => result.current.v.pSettings())
-    expect(result.current.s.settingsTab).toBe('general')
-    act(() => result.current.v.pQuiet())
+    await act(async () => result.current.v.pAssistant())
+    expect(result.current.v.settingsTab).toBe('assistant')
+    await act(async () => result.current.v.pSettings())
+    expect(result.current.v.settingsTab).toBe('general')
+    await act(async () => result.current.v.pQuiet())
     expect(result.current.s.quiet).toBe(true)
   })
 })
 
 describe('store — per-conversation threads', () => {
-  it('switching conversations loads that thread; the demo conv flags hasDemo', () => {
-    const { result } = setup()
+  it('switching conversations loads that thread; the demo conv flags hasDemo', async () => {
+    const { result } = await setup()
     const open = (id: string) => result.current.v.sideConvs.find((c) => c.id === id)!.open()
-    act(() => open('c2'))
+    await act(async () => open('c2'))
     expect(result.current.s.activeConv).toBe('c2')
     expect(result.current.v.sent.length).toBeGreaterThan(0)
     expect(result.current.v.hasDemo).toBe(false)
-    act(() => open('c1'))
+    await act(async () => open('c1'))
     expect(result.current.v.hasDemo).toBe(true)
   })
 
-  it('new chat creates an empty conversation; send appends to it only', () => {
+  it('new chat creates an empty conversation; send appends to it only', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     const before = result.current.v.sideConvs.length
-    act(() => result.current.v.pNewChat())
+    await act(async () => result.current.v.pNewChat())
     expect(result.current.v.sideConvs.length).toBe(before + 1)
     expect(result.current.v.sent).toHaveLength(0)
     const id = result.current.s.activeConv
-    act(() => result.current.set({ draft: 'xin chào' }))
-    act(() => result.current.v.send())
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => result.current.set({ draft: 'xin chào' }))
+    await act(async () => result.current.v.send())
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.threads[id].length).toBeGreaterThan(1)
     // the demo conversation's thread is untouched
     expect(result.current.s.threads.c1).toHaveLength(0)
   })
 
-  it('deleting the active conversation switches to another (after the undo window)', () => {
+  it('deleting the active conversation switches to another (after the undo window)', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     expect(result.current.s.activeConv).toBe('c1')
-    act(() => result.current.v.sideConvs.find((c) => c.id === 'c1')!.del())
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c1')!.del())
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.activeConv).not.toBe('c1')
     expect(result.current.s.conversations.find((c) => c.id === 'c1')).toBeUndefined()
   })
 
-  it('deleting a non-active conversation keeps the active one', () => {
+  it('deleting a non-active conversation keeps the active one', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.v.sideConvs.find((c) => c.id === 'c2')!.del())
-    act(() => vi.advanceTimersByTime(5000))
+    const { result } = await setup()
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c2')!.del())
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.activeConv).toBe('c1')
     expect(result.current.s.conversations.find((c) => c.id === 'c2')).toBeUndefined()
   })
 })
 
 describe('store — recent conversations (rename / pin / delete)', () => {
-  it('deletes a conversation by id (after the undo window)', () => {
+  it('deletes a conversation by id (after the undo window)', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     const target = result.current.v.sideConvs[1]
     const len = result.current.v.sideConvs.length
-    act(() => target.del())
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => target.del())
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.v.sideConvs).toHaveLength(len - 1)
     expect(result.current.v.sideConvs.find((c) => c.id === target.id)).toBeUndefined()
   })
-  it('pins a conversation to the top and flags it', () => {
-    const { result } = setup()
+  it('pins a conversation to the top and flags it', async () => {
+    const { result } = await setup()
     const target = result.current.v.sideConvs[2]
-    act(() => target.pin())
+    await act(async () => target.pin())
     expect(result.current.v.sideConvs[0].id).toBe(target.id)
     expect(result.current.v.sideConvs[0].pinned).toBe(true)
   })
-  it('renames via prompt and persists', () => {
+  it('renames via prompt and persists', async () => {
     const orig = window.prompt
     window.prompt = vi.fn(() => 'Tên mới')
-    const { result } = setup()
+    const { result } = await setup()
     const target = result.current.v.sideConvs[0]
-    act(() => target.rename())
+    await act(async () => target.rename())
     expect(result.current.v.sideConvs.find((c) => c.id === target.id)?.title).toBe('Tên mới')
     window.prompt = orig
   })
 })
 
 describe('store — optimistic conversation delete + undo', () => {
-  it('del flags the conversation as deleting and keeps it during the undo window', () => {
+  it('del flags the conversation as deleting and keeps it during the undo window', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.v.sideConvs.find((c) => c.id === 'c3')!.del())
+    const { result } = await setup()
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c3')!.del())
     expect(result.current.v.sideConvs.find((c) => c.id === 'c3')?.deleting).toBe(true)
     expect(result.current.s.conversations.find((c) => c.id === 'c3')).toBeDefined()
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.conversations.find((c) => c.id === 'c3')).toBeUndefined()
   })
 
-  it('undo cancels a pending delete and restores the conversation', () => {
+  it('undo cancels a pending delete and restores the conversation', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.v.sideConvs.find((c) => c.id === 'c3')!.del())
-    act(() => result.current.v.sideConvs.find((c) => c.id === 'c3')!.undo())
-    act(() => vi.advanceTimersByTime(6000))
+    const { result } = await setup()
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c3')!.del())
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c3')!.undo())
+    await act(async () => vi.advanceTimersByTime(6000))
     expect(result.current.s.conversations.find((c) => c.id === 'c3')).toBeDefined()
     expect(result.current.v.sideConvs.find((c) => c.id === 'c3')?.deleting).toBe(false)
   })
 })
 
 describe('store — preset toggles', () => {
-  it('toggling a project preset updates the active-skill summary', () => {
-    const { result } = setup()
+  it('toggling a project preset updates the active-skill summary', async () => {
+    const { result } = await setup()
     const proj = result.current.v.presetsProj[0] // 'code' / Lập trình, off by default
     expect(proj.on).toBe(false)
     expect(result.current.v.projActiveNames).not.toContain('Lập trình')
-    act(() => proj.toggle())
+    await act(async () => proj.toggle())
     expect(result.current.s.projPresets.code).toBe(true)
     expect(result.current.v.projActiveNames).toContain('Lập trình')
   })
 })
 
 describe('store — copy & search input', () => {
-  it('copyCode marks copied then clears after the delay', () => {
+  it('copyCode marks copied then clears after the delay', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.v.copyCode())
+    const { result } = await setup()
+    await act(async () => result.current.v.copyCode())
     expect(result.current.s.copied).toBe(true)
     expect(result.current.v.copyLabel).toBe('Đã chép')
-    act(() => vi.advanceTimersByTime(2000))
+    await act(async () => vi.advanceTimersByTime(2000))
     expect(result.current.s.copied).toBe(false)
   })
-  it('onQ updates the palette query', () => {
-    const { result } = setup()
-    act(() =>
+  it('onQ updates the palette query', async () => {
+    const { result } = await setup()
+    await act(async () =>
       result.current.v.onQ({
         target: { value: 'cài đặt' },
       } as React.ChangeEvent<HTMLInputElement>),
     )
     expect(result.current.s.q).toBe('cài đặt')
   })
-  it('onKey Enter sends the draft', () => {
+  it('onKey Enter sends the draft', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.set({ draft: 'gửi bằng Enter' }))
-    act(() =>
+    const { result } = await setup()
+    await act(async () => result.current.set({ draft: 'gửi bằng Enter' }))
+    await act(async () =>
       result.current.v.onKey({
         key: 'Enter',
         preventDefault: () => {},
@@ -273,45 +273,46 @@ describe('store — copy & search input', () => {
 })
 
 describe('store — auth toggle branches', () => {
-  it('toggles signup back to login', () => {
-    const { result } = setup()
-    act(() => result.current.set({ authView: 'signup' }))
-    act(() => result.current.v.authToggleAct())
-    expect(result.current.s.authView).toBe('login')
+  it('toggles signup back to login', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.authToggleAct()) // → signup
+    expect(result.current.v.authTitle).toBe('Tạo tài khoản')
+    await act(async () => result.current.v.authToggleAct()) // signup → login
+    expect(result.current.v.authTitle).toBe('Đăng nhập')
   })
 })
 
 describe('store — provider key + connection test', () => {
-  it('saves a key and a valid key tests as connected', () => {
+  it('saves a key and a valid key tests as connected', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     const claude = () => result.current.v.providers.find((p) => p.id === 'claude')!
-    act(() => claude().setKey('sk-ant-new-key-123456'))
+    await act(async () => claude().setKey('sk-ant-new-key-123456'))
     expect(result.current.s.providerKeys.claude).toBe('sk-ant-new-key-123456')
-    act(() => claude().test())
+    await act(async () => claude().test())
     expect(result.current.s.providerStatus.claude).toBe('testing')
-    act(() => vi.advanceTimersByTime(1000))
+    await act(async () => vi.advanceTimersByTime(1000))
     expect(result.current.s.providerStatus.claude).toBe('connected')
   })
-  it('a too-short key tests as error', () => {
+  it('a too-short key tests as error', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     const gemini = () => result.current.v.providers.find((p) => p.id === 'gemini')!
-    act(() => gemini().setKey('x'))
-    act(() => gemini().test())
-    act(() => vi.advanceTimersByTime(1000))
+    await act(async () => gemini().setKey('x'))
+    await act(async () => gemini().test())
+    await act(async () => vi.advanceTimersByTime(1000))
     expect(result.current.s.providerStatus.gemini).toBe('error')
   })
 })
 
 describe('store — file download', () => {
-  it('downloadPreview generates a blob and triggers an anchor download', () => {
+  it('downloadPreview generates a blob and triggers an anchor download', async () => {
     URL.createObjectURL = vi.fn(() => 'blob:x')
     URL.revokeObjectURL = vi.fn()
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-    const { result } = setup()
-    act(() => result.current.v.openMd())
-    act(() => result.current.v.downloadPreview())
+    const { result } = await setup()
+    await act(async () => result.current.v.openMd())
+    await act(async () => result.current.v.downloadPreview())
     expect(URL.createObjectURL).toHaveBeenCalled()
     expect(click).toHaveBeenCalled()
     click.mockRestore()
@@ -319,36 +320,36 @@ describe('store — file download', () => {
 })
 
 describe('store — streaming chat engine', () => {
-  it('appends the user message, then streams a Nova reply token by token', () => {
+  it('appends the user message, then streams a Nova reply token by token', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.set({ draft: 'Viết email cho mình' }))
-    act(() => result.current.v.send())
+    const { result } = await setup()
+    await act(async () => result.current.set({ draft: 'Viết email cho mình' }))
+    await act(async () => result.current.v.send())
     // user message lands immediately; assistant is "thinking"
     expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
     expect(result.current.s.typing).toBe(true)
     // after the thinking pause, an empty Nova bubble appears and starts filling
-    act(() => vi.advanceTimersByTime(700))
+    await act(async () => vi.advanceTimersByTime(700))
     const nova = result.current.v.sent.at(-1)
     expect(nova?.isNova).toBe(true)
     const partial = nova?.text ?? ''
-    act(() => vi.advanceTimersByTime(120))
+    await act(async () => vi.advanceTimersByTime(120))
     expect((result.current.v.sent.at(-1)?.text ?? '').length).toBeGreaterThan(partial.length)
     // streaming completes
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.typing).toBe(false)
     expect((result.current.v.sent.at(-1)?.text ?? '').length).toBeGreaterThan(0)
   })
 
-  it('a fresh chat hides the demo thread and shows the real exchange', () => {
+  it('a fresh chat hides the demo thread and shows the real exchange', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.v.pNewChat())
+    const { result } = await setup()
+    await act(async () => result.current.v.pNewChat())
     expect(result.current.v.isEmptyChat).toBe(true)
     expect(result.current.v.hasDemo).toBe(false)
-    act(() => result.current.set({ draft: 'xin chào' }))
-    act(() => result.current.v.send())
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => result.current.set({ draft: 'xin chào' }))
+    await act(async () => result.current.v.send())
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.v.isEmptyChat).toBe(false)
     expect(result.current.v.hasDemo).toBe(false)
     expect(result.current.v.sent.some((m) => m.isNova)).toBe(true)
@@ -356,60 +357,60 @@ describe('store — streaming chat engine', () => {
 })
 
 describe('store — per-conversation attachments', () => {
-  it('swaps the staged tray per conversation; sending clears it', () => {
+  it('swaps the staged tray per conversation; sending clears it', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
+    const { result } = await setup()
     const open = (id: string) =>
       result.current.v.sideConvs.find((c) => c.id === id)!.open()
     // demo conv c1 seeds two attachments
     expect(result.current.v.staged).toHaveLength(2)
     // a real conversation starts with an empty tray
-    act(() => open('c2'))
+    await act(async () => open('c2'))
     expect(result.current.v.staged).toHaveLength(0)
     // back on c1, sending consumes its tray
-    act(() => open('c1'))
-    act(() => result.current.set({ draft: 'gửi đi' }))
-    act(() => result.current.v.send())
+    await act(async () => open('c1'))
+    await act(async () => result.current.set({ draft: 'gửi đi' }))
+    await act(async () => result.current.v.send())
     expect(result.current.v.staged).toHaveLength(0)
   })
 })
 
 describe('store — top bar reflects the active conversation', () => {
-  it('headerTitle follows the open conversation', () => {
-    const { result } = setup()
+  it('headerTitle follows the open conversation', async () => {
+    const { result } = await setup()
     expect(result.current.v.headerTitle).toBe('Đối chiếu benchmark đối thủ')
-    act(() => result.current.v.sideConvs.find((c) => c.id === 'c2')!.open())
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c2')!.open())
     expect(result.current.v.headerTitle).toBe('Đoạn mở đầu trang đích')
   })
 })
 
 describe('store — composer canSend & stop', () => {
-  it('canSend reflects a non-empty trimmed draft', () => {
-    const { result } = setup()
+  it('canSend reflects a non-empty trimmed draft', async () => {
+    const { result } = await setup()
     expect(result.current.v.canSend).toBe(false)
-    act(() => result.current.set({ draft: '   ' }))
+    await act(async () => result.current.set({ draft: '   ' }))
     expect(result.current.v.canSend).toBe(false)
-    act(() => result.current.set({ draft: 'xin chào' }))
+    await act(async () => result.current.set({ draft: 'xin chào' }))
     expect(result.current.v.canSend).toBe(true)
   })
 
-  it('stop halts an in-flight streamed reply for good', () => {
+  it('stop halts an in-flight streamed reply for good', async () => {
     vi.useFakeTimers()
-    const { result } = setup()
-    act(() => result.current.set({ draft: 'Viết email' }))
-    act(() => result.current.v.send())
+    const { result } = await setup()
+    await act(async () => result.current.set({ draft: 'Viết email' }))
+    await act(async () => result.current.v.send())
     expect(result.current.s.typing).toBe(true)
-    act(() => result.current.v.stop())
+    await act(async () => result.current.v.stop())
     expect(result.current.s.typing).toBe(false)
-    act(() => vi.advanceTimersByTime(5000))
+    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.typing).toBe(false)
   })
 })
 
 describe('store — labels are unified (advanced no longer rebrands them)', () => {
-  it('keeps friendly labels even with advanced on (+ haiku / ollama coverage)', () => {
-    const { result } = setup()
-    act(() =>
+  it('keeps friendly labels even with advanced on (+ haiku / ollama coverage)', async () => {
+    const { result } = await setup()
+    await act(async () =>
       result.current.set({ advanced: true, model: 'haiku', activeProvider: 'ollama' }),
     )
     expect(result.current.v.bashLabel).toBe('Chạy lệnh')
@@ -423,9 +424,9 @@ describe('store — labels are unified (advanced no longer rebrands them)', () =
     const ollama = result.current.v.providers.find((p) => p.name.includes('máy'))
     expect(ollama?.fieldLabel).toBe('ĐỊA CHỈ MÁY CHỦ')
   })
-  it('reflects all tools off in the chip + count derivations', () => {
-    const { result } = setup()
-    act(() =>
+  it('reflects all tools off in the chip + count derivations', async () => {
+    const { result } = await setup()
+    await act(async () =>
       result.current.set({ tools: { web: false, fetch: false, files: false, bash: false } }),
     )
     expect(result.current.v.webCheck).toBe('')
@@ -434,25 +435,25 @@ describe('store — labels are unified (advanced no longer rebrands them)', () =
 })
 
 describe('store — projects + closeMenus', () => {
-  it('a project row opens the conversation / its config', () => {
-    const { result } = setup()
-    act(() => result.current.v.projects[0].open())
+  it('a project row opens the conversation / its config', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.projects[0].open())
     expect(result.current.v.isConv).toBe(true)
-    act(() => result.current.v.projects[0].config())
+    await act(async () => result.current.v.projects[0].config())
     expect(result.current.v.isProjectCfg).toBe(true)
   })
-  it('closeMenus closes the palette', () => {
-    const { result } = setup()
-    act(() => result.current.v.togglePalette())
+  it('closeMenus closes the palette', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.togglePalette())
     expect(result.current.s.palette).toBe(true)
-    act(() => result.current.v.closeMenus())
+    await act(async () => result.current.v.closeMenus())
     expect(result.current.s.palette).toBe(false)
   })
-  it('goHome and goConv navigate', () => {
-    const { result } = setup()
-    act(() => result.current.v.goHome())
+  it('goHome and goConv navigate', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.goHome())
     expect(result.current.v.isHome).toBe(true)
-    act(() => result.current.v.goConv())
+    await act(async () => result.current.v.goConv())
     expect(result.current.v.isConv).toBe(true)
   })
 })

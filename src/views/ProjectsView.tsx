@@ -3,7 +3,6 @@ import { Icon } from './../components/Icon'
 
 export function ProjectsView() {
   const { v } = useStore()
-  if (!v.isProjects) return null
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
       <div className="w-[720px] max-w-full" style={{ padding: v.pagePad }}>

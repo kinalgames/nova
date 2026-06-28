@@ -18,10 +18,31 @@ font **Fraunces**, body **Geist**, mono **Geist Mono**).
 ## Stack
 
 - **React 19** · **Vite 7** · **TypeScript**
+- **TanStack Router** — file-based routes (`src/routes/`), fully type-safe URLs;
+  the URL is the single source of truth for navigation
 - **Tailwind CSS v4** — mapped onto the design tokens via `@theme inline`, so
   `bg-panel` / `text-muted` / `font-display` follow the `.dark` variant
 - **Radix UI** primitives (Dialog, Dropdown Menu, Switch, Visually Hidden)
 - **lucide-react** icons via a semantic `Icon` wrapper
+
+## Routing
+
+The URL owns navigation (TanStack Router on browser history) — every screen is
+deep-linkable, and back / forward / refresh all work:
+
+| URL | Screen |
+|-----|--------|
+| `/` | Home (greeting + intent suggestions) |
+| `/chat/:convId` | a conversation |
+| `/projects` · `/projects/:projectId` | projects · project config |
+| `/login` · `/signup` · `/onboarding` | auth (standalone, no chrome) |
+| `?settings=general\|providers\|assistant` | Settings overlay (deep-linkable) |
+
+`src/routes/_app.tsx` is the chrome layout (sidebar + top bar) wrapping the app
+screens; transient UI (command palette, quiet mode, file preview, mobile
+drawer) stays in the store, not the URL. `public/_redirects` is the SPA
+fallback that serves `index.html` for any deep link on static hosts
+(Cloudflare Pages / Netlify).
 
 ## Run
 
@@ -98,15 +119,20 @@ Every screen and control from the design, fully interactive:
 ```
 src/
   state/        store (React context) + derived values, types
+  routes/       file-based route tree (__root, _app chrome layout, chat/projects/auth)
+  router.tsx    router instance + typed context
   data/         static definitions (presets, providers, suggestions, seed threads)
   services/     fake service layer — chat (streaming), files (download/open)
   components/   sidebar, top bar, composer, settings dialog, overlays, Icon, ToggleRow
   views/        home, conversation, projects, project config
   test/         shared test harness + setup
   index.css     design tokens (:root + .dark) and Tailwind theme mapping
-  App.tsx       layout composition
+  App.tsx       mounts the RouterProvider
 ```
 
 State lives in `src/state/store.tsx` as a React context: a single `state` object
 plus a `deriveValues()` function that computes everything the views render, so
-components stay declarative and the behavior is centralized.
+components stay declarative and the behavior is centralized. Navigation state
+(which view, active conversation, auth screen, settings tab) is **derived from
+the URL** via the router rather than held in the store, so the address bar and
+the UI can never disagree.

@@ -9,7 +9,6 @@ const SECTION_LABEL = 'font-mono text-micro tracking-[.14em] text-faint'
 
 export function ProjectConfigView() {
   const { v } = useStore()
-  if (!v.isProjectCfg) return null
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
       <div className="w-[640px] max-w-full" style={{ padding: v.pagePad }}>
