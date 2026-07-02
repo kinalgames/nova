@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { GrowingTextarea } from './GrowingTextarea'
 import type { StagedFile } from '../state/types'
 
 const POPUP =
@@ -184,7 +185,7 @@ export function Composer() {
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
-            <input
+            <GrowingTextarea
               value={v.draft}
               onChange={v.onDraft}
               onKeyDown={v.onKey}

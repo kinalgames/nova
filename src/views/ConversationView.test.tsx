@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 
 beforeEach(() => localStorage.clear())
@@ -40,6 +40,19 @@ describe('ConversationView — data-driven message blocks', () => {
     await renderApp(undefined, { path: '/chat/c1' })
     await user.click(await screen.findByRole('button', { name: /techreview/ }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('shows a jump-to-bottom control when scrolled away, and it scrolls down', async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/chat/c1' })
+    const region = screen.getByRole('region', { name: 'Hội thoại' })
+    Object.defineProperty(region, 'scrollHeight', { value: 1000, configurable: true })
+    Object.defineProperty(region, 'clientHeight', { value: 400, configurable: true })
+    region.scrollTop = 100
+    fireEvent.scroll(region)
+    const btn = await screen.findByRole('button', { name: 'Cuộn xuống cuối' })
+    await user.click(btn)
+    expect(region.scrollTop).toBe(1000)
   })
 
   it('trace hides raw tool rows when advanced is off', async () => {

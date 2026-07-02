@@ -404,6 +404,28 @@ describe('store — composer canSend & stop', () => {
     expect(result.current.v.canSend).toBe(true)
   })
 
+  it('Enter on mobile / Shift+Enter on desktop insert a newline, not a send', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.set({ draft: 'xin chào', vw: 375 }))
+    await act(async () =>
+      result.current.v.onKey({
+        key: 'Enter',
+        shiftKey: false,
+        preventDefault: () => {},
+      } as React.KeyboardEvent),
+    )
+    expect(result.current.s.draft).toBe('xin chào') // not sent
+    await act(async () => result.current.set({ vw: 1200 }))
+    await act(async () =>
+      result.current.v.onKey({
+        key: 'Enter',
+        shiftKey: true,
+        preventDefault: () => {},
+      } as React.KeyboardEvent),
+    )
+    expect(result.current.s.draft).toBe('xin chào') // still not sent
+  })
+
   it('stop halts an in-flight streamed reply for good', async () => {
     vi.useFakeTimers()
     const { result } = await setup()

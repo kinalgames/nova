@@ -290,11 +290,16 @@ export function StoreProvider({
     return () => window.removeEventListener('keydown', onKey)
   }, [set])
 
-  // scroll conversation to bottom when a message is appended
-  const sentLen = (s.threads[s.activeConv] ?? []).length
+  // keep the conversation pinned to the bottom while it grows (append or
+  // stream tick) — but only when the user is already near the bottom, so
+  // reading history is never yanked away
+  const activeThreadRef = s.threads[s.activeConv]
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-  }, [sentLen])
+    const el = scrollRef.current
+    if (!el) return
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150
+    if (nearBottom) el.scrollTop = el.scrollHeight
+  }, [activeThreadRef])
 
   useEffect(
     () => () => {
@@ -452,6 +457,11 @@ export function StoreProvider({
       }
     })
     navigate({ to: '/chat/$convId', params: { convId } })
+    // sending always snaps to the bottom (after the append renders)
+    setTimeout(() => {
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    }, 0)
   }, [set, navigate])
 
   const copyCode = useCallback(() => {
@@ -1181,10 +1191,13 @@ function deriveValues(
     pickHaiku: () => set({ model: 'haiku' }),
     enterQuiet: () => set({ quiet: true }),
     exitQuiet: () => set({ quiet: false }),
-    onDraft: (e: React.ChangeEvent<HTMLInputElement>) => set({ draft: e.target.value }),
+    onDraft: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      set({ draft: e.target.value }),
     onQ: (e: React.ChangeEvent<HTMLInputElement>) => set({ q: e.target.value }),
+    // desktop: Enter sends, Shift+Enter inserts a newline; on mobile Enter is
+    // always a newline and sending happens through the send button
     onKey: (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.shiftKey && isDesktop) {
         e.preventDefault()
         send()
       }

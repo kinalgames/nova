@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../state/store'
 import { Composer } from '../components/Composer'
 import { Icon } from '../components/Icon'
@@ -13,12 +14,27 @@ function respToState(rs: RespState): MsgState | undefined {
 
 export function ConversationView() {
   const { v } = useStore()
+  // "away from the bottom" — shows the jump-to-latest control
+  const [away, setAway] = useState(false)
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    setAway(el.scrollHeight - el.scrollTop - el.clientHeight > 300)
+  }
+  const jumpToBottom = () => {
+    const el = v.scrollRef.current
+    // setting scrollTop on a DOM node in an event handler is not a React
+    // state mutation — the immutability rule false-positives on ref-derived values
+    // eslint-disable-next-line react-hooks/immutability
+    if (el) el.scrollTop = el.scrollHeight
+    setAway(false)
+  }
   return (
     <div className="view absolute inset-0 flex">
       <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative min-h-0 flex-1">
         {/* a scrollable region must be keyboard-focusable (axe scrollable-region-focusable); jsx-a11y's noninteractive-tabindex is a false positive here */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-        <div ref={v.scrollRef} tabIndex={0} role="region" aria-label="Hội thoại" className="flex min-h-0 flex-1 justify-center overflow-y-auto scroll-smooth">
+        <div ref={v.scrollRef} onScroll={onScroll} tabIndex={0} role="region" aria-label="Hội thoại" className="flex h-full justify-center overflow-y-auto scroll-smooth">
           <div className="w-[680px] max-w-full" style={{ padding: v.convPad }}>
             {v.isEmptyChat && <EmptyChat />}
 
@@ -36,6 +52,18 @@ export function ConversationView() {
             {/* live "thinking" / writing indicator */}
             {v.typing && <TypingIndicator label={v.typingLabel} />}
           </div>
+        </div>
+
+        {away && (
+          <button
+            type="button"
+            aria-label="Cuộn xuống cuối"
+            onClick={jumpToBottom}
+            className="absolute bottom-4 left-1/2 flex size-9 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-panel text-text-2 shadow-pop outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <Icon n="caret" size={15} />
+          </button>
+        )}
         </div>
 
         {/* demo state switcher — only on the scripted demo conversation */}

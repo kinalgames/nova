@@ -1,5 +1,6 @@
 import { useStore } from '../state/store'
 import { Icon } from './../components/Icon'
+import { GrowingTextarea } from '../components/GrowingTextarea'
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -26,8 +27,8 @@ export function HomeView() {
         <div className="mt-3 text-center text-lead text-muted">
           Mình là Nova. Bạn muốn làm gì hôm nay?
         </div>
-        <div className="field mt-8 flex w-full items-center gap-3 rounded-lg border border-border bg-panel px-4 py-4">
-          <input
+        <div className="field mt-8 flex w-full items-end gap-3 rounded-lg border border-border bg-panel px-4 py-4">
+          <GrowingTextarea
             value={v.draft}
             onChange={v.onDraft}
             onKeyDown={v.onKey}
