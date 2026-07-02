@@ -47,6 +47,26 @@ export const account = sqliteTable('account', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 })
 
+/** BE3 — BYOK stored server-side, AES-GCM sealed (see src/crypto.ts).
+ *  The plaintext credential exists only in memory while proxying a call. */
+export const providerCredential = sqliteTable('provider_credential', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  providerId: text('provider_id').notNull(),
+  kind: text('kind').notNull(),
+  name: text('name').notNull(),
+  credentialIv: text('credential_iv').notNull(),
+  credentialCt: text('credential_ct').notNull(),
+  /** display-safe tail (…abcd) — the UI never sees the secret again */
+  hint: text('hint').notNull(),
+  status: text('status').notNull().default('untested'),
+  priority: integer('priority').notNull().default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+})
+
 export const verification = sqliteTable('verification', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
