@@ -1,5 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as HoverCard from '@radix-ui/react-hover-card'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
@@ -11,6 +12,7 @@ const menuItem =
 
 export function TopBar() {
   const { v } = useStore()
+  const { t } = useTranslation()
   if (!v.notQuiet) return null
   return (
     <div className="flex h-14 flex-shrink-0 items-center justify-between gap-2.5 border-b border-border bg-bg px-4">
@@ -18,7 +20,7 @@ export function TopBar() {
         {v.isMobile && (
           <button
             type="button"
-            aria-label="Mở menu"
+            aria-label={t('nav.openMenu')}
             onClick={v.openDrawer}
             className="tap flex cursor-pointer border-none bg-transparent pr-0.5 text-text-2"
           >
@@ -76,13 +78,13 @@ export function TopBar() {
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              aria-label={`Chế độ trả lời: ${v.modelLabel}`}
+              aria-label={t('model.modeAria', { label: v.modelLabel })}
               className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-small text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <span className="size-1.5 rounded-full bg-accent" />
               <span className="grid text-left">
                 <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-nowrap">
-                  Thông minh
+                  {t('model.smart')}
                 </span>
                 <span className="col-start-1 row-start-1 whitespace-nowrap">{v.modelLabel}</span>
               </span>
@@ -117,7 +119,7 @@ export function TopBar() {
                 onSelect={() => v.openSettings('providers')}
                 className="flex cursor-pointer select-none items-center gap-2 border-t border-border px-4 py-3 text-small text-muted outline-none data-[highlighted]:bg-black/[0.035]"
               >
-                <Icon n="settings" size={14} /> Đổi nhà cung cấp →
+                <Icon n="settings" size={14} /> {t('model.changeProvider')}
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
@@ -125,12 +127,12 @@ export function TopBar() {
 
         <button
           type="button"
-          aria-label="Vào chế độ tập trung"
+          aria-label={t('nav.focusMode')}
           onClick={v.enterQuiet}
           className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 font-[inherit] text-small text-text-2"
         >
           <Icon n="focus" size={15} />
-          {v.isDesktop && <span className="whitespace-nowrap">Tập trung</span>}
+          {v.isDesktop && <span className="whitespace-nowrap">{t('topbar.focus')}</span>}
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 
 const FIELD = 'field w-full rounded-md border border-border bg-bg px-3 py-2.5 text-body'
@@ -13,6 +14,7 @@ export function NewProjectDialog({
   onOpenChange: (o: boolean) => void
 }) {
   const { v } = useStore()
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
@@ -36,33 +38,33 @@ export function NewProjectDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_120ms_ease] bg-[rgba(27,26,22,0.28)]" />
         <Dialog.Content className="fixed left-1/2 top-[20%] z-[60] w-[460px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] rounded-lg border border-border bg-panel p-6 shadow-overlay outline-none">
-          <Dialog.Title className="font-display text-h3">Dự án mới</Dialog.Title>
+          <Dialog.Title className="font-display text-h3">{t('newProject.title')}</Dialog.Title>
           <Dialog.Description className="mb-5 mt-1 text-ui text-muted">
-            Đặt tên và mô tả để Nova hiểu bối cảnh của dự án.
+            {t('newProject.body')}
           </Dialog.Description>
           <form onSubmit={submit} className="flex flex-col gap-3.5">
             <div>
               <label htmlFor="np-name" className={LABEL}>
-                TÊN DỰ ÁN
+                {t('newProject.nameLabel')}
               </label>
               <input
                 id="np-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="VD: Aurora"
+                placeholder={t('newProject.namePlaceholder')}
                 className={FIELD}
               />
             </div>
             <div>
               <label htmlFor="np-desc" className={LABEL}>
-                MÔ TẢ
+                {t('newProject.descLabel')}
               </label>
               <textarea
                 id="np-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                placeholder="Dự án này về điều gì? Nova nhớ trong mọi cuộc trò chuyện ở đây."
+                placeholder={t('newProject.descPlaceholder')}
                 className={`${FIELD} resize-none leading-normal`}
               />
             </div>
@@ -72,7 +74,7 @@ export function NewProjectDialog({
                   type="button"
                   className="cursor-pointer rounded-sm border border-border bg-transparent px-3.5 py-2 text-ui text-muted"
                 >
-                  Hủy
+                  {t('common.cancel')}
                 </button>
               </Dialog.Close>
               <button
@@ -80,7 +82,7 @@ export function NewProjectDialog({
                 disabled={!name.trim()}
                 className="cursor-pointer rounded-sm border-none bg-ink px-3.5 py-2 text-ui text-bg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-[.38]"
               >
-                Tạo dự án
+                {t('newProject.submit')}
               </button>
             </div>
           </form>

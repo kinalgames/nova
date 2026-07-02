@@ -1,9 +1,11 @@
 import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
 
 export function ProjectView() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
       <div className="w-[720px] max-w-full" style={{ padding: v.pagePad }}>
@@ -11,7 +13,7 @@ export function ProjectView() {
           to="/projects"
           className="mb-3 inline-flex cursor-pointer items-center gap-1.5 bg-transparent text-left text-ui text-muted no-underline"
         >
-          <Icon n="back" size={15} /> Tất cả dự án
+          <Icon n="back" size={15} /> {t('projects.view.back')}
         </Link>
 
         <div className="mb-1.5 flex items-center gap-3">
@@ -20,7 +22,9 @@ export function ProjectView() {
             {v.viewProjectName}
           </div>
           {v.viewProjectIsDefault && (
-            <span className="rounded-xs bg-fill px-2 py-0.5 text-eyebrow text-text-2">Mặc định</span>
+            <span className="rounded-xs bg-fill px-2 py-0.5 text-eyebrow text-text-2">
+              {t('projects.defaultBadge')}
+            </span>
           )}
         </div>
         {v.viewProjectDescription && (
@@ -35,24 +39,24 @@ export function ProjectView() {
             onClick={() => v.newChatInProject(v.viewProjectId)}
             className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-ui text-bg"
           >
-            <Icon n="plus" size={15} stroke={2} /> Trò chuyện mới
+            <Icon n="plus" size={15} stroke={2} /> {t('projects.view.newChatHere')}
           </button>
           <Link
             to="/projects/$projectId/config"
             params={{ projectId: v.viewProjectId }}
             className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-2 text-left text-ui text-text-2 no-underline"
           >
-            <Icon n="settings" size={15} /> Cấu hình
+            <Icon n="settings" size={15} /> {t('projects.view.config')}
           </Link>
         </div>
 
         <div className="mb-2.5 font-mono text-eyebrow tracking-[.14em] text-label">
-          {v.viewProjectCount} CUỘC TRÒ CHUYỆN
+          {t('projects.view.convCount', { count: v.viewProjectCount })}
         </div>
 
         {v.viewProjectConvs.length === 0 ? (
           <div className="rounded-md border border-dashed border-border px-4 py-10 text-center text-body text-muted">
-            Chưa có cuộc trò chuyện nào trong dự án này.
+            {t('projects.view.empty')}
           </div>
         ) : (
           <div className="flex flex-col">

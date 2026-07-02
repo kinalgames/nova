@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { GrowingTextarea } from './GrowingTextarea'
@@ -24,6 +25,7 @@ const badgeStyle: Record<string, { bg: string; fg: string; label: string }> = {
 
 function StagedItem({ f }: { f: StagedFile }) {
   const { v } = useStore()
+  const { t } = useTranslation()
   if (f.kind === 'image') {
     const bg = f.url
       ? `center/cover url(${f.url})`
@@ -32,14 +34,14 @@ function StagedItem({ f }: { f: StagedFile }) {
       <div className="relative size-[54px] shrink-0">
         <button
           type="button"
-          aria-label={`Mở ${f.name}`}
+          aria-label={t('composer.openFile', { name: f.name })}
           onClick={() => v.openStaged(f)}
           className="block size-[54px] cursor-pointer rounded-sm border border-[rgba(0,0,0,.06)] p-0"
           style={{ background: bg }}
         />
         <button
           type="button"
-          aria-label={`Bỏ ${f.name}`}
+          aria-label={t('composer.removeFile', { name: f.name })}
           onClick={() => v.removeStaged(f.id)}
           className="absolute -right-1.5 -top-1.5 z-[1] flex size-[18px] cursor-pointer items-center justify-center rounded-full border-none bg-ink text-on-ink"
         >
@@ -53,7 +55,7 @@ function StagedItem({ f }: { f: StagedFile }) {
     <div className="relative flex items-center gap-2 rounded-sm border border-border bg-panel py-1.5 pl-2 pr-3">
       <button
         type="button"
-        aria-label={`Mở ${f.name}`}
+        aria-label={t('composer.openFile', { name: f.name })}
         onClick={() => v.openStaged(f)}
         className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent text-left"
       >
@@ -70,7 +72,7 @@ function StagedItem({ f }: { f: StagedFile }) {
       </button>
       <button
         type="button"
-        aria-label={`Bỏ ${f.name}`}
+        aria-label={t('composer.removeFile', { name: f.name })}
         onClick={() => v.removeStaged(f.id)}
         className="ml-1 flex cursor-pointer border-none bg-transparent text-faint"
       >
@@ -82,6 +84,7 @@ function StagedItem({ f }: { f: StagedFile }) {
 
 export function Composer() {
   const { v, addUpload } = useStore()
+  const { t } = useTranslation()
   const imgInput = useRef<HTMLInputElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -112,7 +115,7 @@ export function Composer() {
               <DropdownMenu.Trigger asChild>
                 <button
                   type="button"
-                  aria-label="Thêm vào chat"
+                  aria-label={t('composer.addToChat')}
                   className="tap flex size-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <Icon n="plus" size={20} />
@@ -125,20 +128,20 @@ export function Composer() {
                   sideOffset={8}
                   className={`${POPUP} max-h-[60vh] w-[300px] overflow-y-auto`}
                 >
-                  <div className={POPUP_LABEL}>THÊM VÀO CHAT</div>
+                  <div className={POPUP_LABEL}>{t('composer.addToChatLabel')}</div>
                   <DropdownMenu.Item onSelect={() => imgInput.current?.click()} className={ROW}>
                     <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-fill text-accent">
                       <Icon n="image" size={15} />
                     </span>
-                    <div className="text-ui text-text">Tải ảnh lên</div>
+                    <div className="text-ui text-text">{t('composer.uploadImage')}</div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={() => fileInput.current?.click()} className={ROW}>
                     <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-border text-text-2">
                       <Icon n="file" size={15} />
                     </span>
                     <div>
-                      <div className="text-ui text-text">Tải tệp lên</div>
-                      <div className="text-meta text-muted">PDF, tài liệu, mã, bảng tính</div>
+                      <div className="text-ui text-text">{t('composer.uploadFile')}</div>
+                      <div className="text-meta text-muted">{t('composer.uploadFileSub')}</div>
                     </div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={v.goProjects} className={ROW}>
@@ -146,23 +149,25 @@ export function Composer() {
                       <Icon n="folder" size={15} />
                     </span>
                     <div>
-                      <div className="text-ui text-text">Thêm từ dự án</div>
-                      <div className="text-meta text-muted">Tài liệu trong Aurora</div>
+                      <div className="text-ui text-text">{t('composer.fromProject')}</div>
+                      <div className="text-meta text-muted">
+                        {t('composer.fromProjectSub', { project: v.chatProject })}
+                      </div>
                     </div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={v.openLightbox} className={ROW}>
                     <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-border text-text-2">
                       <Icon n="expand" size={15} />
                     </span>
-                    <div className="text-ui text-text">Chụp màn hình</div>
+                    <div className="text-ui text-text">{t('composer.screenshot')}</div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border" />
-                  <div className={POPUP_LABEL}>CÔNG CỤ CỦA NOVA</div>
+                  <div className={POPUP_LABEL}>{t('composer.novaTools')}</div>
                   {(
                     [
-                      ['web', 'search', 'Tra cứu web', v.webRowFg, v.webCheck, v.toggle_web],
-                      ['fetch', 'fetch', 'Đọc trang web', v.fetchRowFg, v.fetchCheck, v.toggle_fetch],
-                      ['files', 'file', 'Tài liệu của bạn', v.filesRowFg, v.filesCheck, v.toggle_files],
+                      ['web', 'search', t('composer.toolWeb'), v.webRowFg, v.webCheck, v.toggle_web],
+                      ['fetch', 'fetch', t('composer.toolFetch'), v.fetchRowFg, v.fetchCheck, v.toggle_fetch],
+                      ['files', 'file', t('composer.toolFiles'), v.filesRowFg, v.filesCheck, v.toggle_files],
                       ['bash', 'terminal', v.bashLabel, v.bashRowFg, v.bashCheck, v.toggle_bash],
                     ] as const
                   ).map(([key, icon, label, fg, check, toggle]) => (
@@ -189,14 +194,14 @@ export function Composer() {
               value={v.draft}
               onChange={v.onDraft}
               onKeyDown={v.onKey}
-              aria-label="Nhắn cho Nova"
-              placeholder="Trả lời Nova…"
+              aria-label={t('home.inputAria')}
+              placeholder={t('composer.replyPlaceholder')}
               className="min-w-0 flex-1 py-2 text-lead text-text"
             />
             {v.typing ? (
               <button
                 type="button"
-                aria-label="Dừng"
+                aria-label={t('common.stop')}
                 onClick={v.stop}
                 className="tap flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-ink text-bg"
               >
@@ -205,7 +210,7 @@ export function Composer() {
             ) : (
               <button
                 type="button"
-                aria-label="Gửi"
+                aria-label={t('common.send')}
                 onClick={v.send}
                 disabled={!v.canSend}
                 className="tap flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-ink text-bg opacity-100 transition-opacity duration-[120ms] disabled:cursor-default disabled:opacity-[.38]"
@@ -221,7 +226,7 @@ export function Composer() {
               <DropdownMenu.Trigger asChild>
                 <button
                   type="button"
-                  aria-label={`Dự án: ${v.chatProject}`}
+                  aria-label={t('composer.projectAria', { name: v.chatProject })}
                   className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-bg px-2 py-1 text-small text-text-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <span className="size-2 rounded-xs bg-accent" />
@@ -231,7 +236,7 @@ export function Composer() {
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content side="top" align="start" sideOffset={8} className={`${POPUP} w-[240px]`}>
-                  <div className={`${POPUP_LABEL} text-faint`}>CHAT TRONG DỰ ÁN</div>
+                  <div className={`${POPUP_LABEL} text-faint`}>{t('composer.chatInProject')}</div>
                   {v.pickProjects.map((pp, i) => (
                     <DropdownMenu.Item
                       key={i}
@@ -253,22 +258,22 @@ export function Composer() {
                 <DropdownMenu.Trigger asChild>
                   <button
                     type="button"
-                    aria-label={`Mức suy nghĩ: ${v.thinkLabel}`}
+                    aria-label={t('composer.thinkAria', { label: v.thinkLabel })}
                     className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap border-none bg-transparent text-meta text-text-2 outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    <Icon n="think" size={13} /> Suy nghĩ: {v.thinkLabel}{' '}
+                    <Icon n="think" size={13} /> {t('composer.thinkChip', { label: v.thinkLabel })}{' '}
                     <Icon n="caret" size={12} className="text-faint" />
                   </button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Portal>
                   <DropdownMenu.Content side="top" align="end" sideOffset={8} className={`${POPUP} w-[220px]`}>
-                    <div className={POPUP_LABEL}>CHẾ ĐỘ SUY NGHĨ</div>
+                    <div className={POPUP_LABEL}>{t('composer.thinkMenuLabel')}</div>
                     {(
                       [
-                        [v.setThinkOff, 'Tắt', 'Trả lời ngay', v.thinkChkOff],
-                        [v.setThinkLow, 'Thấp', 'Cân nhắc nhanh', v.thinkChkLow],
-                        [v.setThinkNormal, 'Vừa', 'Cân bằng — khuyên dùng', v.thinkChkNormal],
-                        [v.setThinkHigh, 'Cao', 'Suy luận sâu, chậm hơn', v.thinkChkHigh],
+                        [v.setThinkOff, t('composer.thinkOff'), t('composer.thinkOffSub'), v.thinkChkOff],
+                        [v.setThinkLow, t('composer.thinkLow'), t('composer.thinkLowSub'), v.thinkChkLow],
+                        [v.setThinkNormal, t('composer.thinkNormal'), t('composer.thinkNormalSub'), v.thinkChkNormal],
+                        [v.setThinkHigh, t('composer.thinkHigh'), t('composer.thinkHighSub'), v.thinkChkHigh],
                       ] as const
                     ).map(([pick, label, sub, check], i) => (
                       <DropdownMenu.Item
@@ -288,7 +293,8 @@ export function Composer() {
               </DropdownMenu.Root>
               {v.showComposerHint && (
                 <span className="whitespace-nowrap font-mono text-eyebrow text-faint">
-                  {v.activeCount} công cụ{v.isDesktop ? ' · ⏎ gửi' : ''}
+                  {t('composer.toolCount', { count: v.activeCount })}
+                  {v.isDesktop ? t('composer.enterHint') : ''}
                 </span>
               )}
             </div>

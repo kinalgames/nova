@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import type {
@@ -191,6 +192,7 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
 
 function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) {
   const { v } = useStore()
+  const { t } = useTranslation()
   switch (block.type) {
     case 'text':
       return (
@@ -225,7 +227,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
             </span>
             <span className="text-text">{block.summary}</span>
             <span className="inline-flex items-center gap-1 text-meta text-faint">
-              {v.traceOpen ? 'Ẩn' : block.meta}
+              {v.traceOpen ? t('chat.traceHide') : block.meta}
               <Icon n="caret" size={12} className={v.traceOpen ? 'rotate-180' : undefined} />
             </span>
           </button>
@@ -257,7 +259,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
     case 'sources':
       return (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-small text-muted">
-          <span>Nguồn:</span>
+          <span>{t('chat.sources')}</span>
           {block.items.map((s, i) => (
             <button
               key={i}
@@ -286,6 +288,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
 
 function ApprovalCard({ tool, command }: { tool: string; command: string }) {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <div className="mt-4 overflow-hidden rounded-md border border-border bg-panel">
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
@@ -293,18 +296,18 @@ function ApprovalCard({ tool, command }: { tool: string; command: string }) {
           <Icon n="terminal" size={15} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-body">Chạy lệnh ({tool})</div>
+          <div className="text-body">{t('chat.approvalTitle', { tool })}</div>
           <div className="truncate font-mono text-meta text-muted">{command}</div>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2.5 px-4 py-3">
         <button type="button" onClick={v.approveTool} className="cursor-pointer rounded-sm border-none bg-ink px-4 py-2 text-left text-ui text-bg">
-          Cho phép
+          {t('chat.approvalAllow')}
         </button>
         <button type="button" onClick={v.denyTool} className="cursor-pointer rounded-sm border border-border bg-transparent px-4 py-2 text-left text-ui text-muted">
-          Từ chối
+          {t('chat.approvalDeny')}
         </button>
-        <span className="text-meta text-muted">Chỉ chạy trong môi trường an toàn</span>
+        <span className="text-meta text-muted">{t('chat.approvalNote')}</span>
       </div>
     </div>
   )
@@ -320,10 +323,11 @@ export function TypingIndicator({ label }: { label: string }) {
 }
 
 function NovaThinking() {
+  const { t } = useTranslation()
   return (
     <span
       role="img"
-      aria-label="Nova đang làm việc"
+      aria-label={t('chat.novaWorking')}
       className="relative flex size-[22px] shrink-0 items-center justify-center"
     >
       <span className="absolute inset-0 rounded-full bg-accent-line animate-[pulseRing_1.6s_ease-out_infinite]" />
@@ -346,6 +350,7 @@ export function MessageView({
   typing?: boolean
 }) {
   const { v } = useStore()
+  const { t } = useTranslation()
   const isUser = message.role === 'user'
   const trace = message.blocks.find((b) => b.type === 'trace')
   const answer = message.blocks.filter((b) => b.type !== 'trace')
@@ -368,7 +373,9 @@ export function MessageView({
           <Icon n="nova" size={13} />
         </span>
         <span className={NOVA_TAG}>{message.who}</span>
-        {state === 'streaming' && <span className="text-meta text-faint">· đang trả lời</span>}
+        {state === 'streaming' && (
+          <span className="text-meta text-faint">{t('chat.streamReplying')}</span>
+        )}
       </div>
 
       {trace && <BlockView block={trace} />}
@@ -377,14 +384,14 @@ export function MessageView({
         <div className="mt-4">
           <div className="mb-3 flex items-center gap-2.5">
             <NovaThinking />
-            <span className="text-ui text-text-2">Đang viết câu trả lời…</span>
+            <span className="text-ui text-text-2">{t('chat.writingLabel')}</span>
           </div>
           <button
             type="button"
             onClick={v.setDone}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-left text-small text-text-2"
           >
-            <Icon n="stop" size={13} fill="currentColor" stroke={0} /> Dừng
+            <Icon n="stop" size={13} fill="currentColor" stroke={0} /> {t('common.stop')}
           </button>
         </div>
       ) : state === 'approval' && message.approval ? (
@@ -399,9 +406,9 @@ export function MessageView({
               !
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-body text-text">Phản hồi bị gián đoạn</div>
+              <div className="text-body text-text">{t('chat.errorTitle')}</div>
               <div className="mt-0.5 text-ui leading-normal text-danger-text">
-                Mất kết nối tới mô hình. Nội dung phía trên đã được giữ lại.
+                {t('chat.errorBody')}
                 {v.advanced && (
                   <span className="font-mono text-eyebrow text-danger-text"> · err 503 · stream_closed</span>
                 )}
@@ -412,7 +419,7 @@ export function MessageView({
               onClick={v.setDone}
               className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-small text-bg"
             >
-              <Icon n="retry" size={14} /> Thử lại
+              <Icon n="retry" size={14} /> {t('common.retry')}
             </button>
           </div>
         </>

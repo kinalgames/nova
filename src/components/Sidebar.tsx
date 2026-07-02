@@ -1,11 +1,13 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 export function Sidebar() {
   const { v } = useStore()
+  const { t } = useTranslation()
   if (!v.showSidebar) return null
   return (
     <aside
@@ -18,7 +20,7 @@ export function Sidebar() {
           <>
             <button
               type="button"
-              aria-label="Trang chủ Nova"
+              aria-label={t('nav.home')}
               onClick={v.goHome}
               className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent"
             >
@@ -27,7 +29,7 @@ export function Sidebar() {
             </button>
             <button
               type="button"
-              aria-label="Thu gọn thanh bên"
+              aria-label={t('nav.collapseSidebar')}
               onClick={v.collapseSidebar}
               className="flex cursor-pointer border-none bg-transparent text-muted"
             >
@@ -38,7 +40,7 @@ export function Sidebar() {
           <div className="relative">
             <button
               type="button"
-              aria-label="Trang chủ Nova"
+              aria-label={t('nav.home')}
               onClick={v.goHome}
               className="flex size-9 cursor-pointer items-center justify-center border-none bg-transparent transition-opacity group-hover:opacity-0"
             >
@@ -46,7 +48,7 @@ export function Sidebar() {
             </button>
             <button
               type="button"
-              aria-label="Mở thanh bên"
+              aria-label={t('nav.expandSidebar')}
               onClick={v.collapseSidebar}
               className="pointer-events-none absolute inset-0 flex cursor-pointer items-center justify-center border-none bg-transparent text-muted opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
             >
@@ -65,7 +67,7 @@ export function Sidebar() {
           style={{ justifyContent: v.railJustify }}
         >
           <Icon n="plus" size={17} />
-          {v.sidebarExpanded && <span className="flex-1 text-left">Cuộc trò chuyện mới</span>}
+          {v.sidebarExpanded && <span className="flex-1 text-left">{t('nav.newChat')}</span>}
         </button>
         <button
           type="button"
@@ -77,7 +79,7 @@ export function Sidebar() {
           <Icon n="search" size={17} />
           {v.sidebarExpanded && (
             <>
-              <span className="flex-1 text-left">Tìm</span>
+              <span className="flex-1 text-left">{t('nav.search')}</span>
               <span className="font-mono text-eyebrow text-faint">⌘K</span>
             </>
           )}
@@ -87,7 +89,7 @@ export function Sidebar() {
       {/* lists */}
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-2 pt-3">
         {v.sidebarExpanded && (
-          <div className="px-2 pb-2 font-mono text-eyebrow tracking-[.14em] text-label">DỰ ÁN</div>
+          <div className="px-2 pb-2 font-mono text-eyebrow tracking-[.14em] text-label">{t('sidebar.projects')}</div>
         )}
         {v.sideProjects.map((p) => (
           <Link
@@ -95,7 +97,7 @@ export function Sidebar() {
             to="/projects/$projectId"
             params={{ projectId: p.id }}
             data-hover="soft"
-            aria-label={`Dự án ${p.name}`}
+            aria-label={t('nav.projectAria', { name: p.name })}
             className="mb-px flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 no-underline"
             style={{ justifyContent: v.railJustify, background: p.bg }}
           >
@@ -113,7 +115,7 @@ export function Sidebar() {
         {v.sidebarExpanded && (
           <>
             <div className="px-2 pb-2 pt-4 font-mono text-eyebrow tracking-[.14em] text-label">
-              GẦN ĐÂY · {v.currentProjectName.toUpperCase()}
+              {t('sidebar.recent', { project: v.currentProjectName.toUpperCase() })}
             </div>
             {v.sideConvs.map((c) => (
               <div
@@ -140,12 +142,12 @@ export function Sidebar() {
                     onClick={c.undo}
                     className="mr-2 flex-shrink-0 cursor-pointer rounded-md border-none bg-transparent px-1 py-0.5 text-meta text-accent-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    Hoàn tác
+                    {t('common.undo')}
                   </button>
                 ) : c.busy ? (
                   <span
                     role="img"
-                    aria-label="Đang trả lời"
+                    aria-label={t('common.replying')}
                     className="absolute right-2.5 flex size-[7px] items-center justify-center"
                   >
                     <span
@@ -167,7 +169,7 @@ export function Sidebar() {
                     <div className="absolute right-1.5 flex items-center gap-0.5 rounded-md bg-[var(--side)] pl-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <button
                         type="button"
-                        aria-label={c.pinned ? 'Bỏ ghim' : 'Ghim lên đầu'}
+                        aria-label={c.pinned ? t('common.unpin') : t('common.pin')}
                         aria-pressed={c.pinned}
                         onClick={c.pin}
                         className="flex cursor-pointer rounded border-none bg-transparent p-1 text-faint outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -178,7 +180,7 @@ export function Sidebar() {
                         <DropdownMenu.Trigger asChild>
                           <button
                             type="button"
-                            aria-label="Tùy chọn cuộc trò chuyện"
+                            aria-label={t('common.convOptions')}
                             className="flex cursor-pointer rounded border-none bg-transparent p-1 text-faint outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                           >
                             <Icon n="more" size={15} />
@@ -187,14 +189,14 @@ export function Sidebar() {
                         <DropdownMenu.Portal>
                           <DropdownMenu.Content align="start" sideOffset={4} className={MENU_CONTENT}>
                             <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
-                              Đổi tên
+                              {t('common.rename')}
                             </DropdownMenu.Item>
                             <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
-                              {c.pinned ? 'Bỏ ghim' : 'Ghim lên đầu'}
+                              {c.pinned ? t('common.unpin') : t('common.pin')}
                             </DropdownMenu.Item>
                             <DropdownMenu.Separator className={MENU_SEP} />
                             <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
-                              Xóa
+                              {t('common.delete')}
                             </DropdownMenu.Item>
                           </DropdownMenu.Content>
                         </DropdownMenu.Portal>
@@ -219,7 +221,7 @@ export function Sidebar() {
             style={{ justifyContent: v.railJustify, color: v.setFg, background: v.setBg }}
           >
             <Icon n="settings" size={16} />
-            {v.sidebarExpanded && <span className="flex-1 text-left">Cài đặt</span>}
+            {v.sidebarExpanded && <span className="flex-1 text-left">{t('nav.settings')}</span>}
           </button>
         )}
         {v.loggedIn ? (
@@ -227,7 +229,7 @@ export function Sidebar() {
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              aria-label="Tài khoản — Minh Trần"
+              aria-label={t('nav.accountAria', { name: t('user.name') })}
               data-hover="soft"
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-sm border-none bg-transparent px-2.5 py-2"
               style={{ justifyContent: v.railJustify }}
@@ -236,7 +238,7 @@ export function Sidebar() {
               {v.sidebarExpanded && (
                 <>
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="truncate text-small">Minh Trần</div>
+                    <div className="truncate text-small">{t('user.name')}</div>
                   </div>
                   <Icon n="more" size={15} className="text-faint" />
                 </>
@@ -248,16 +250,16 @@ export function Sidebar() {
               <div className="flex items-center gap-2.5 px-2.5 py-2">
                 <div className="size-[30px] flex-shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
                 <div className="min-w-0">
-                  <div className="text-ui text-text">Minh Trần</div>
-                  <div className="text-meta text-muted">Gói Pro</div>
+                  <div className="text-ui text-text">{t('user.name')}</div>
+                  <div className="text-meta text-muted">{t('user.plan')}</div>
                 </div>
               </div>
               <DropdownMenu.Separator className={MENU_SEP} />
               <DropdownMenu.Item className={MENU_ITEM} onSelect={v.goSettings}>
-                Cài đặt
+                {t('nav.settings')}
               </DropdownMenu.Item>
               <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={v.logout}>
-                Đăng xuất
+                {t('nav.logout')}
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
@@ -271,7 +273,7 @@ export function Sidebar() {
             style={{ justifyContent: v.railJustify }}
           >
             <Icon n="login" size={17} />
-            {v.sidebarExpanded && <span className="flex-1 text-left">Đăng nhập</span>}
+            {v.sidebarExpanded && <span className="flex-1 text-left">{t('nav.login')}</span>}
           </button>
         )}
       </div>

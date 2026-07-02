@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Composer } from '../components/Composer'
 import { Icon } from '../components/Icon'
@@ -14,6 +15,7 @@ function respToState(rs: RespState): MsgState | undefined {
 
 export function ConversationView() {
   const { v } = useStore()
+  const { t } = useTranslation()
   // "away from the bottom" — shows the jump-to-latest control
   const [away, setAway] = useState(false)
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -34,7 +36,7 @@ export function ConversationView() {
         <div className="relative min-h-0 flex-1">
         {/* a scrollable region must be keyboard-focusable (axe scrollable-region-focusable); jsx-a11y's noninteractive-tabindex is a false positive here */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-        <div ref={v.scrollRef} onScroll={onScroll} tabIndex={0} role="region" aria-label="Hội thoại" className="flex h-full justify-center overflow-y-auto scroll-smooth">
+        <div ref={v.scrollRef} onScroll={onScroll} tabIndex={0} role="region" aria-label={t('chat.regionAria')} className="flex h-full justify-center overflow-y-auto scroll-smooth">
           <div className="w-[680px] max-w-full" style={{ padding: v.convPad }}>
             {v.isEmptyChat && <EmptyChat />}
 
@@ -57,7 +59,7 @@ export function ConversationView() {
         {away && (
           <button
             type="button"
-            aria-label="Cuộn xuống cuối"
+            aria-label={t('chat.jumpToLatest')}
             onClick={jumpToBottom}
             className="absolute bottom-4 left-1/2 flex size-9 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-panel text-text-2 shadow-pop outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
@@ -70,11 +72,11 @@ export function ConversationView() {
         {v.hasDemo && (
           <div className="flex shrink-0 justify-center px-3 pt-1">
             <div className="inline-flex items-center gap-1 rounded-sm bg-fill p-0.5 text-meta">
-              <span className="px-1.5 text-muted">demo:</span>
-              <button type="button" onClick={v.setStream} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgStream, color: v.stFgStream }}>Đang soạn</button>
-              <button type="button" onClick={v.setApproval} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgApproval, color: v.stFgApproval }}>Chờ duyệt</button>
-              <button type="button" onClick={v.setDone} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgDone, color: v.stFgDone }}>Hoàn tất</button>
-              <button type="button" onClick={v.setError} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgError, color: v.stFgError }}>Lỗi</button>
+              <span className="px-1.5 text-muted">{t('chat.demoLabel')}</span>
+              <button type="button" onClick={v.setStream} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgStream, color: v.stFgStream }}>{t('chat.stateStream')}</button>
+              <button type="button" onClick={v.setApproval} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgApproval, color: v.stFgApproval }}>{t('chat.stateApproval')}</button>
+              <button type="button" onClick={v.setDone} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgDone, color: v.stFgDone }}>{t('chat.stateDone')}</button>
+              <button type="button" onClick={v.setError} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgError, color: v.stFgError }}>{t('chat.stateError')}</button>
             </div>
           </div>
         )}
@@ -87,15 +89,19 @@ export function ConversationView() {
 
 function EmptyChat() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <div className="flex min-h-[58vh] flex-col items-center justify-center text-center">
       <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-bg">
         <Icon n="nova" size={22} />
       </div>
-      <div className="font-display text-h2">Cuộc trò chuyện mới</div>
+      <div className="font-display text-h2">{t('chat.emptyTitle')}</div>
       <div className="mt-2 max-w-[420px] text-body leading-normal text-muted">
-        Hỏi bất cứ điều gì, đính kèm tệp, hoặc chọn một gợi ý. Nova nhớ ngữ cảnh của dự án{' '}
-        <b className="font-semibold text-text">{v.chatProject}</b>.
+        <Trans
+          i18nKey="chat.emptyBody"
+          values={{ project: v.chatProject }}
+          components={{ b: <b className="font-semibold text-text" /> }}
+        />
       </div>
     </div>
   )

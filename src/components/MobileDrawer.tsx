@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
@@ -11,6 +12,7 @@ const navRow =
 
 export function MobileDrawer() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <Dialog.Root
       open={v.drawerOpen}
@@ -25,7 +27,7 @@ export function MobileDrawer() {
           className="fixed inset-y-0 left-0 z-[49] flex w-[282px] max-w-[84vw] flex-col overflow-hidden bg-side animate-[slideR_200ms_ease] outline-none"
         >
           <VisuallyHidden asChild>
-            <Dialog.Title>Điều hướng</Dialog.Title>
+            <Dialog.Title>{t('nav.navigation')}</Dialog.Title>
           </VisuallyHidden>
           <div className="flex h-14 flex-shrink-0 items-center justify-between pl-4 pr-3.5">
             <div className="flex items-center gap-2">
@@ -35,7 +37,7 @@ export function MobileDrawer() {
             <Dialog.Close asChild>
               <button
                 type="button"
-                aria-label="Đóng"
+                aria-label={t('common.close')}
                 className="tap flex cursor-pointer border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <Icon n="close" size={17} />
@@ -46,23 +48,23 @@ export function MobileDrawer() {
           <div className="flex flex-col gap-1.5 px-3">
             <button onClick={v.pNewChat} className={`${navRow} border border-border bg-panel`}>
               <Icon n="plus" size={17} />
-              <span>Cuộc trò chuyện mới</span>
+              <span>{t('nav.newChat')}</span>
             </button>
             <button onClick={v.togglePalette} className={`${navRow} text-muted`}>
               <Icon n="search" size={17} />
-              <span>Tìm</span>
+              <span>{t('nav.search')}</span>
             </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 pt-3.5">
-            <div className="px-2 pb-2 font-mono text-eyebrow tracking-[0.14em] text-label">DỰ ÁN</div>
+            <div className="px-2 pb-2 font-mono text-eyebrow tracking-[0.14em] text-label">{t('sidebar.projects')}</div>
             {v.sideProjects.map((p) => (
               <Link
                 key={p.id}
                 to="/projects/$projectId"
                 params={{ projectId: p.id }}
                 onClick={v.closeDrawer}
-                aria-label={`Dự án ${p.name}`}
+                aria-label={t('nav.projectAria', { name: p.name })}
                 className={`${navRow} no-underline`}
                 style={{ background: p.bg }}
               >
@@ -73,7 +75,7 @@ export function MobileDrawer() {
               </Link>
             ))}
             <div className="px-2 pb-2 pt-4 font-mono text-eyebrow tracking-[0.14em] text-label">
-              GẦN ĐÂY · {v.currentProjectName.toUpperCase()}
+              {t('sidebar.recent', { project: v.currentProjectName.toUpperCase() })}
             </div>
             {v.sideConvs.map((c) => (
               <div
@@ -99,12 +101,12 @@ export function MobileDrawer() {
                     onClick={c.undo}
                     className="tap flex-shrink-0 cursor-pointer rounded-md border-none bg-transparent px-1 text-small text-accent-text outline-none"
                   >
-                    Hoàn tác
+                    {t('common.undo')}
                   </button>
                 ) : c.busy ? (
                   <span
                     role="img"
-                    aria-label="Đang trả lời"
+                    aria-label={t('common.replying')}
                     className="relative mr-1 flex size-[7px] flex-shrink-0 items-center justify-center"
                   >
                     <span
@@ -118,7 +120,7 @@ export function MobileDrawer() {
                     <DropdownMenu.Trigger asChild>
                       <button
                         type="button"
-                        aria-label="Tùy chọn cuộc trò chuyện"
+                        aria-label={t('common.convOptions')}
                         className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         <Icon n="more" size={16} />
@@ -127,14 +129,14 @@ export function MobileDrawer() {
                     <DropdownMenu.Portal>
                       <DropdownMenu.Content align="end" sideOffset={4} className={MENU_CONTENT}>
                         <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
-                          Đổi tên
+                          {t('common.rename')}
                         </DropdownMenu.Item>
                         <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
-                          {c.pinned ? 'Bỏ ghim' : 'Ghim lên đầu'}
+                          {c.pinned ? t('common.unpin') : t('common.pin')}
                         </DropdownMenu.Item>
                         <DropdownMenu.Separator className={MENU_SEP} />
                         <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
-                          Xóa
+                          {t('common.delete')}
                         </DropdownMenu.Item>
                       </DropdownMenu.Content>
                     </DropdownMenu.Portal>
@@ -147,7 +149,7 @@ export function MobileDrawer() {
           <div className="flex-shrink-0 border-t border-border px-3 pb-3.5 pt-2">
             <button onClick={v.goSettings} className={navRow} style={{ color: v.setFg }}>
               <Icon n="settings" size={16} />
-              <span>Cài đặt</span>
+              <span>{t('nav.settings')}</span>
             </button>
           </div>
         </Dialog.Content>

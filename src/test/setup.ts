@@ -2,6 +2,11 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, expect } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import * as axeMatchers from 'vitest-axe/matchers'
+import i18n from '../i18n'
+
+// tests assert Vietnamese strings — pin the locale regardless of the
+// environment's navigator.language
+await i18n.changeLanguage('vi')
 
 expect.extend(axeMatchers)
 

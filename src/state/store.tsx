@@ -9,6 +9,9 @@ import {
   type ReactNode,
 } from 'react'
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import i18n from '../i18n'
 import {
   convDefs,
   presetDefs,
@@ -134,7 +137,7 @@ function initialState(): NovaState {
     draft: '',
     q: '',
     typing: false,
-    typingLabel: 'Nova đang suy nghĩ…',
+    typingLabel: i18n.t('chat.thinkingLabel'),
     barOn: p.barOn ?? true,
     copied: false,
     tokenPct: '42%',
@@ -413,7 +416,7 @@ export function StoreProvider({
       // after a "thinking" pause, append an empty Nova bubble and stream into it
       t1.current = setTimeout(() => {
         set((x) => ({
-          typingLabel: 'Đang viết câu trả lời…',
+          typingLabel: i18n.t('chat.writingLabel'),
           threads: {
             ...x.threads,
             [conv]: [
@@ -453,7 +456,8 @@ export function StoreProvider({
         staged: { ...prev.staged, [conv]: [] },
         draft: '',
         typing: true,
-        typingLabel: prev.thinkingLevel === 'off' ? 'Đang viết câu trả lời…' : 'Nova đang suy nghĩ…',
+        typingLabel:
+          prev.thinkingLevel === 'off' ? i18n.t('chat.writingLabel') : i18n.t('chat.thinkingLabel'),
       }
     })
     navigate({ to: '/chat/$convId', params: { convId } })
@@ -556,6 +560,10 @@ export function StoreProvider({
 
   const dark = s.theme === 'dark' || (s.theme === 'auto' && prefersDark)
 
+  // subscribing here re-renders the provider (and recomputes the VM strings)
+  // when the language changes
+  const { t } = useTranslation()
+
   const v = useMemo(
     () =>
       deriveValues(s, set, {
@@ -569,8 +577,9 @@ export function StoreProvider({
         undoDelete,
         nav,
         navigate,
+        t,
       }),
-    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate],
+    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t],
   )
 
   const store: Store = useMemo(
@@ -603,9 +612,11 @@ function deriveValues(
     undoDelete: (id: string) => void
     nav: NavState
     navigate: Navigate
+    t: TFunction
   },
 ) {
-  const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete, nav, navigate } = extra
+  const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete, nav, navigate, t } =
+    extra
   const activeConv = nav.activeConv
   const activeConvObj = s.conversations.find((c) => c.id === activeConv)
   const activeProjectId = activeConvObj?.projectId ?? 'chung'
@@ -655,7 +666,7 @@ function deriveValues(
   const startChat = (projectId: string) => {
     const id = uid()
     set((x) => ({
-      conversations: [{ id, title: 'Cuộc trò chuyện mới', projectId }, ...x.conversations],
+      conversations: [{ id, title: t('nav.newChat'), projectId }, ...x.conversations],
       threads: { ...x.threads, [id]: [] },
       activeConv: id,
       respState: 'done',
@@ -745,7 +756,7 @@ function deriveValues(
     presetDefs
       .filter((p) => viewProject.presets[p.id])
       .map((p) => p.name)
-      .join(' · ') || 'cơ bản'
+      .join(' · ') || t('projects.config.skillsBasic')
 
   const liveStatusMap: Record<LiveProviderStatus, { badge: string; fg: string; bg: string }> = {
     ...statusMap,
@@ -891,20 +902,20 @@ function deriveValues(
     // top
     // the top bar reflects the conversation currently open, not a fixed project
     headerTitle:
-      s.conversations.find((c) => c.id === activeConv)?.title ?? 'Cuộc trò chuyện',
+      s.conversations.find((c) => c.id === activeConv)?.title ?? t('chat.headerFallback'),
     palette: s.palette,
     quiet: s.quiet,
     notQuiet: !s.quiet,
     showMeter: isDesktop,
-    meterLabel: 'bộ nhớ',
-    modelLabel: s.model === 'opus' ? 'Thông minh' : 'Nhanh',
-    modelAMode: 'Thông minh',
-    modelBMode: 'Nhanh',
-    modelADesc: 'Opus 4.8 · trả lời sâu',
-    modelBDesc: 'Haiku 4.8 · phản hồi nhanh',
+    meterLabel: t('meter.label'),
+    modelLabel: s.model === 'opus' ? t('model.smart') : t('model.fast'),
+    modelAMode: t('model.smart'),
+    modelBMode: t('model.fast'),
+    modelADesc: t('model.smartDesc'),
+    modelBDesc: t('model.fastDesc'),
     checkA: s.model === 'opus' ? '✓' : '',
     checkB: s.model === 'haiku' ? '✓' : '',
-    modelMenuLabel: 'CHẾ ĐỘ TRỢ LÝ',
+    modelMenuLabel: t('model.menuLabel'),
     // conversation states
     respState: rs,
     isStream: rs === 'stream',
@@ -914,10 +925,8 @@ function deriveValues(
     traceIconBg: 'var(--accent-soft)',
     traceIconFg: accent,
     traceSummary:
-      rs === 'stream'
-        ? 'Nova đang tra cứu và tính toán…'
-        : 'Nova đã tra cứu web và cập nhật tài liệu của bạn',
-    traceCaret: s.traceOpen ? 'Ẩn' : rs === 'stream' ? '' : '5 công cụ · 6.4 giây',
+      rs === 'stream' ? t('chat.traceSummaryStream') : t('chat.traceSummaryDone'),
+    traceCaret: s.traceOpen ? t('chat.traceHide') : rs === 'stream' ? '' : t('chat.traceCaretDone'),
     toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
     traceOpen: s.traceOpen,
     setStream: () => set({ respState: 'stream' }),
@@ -991,14 +1000,11 @@ function deriveValues(
     logout: () => navigate({ to: '/login' }),
     doLogin: () =>
       navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' }),
-    authTitle: nav.authView === 'signup' ? 'Tạo tài khoản' : 'Đăng nhập',
-    authSub:
-      nav.authView === 'signup'
-        ? 'Bắt đầu với Nova trong một phút.'
-        : 'Tiếp tục tới không gian làm việc của bạn.',
-    authCta: nav.authView === 'signup' ? 'Tạo tài khoản' : 'Tiếp tục',
-    authToggleText: nav.authView === 'signup' ? 'Đã có tài khoản?' : 'Chưa có tài khoản?',
-    authToggleLink: nav.authView === 'signup' ? 'Đăng nhập' : 'Đăng ký',
+    authTitle: nav.authView === 'signup' ? t('auth.signupTitle') : t('auth.loginTitle'),
+    authSub: nav.authView === 'signup' ? t('auth.signupSub') : t('auth.loginSub'),
+    authCta: nav.authView === 'signup' ? t('auth.signupCta') : t('auth.loginCta'),
+    authToggleText: nav.authView === 'signup' ? t('auth.haveAccount') : t('auth.noAccount'),
+    authToggleLink: nav.authView === 'signup' ? t('auth.switchLogin') : t('auth.switchSignup'),
     authToggleAct:
       nav.authView === 'signup'
         ? () => navigate({ to: '/login' })
@@ -1016,10 +1022,16 @@ function deriveValues(
     hasDemo: activeIsDemo,
     // thinking
     thinkingLevel: s.thinkingLevel,
-    thinkLabel:
-      ({ off: 'Tắt', low: 'Thấp', normal: 'Vừa', high: 'Cao' } as Record<string, string>)[
-        s.thinkingLevel
-      ] || 'Vừa',
+    thinkLabel: t(
+      (
+        {
+          off: 'composer.thinkOff',
+          low: 'composer.thinkLow',
+          normal: 'composer.thinkNormal',
+          high: 'composer.thinkHigh',
+        } as const
+      )[s.thinkingLevel] ?? 'composer.thinkNormal',
+    ),
     showThinkChip: s.thinkingLevel !== 'off',
     thinkChkOff: s.thinkingLevel === 'off' ? '✓' : '',
     thinkChkLow: s.thinkingLevel === 'low' ? '✓' : '',
@@ -1078,7 +1090,7 @@ function deriveValues(
     stHumorBd: s.styles.humor ? accent : 'var(--border)',
     stHumorBg: s.styles.humor ? 'var(--accent-soft)' : 'transparent',
     stHumorFg: s.styles.humor ? accentText : 'var(--muted)',
-    bashLabel: 'Chạy lệnh',
+    bashLabel: t('composer.toolBash'),
     showComposerHint: true,
     // bottom bar
     showBar: s.showShortcutsBar && s.barOn && !s.quiet && isDesktop,
@@ -1166,9 +1178,9 @@ function deriveValues(
     typingLabel: s.typingLabel,
     activeCount,
     tokenPct: s.tokenPct,
-    tokenLabel: 'còn 58%',
-    tokenDetail: '84k / 200k token · còn 58%',
-    copyLabel: s.copied ? 'Đã chép' : 'Sao chép',
+    tokenLabel: t('meter.tokenLabel'),
+    tokenDetail: t('meter.tokenDetail'),
+    copyLabel: s.copied ? t('common.copied') : t('common.copy'),
     copied: s.copied,
     quietClock: '24:13',
     // nav handlers

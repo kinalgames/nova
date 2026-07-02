@@ -1,17 +1,23 @@
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './../components/Icon'
 import { GrowingTextarea } from '../components/GrowingTextarea'
 
-function greeting(): string {
+function greetingKey():
+  | 'home.greetingMorning'
+  | 'home.greetingNoon'
+  | 'home.greetingAfternoon'
+  | 'home.greetingEvening' {
   const h = new Date().getHours()
-  if (h < 11) return 'Chào buổi sáng'
-  if (h < 13) return 'Chào buổi trưa'
-  if (h < 18) return 'Chào buổi chiều'
-  return 'Chào buổi tối'
+  if (h < 11) return 'home.greetingMorning'
+  if (h < 13) return 'home.greetingNoon'
+  if (h < 18) return 'home.greetingAfternoon'
+  return 'home.greetingEvening'
 }
 
 export function HomeView() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
       <div
@@ -22,23 +28,21 @@ export function HomeView() {
           className="text-center font-display leading-tight tracking-[-.01em]"
           style={{ fontSize: v.heroSize }}
         >
-          {greeting()}, Minh.
+          {t('home.greetingName', { greeting: t(greetingKey()), name: t('user.firstName') })}
         </div>
-        <div className="mt-3 text-center text-lead text-muted">
-          Mình là Nova. Bạn muốn làm gì hôm nay?
-        </div>
+        <div className="mt-3 text-center text-lead text-muted">{t('home.tagline')}</div>
         <div className="field mt-8 flex w-full items-end gap-3 rounded-lg border border-border bg-panel px-4 py-4">
           <GrowingTextarea
             value={v.draft}
             onChange={v.onDraft}
             onKeyDown={v.onKey}
-            aria-label="Nhắn cho Nova"
-            placeholder="Nhắn cho Nova…"
+            aria-label={t('home.inputAria')}
+            placeholder={t('home.inputPlaceholder')}
             className="min-w-0 flex-1 text-lead text-text"
           />
           <button
             type="button"
-            aria-label="Gửi"
+            aria-label={t('common.send')}
             onClick={v.send}
             disabled={!v.canSend}
             className="tap flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-ink text-bg opacity-100 transition-opacity duration-[120ms] disabled:cursor-default disabled:opacity-[.38]"

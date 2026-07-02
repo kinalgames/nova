@@ -1,5 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -19,15 +20,16 @@ const fold = (s: string) =>
 
 export function CommandPalette() {
   const { v } = useStore()
+  const { t } = useTranslation()
   const q = fold(v.q.trim())
   const hit = (label: string) => q !== '' && fold(label).includes(q)
 
   const actions: { label: string; icon: IconName; run: () => void }[] = [
-    { label: 'Cuộc trò chuyện mới', icon: 'plus', run: v.pNewChat },
-    { label: 'Vào chế độ tập trung', icon: 'focus', run: v.pQuiet },
-    { label: 'Tất cả dự án', icon: 'file', run: v.pProjects },
-    { label: 'Nova · trợ lý', icon: 'nova', run: v.pAssistant },
-    { label: 'Cài đặt', icon: 'settings', run: v.pSettings },
+    { label: t('nav.newChat'), icon: 'plus', run: v.pNewChat },
+    { label: t('nav.focusMode'), icon: 'focus', run: v.pQuiet },
+    { label: t('nav.allProjects'), icon: 'file', run: v.pProjects },
+    { label: t('nav.assistant'), icon: 'nova', run: v.pAssistant },
+    { label: t('nav.settings'), icon: 'settings', run: v.pSettings },
   ]
 
   const convHits = q ? v.paletteConvs.filter((c) => hit(c.title)) : []
@@ -50,14 +52,14 @@ export function CommandPalette() {
           className="fixed left-1/2 z-40 w-[560px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] overflow-hidden rounded-lg border border-border bg-panel shadow-overlay outline-none"
         >
           <VisuallyHidden asChild>
-            <Dialog.Title>Bảng lệnh</Dialog.Title>
+            <Dialog.Title>{t('palette.title')}</Dialog.Title>
           </VisuallyHidden>
           <div className="flex h-[58px] items-center gap-3 border-b border-border px-4">
             <Icon n="search" size={18} className="text-faint" />
             <input
               value={v.q}
               onChange={v.onQ}
-              placeholder="Tìm cuộc trò chuyện, dự án, hành động…"
+              placeholder={t('palette.placeholder')}
               className="min-w-0 flex-1 bg-transparent text-lead text-text outline-none"
             />
             <span className="rounded-xs border border-border px-1.5 py-0.5 font-mono text-eyebrow text-faint">
@@ -67,42 +69,42 @@ export function CommandPalette() {
           <div className="max-h-[52vh] overflow-y-auto p-2">
             {q === '' ? (
               <>
-                <div className={SECTION}>ĐI TỚI</div>
+                <div className={SECTION}>{t('palette.goTo')}</div>
                 <button onClick={v.goProject} className={row}>
                   <span className="size-[9px] rounded-xs bg-accent" />
-                  <span className="flex-1">Dự án · {v.activeProjectName}</span>
+                  <span className="flex-1">{t('palette.projectRow', { name: v.activeProjectName })}</span>
                 </button>
                 <button onClick={v.pProjects} className={row}>
                   <Icon n="file" size={16} className="text-muted" />
-                  <span className="flex-1">Tất cả dự án</span>
+                  <span className="flex-1">{t('nav.allProjects')}</span>
                 </button>
                 <button onClick={v.pAssistant} className={row}>
                   <Icon n="nova" size={16} className="text-muted" />
-                  <span className="flex-1">Nova · trợ lý</span>
+                  <span className="flex-1">{t('nav.assistant')}</span>
                 </button>
                 <button onClick={v.pSettings} className={row}>
                   <Icon n="settings" size={16} className="text-muted" />
-                  <span className="flex-1">Cài đặt</span>
+                  <span className="flex-1">{t('nav.settings')}</span>
                 </button>
-                <div className={SECTION}>HÀNH ĐỘNG</div>
+                <div className={SECTION}>{t('palette.actions')}</div>
                 <button onClick={v.pNewChat} className={row}>
                   <Icon n="plus" size={16} className="text-muted" />
-                  <span className="flex-1">Cuộc trò chuyện mới</span>
+                  <span className="flex-1">{t('nav.newChat')}</span>
                 </button>
                 <button onClick={v.pQuiet} className={`${row} bg-accent-soft`}>
                   <Icon n="focus" size={16} className="text-accent" />
-                  <span className="flex-1">Vào chế độ tập trung</span>
+                  <span className="flex-1">{t('nav.focusMode')}</span>
                 </button>
               </>
             ) : nothing ? (
               <div className="px-3 py-8 text-center text-body text-muted">
-                Không có kết quả cho “{v.q.trim()}”
+                {t('palette.empty', { q: v.q.trim() })}
               </div>
             ) : (
               <>
                 {convHits.length > 0 && (
                   <>
-                    <div className={SECTION}>CUỘC TRÒ CHUYỆN</div>
+                    <div className={SECTION}>{t('palette.conversations')}</div>
                     {convHits.map((c) => (
                       <button key={c.id} onClick={c.open} className={row}>
                         <Icon n="write" size={16} className="text-muted" />
@@ -116,7 +118,7 @@ export function CommandPalette() {
                 )}
                 {projHits.length > 0 && (
                   <>
-                    <div className={SECTION}>DỰ ÁN</div>
+                    <div className={SECTION}>{t('palette.projects')}</div>
                     {projHits.map((p) => (
                       <button key={p.id} onClick={p.open} className={row}>
                         <span className="size-[9px] rounded-xs" style={{ background: p.dot }} />
@@ -127,7 +129,7 @@ export function CommandPalette() {
                 )}
                 {actHits.length > 0 && (
                   <>
-                    <div className={SECTION}>HÀNH ĐỘNG</div>
+                    <div className={SECTION}>{t('palette.actions')}</div>
                     {actHits.map((a) => (
                       <button key={a.label} onClick={a.run} className={row}>
                         <Icon n={a.icon} size={16} className="text-muted" />
