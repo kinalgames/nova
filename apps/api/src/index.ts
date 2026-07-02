@@ -2,18 +2,53 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { ChatProxyRequest } from '@nova/shared'
 import { callAnthropic, toNovaStream } from './providers/anthropic'
+import { createAuth, type AuthEnv } from './auth'
 
-// BE0 skeleton + the provider proxy (BE3 slice pulled forward so real
-// credentials can be tested end-to-end). Conventions locked in
-// docs/backend-architecture.md: REST /v1, RFC 7807 errors, SSE streaming.
+// BE1 auth (Better Auth on D1) + the provider proxy (BE3 slice pulled
+// forward). Conventions locked in docs/backend-architecture.md: REST /v1,
+// RFC 7807 errors, SSE streaming.
 
-const app = new Hono()
+const app = new Hono<{ Bindings: AuthEnv }>()
 
-// dev CORS: the Vite client on another port; tighten per-env at deploy time
+// dev CORS: the Vite client on another port; tighten per-env at deploy time.
+// credentials:true → origin must be reflected, never '*'.
 app.use(
   '/v1/*',
-  cors({ origin: (o) => o, allowHeaders: ['content-type'], allowMethods: ['POST', 'OPTIONS'] }),
+  cors({
+    origin: (o) => o,
+    credentials: true,
+    allowHeaders: ['content-type', 'authorization'],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+  }),
 )
+app.use(
+  '/api/auth/*',
+  cors({
+    origin: (o) => o,
+    credentials: true,
+    allowHeaders: ['content-type', 'authorization'],
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+  }),
+)
+
+// Better Auth owns everything under /api/auth/* (per-request instance —
+// isolates are reused, module state would leak across requests)
+app.on(['GET', 'POST'], '/api/auth/*', (c) => createAuth(c.env).handler(c.req.raw))
+
+// session probe — works with the web session cookie OR a bearer token
+app.get('/v1/me', async (c) => {
+  const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
+  if (!session) return problem(401, 'unauthenticated', 'No valid session')
+  return c.json({
+    user: {
+      id: session.user.id,
+      name: session.user.name,
+      email: session.user.email,
+      assistantName:
+        (session.user as { assistantName?: string | null }).assistantName ?? null,
+    },
+  })
+})
 
 app.get('/healthz', (c) =>
   c.json({

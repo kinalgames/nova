@@ -6,11 +6,19 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true
-  }
-  // Bindings arrive with their phases:
-  //   BE1 — Better Auth secrets (wrangler secret put), KV for rate limits
-  //   BE2 — Hyperdrive → Neon Postgres
-  //   BE3 — provider BYOK master key (secret), usage Queues
-  //   BE4 — R2 bucket for project files/attachments
-  // After ANY binding change: `npm run cf-typegen -w @nova/api`.
+  },
+  // BE1 — D1 for auth/user lookup (thin by design; content lives in per-user
+  // DOs from BE2). Local dev uses wrangler's local sqlite; replace
+  // database_id after `wrangler d1 create nova` for deploys.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nova",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ]
+  // Later phases: BE2 Durable Objects (per-user store) · BE3 BYOK master-key
+  // secret + Analytics Engine · BE4 R2 bucket. Secrets via `wrangler secret
+  // put` / .dev.vars only. After ANY binding change: `npm run cf-typegen`.
 }
