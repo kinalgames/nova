@@ -5,7 +5,8 @@ import { renderApp, makeUser } from '../test/util'
 beforeEach(() => localStorage.clear())
 
 describe('rename dialog (paper)', () => {
-  it('renames a conversation through the dialog', async () => {
+  // slow under coverage instrumentation
+  it('renames a conversation through the dialog', { timeout: 15_000 }, async () => {
     const user = makeUser()
     await renderApp()
     await user.hover(screen.getByText('Đoạn mở đầu trang đích'))

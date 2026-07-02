@@ -10,6 +10,15 @@ vi.mock('../services/sync', () => ({
   pushOps: vi.fn(async () => 1),
 }))
 
+// login flow inside this file must not hit the network
+vi.mock('../services/auth', () => ({
+  signIn: vi.fn(async () => null),
+  signUp: vi.fn(async () => null),
+  fetchMe: vi.fn(async () => null),
+  signOut: vi.fn(async () => {}),
+  getToken: () => localStorage.getItem('nova.auth.token'),
+}))
+
 beforeEach(() => {
   localStorage.clear()
   localStorage.setItem('nova.auth.token', 'tok') // syncReady() = true
@@ -66,14 +75,26 @@ describe('store — op-log sync wiring (BE2)', () => {
     expect(result.current.s.conversations.length).toBeGreaterThan(0)
   })
 
-  it('later changes push only the debounced diff', async () => {
+  it('logging in starts syncing immediately — no reload required', { timeout: 15_000 }, async () => {
+    localStorage.removeItem('nova.auth.token') // boots logged-out
+    const { result } = await renderStore({ path: '/login' })
+    expect(pullOps).not.toHaveBeenCalled()
+
+    localStorage.setItem('nova.auth.token', 'tok') // what a real sign-in stores
+    await act(async () => {
+      await result.current.v.submitAuth('minh@test.vn', 'password1')
+    })
+    await waitFor(() => expect(pullOps).toHaveBeenCalled(), { timeout: 4000 })
+  })
+
+  it('later changes push only the debounced diff', { timeout: 15_000 }, async () => {
     const { result } = await renderStore()
     await waitFor(() => expect(pushOps).toHaveBeenCalled()) // initial import
     vi.mocked(pushOps).mockClear()
 
     await act(async () => result.current.v.setDark())
-    await act(async () => new Promise((r) => setTimeout(r, 900))) // debounce window
-    await waitFor(() => expect(pushOps).toHaveBeenCalled())
+    await act(async () => new Promise((r) => setTimeout(r, 1200))) // debounce window (slow under coverage)
+    await waitFor(() => expect(pushOps).toHaveBeenCalled(), { timeout: 4000 })
     const ops = vi.mocked(pushOps).mock.calls[0][0]
     expect(ops.some((o) => o.table === 'settings')).toBe(true)
     // untouched collections are not re-sent

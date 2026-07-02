@@ -129,6 +129,9 @@ export function __resetSync() {
   clearTimeout(syncPushTimer)
 }
 
+/** registered by the provider so login can start syncing WITHOUT a reload */
+let triggerSyncHydrate: (() => void) | null = null
+
 /** the persisted slice of the store — single source for localStorage + sync */
 function persistSliceOf(s: NovaState): import('./persist').Persisted {
   return {
@@ -357,8 +360,8 @@ export function StoreProvider({
   // BE2: hydrate from the per-user op-log once a session exists. Server state
   // wins for records it has; a fresh server gets the local data pushed up
   // (that IS the localStorage import path).
-  useEffect(() => {
-    if (!syncReady()) return
+  const hydrateSync = useCallback(() => {
+    if (!syncReady()) return () => {}
     let stop = false
     void pullOps(0).then((res) => {
       if (stop || !res) return
@@ -397,6 +400,15 @@ export function StoreProvider({
       stop = true
     }
   }, [set])
+
+  useEffect(() => {
+    triggerSyncHydrate = hydrateSync
+    const cancel = hydrateSync()
+    return () => {
+      triggerSyncHydrate = null
+      cancel()
+    }
+  }, [hydrateSync])
 
   // E1: poll /version.json for a newer deploy — on mount, on focus, and every
   // minute. Skipped under vitest (the check itself is unit-tested in isolation).
@@ -1703,6 +1715,7 @@ function deriveValues(
     isLogin: nav.authView !== 'signup',
     logout: () => {
       if (API_BASE) void signOut()
+      __resetSync() // the next login re-hydrates/imports from scratch
       navigate({ to: '/login' })
     },
     doLogin: () =>
@@ -1726,6 +1739,8 @@ function deriveValues(
           userName: me.name,
           ...(me.assistantName ? { assistantName: me.assistantName } : {}),
         })
+      // start syncing this user's op-log immediately — no reload needed
+      triggerSyncHydrate?.()
       navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
       return null
     },
