@@ -3,6 +3,7 @@ import * as HoverCard from '@radix-ui/react-hover-card'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { ProviderLogo } from './ProviderLogo'
 
 const menuContent =
   'z-40 min-w-[18rem] max-w-[92vw] overflow-hidden rounded-md border border-border bg-panel p-0 shadow-overlay ' +
@@ -102,10 +103,10 @@ export function TopBar() {
                   <div className="text-body text-text">{v.modelAMode}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted">
                     <span
-                      className="flex size-4 items-center justify-center rounded-xs font-mono text-micro"
+                      className="flex size-4 items-center justify-center rounded-xs"
                       style={{ background: v.modelABadgeBg, color: v.modelABadgeFg }}
                     >
-                      {v.modelAGlyph}
+                      <ProviderLogo id={v.modelAProviderId} size={11} />
                     </span>
                     {v.modelAName}
                     <span className="text-faint">· {v.modelADesc}</span>
@@ -122,10 +123,10 @@ export function TopBar() {
                   <div className="text-body text-text">{v.modelBMode}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted">
                     <span
-                      className="flex size-4 items-center justify-center rounded-xs font-mono text-micro"
+                      className="flex size-4 items-center justify-center rounded-xs"
                       style={{ background: v.modelBBadgeBg, color: v.modelBBadgeFg }}
                     >
-                      {v.modelBGlyph}
+                      <ProviderLogo id={v.modelBProviderId} size={11} />
                     </span>
                     {v.modelBName}
                     <span className="text-faint">· {v.modelBDesc}</span>

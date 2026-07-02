@@ -20,7 +20,9 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
     expect(within(dialog).getAllByText('Miễn phí').length).toBeGreaterThan(0)
   })
 
-  it('adds a profile via the form and a test marks it active', async () => {
+  // generous timeout: per-keystroke typing + the 900ms fake connection test
+  // run slower under coverage instrumentation
+  it('adds a profile via the form and a test marks it active', { timeout: 15_000 }, async () => {
     const user = makeUser()
     await openProviders()
     const dialog = await screen.findByRole('dialog')

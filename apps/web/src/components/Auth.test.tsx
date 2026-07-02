@@ -1,6 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
+
+// unit tests never hit the real auth server — success by default
+vi.mock('../services/auth', () => ({
+  signIn: vi.fn(async () => null),
+  signUp: vi.fn(async () => null),
+  fetchMe: vi.fn(async () => null),
+  signOut: vi.fn(async () => {}),
+  getToken: () => null,
+}))
 
 beforeEach(() => localStorage.clear())
 

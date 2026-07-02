@@ -312,7 +312,7 @@
     "providers": {
       "claude": { "sub": "Anthropic · cân bằng" },
       "gemini": { "sub": "Google · ngữ cảnh lớn" },
-      "openai": { "sub": "GPT · đa năng" },
+      "openai": { "sub": "OpenAI · đa năng" },
       "ollama": { "name": "Trên máy của bạn", "sub": "Ollama · riêng tư, ngoại tuyến" }
     },
     "styles": {

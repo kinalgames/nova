@@ -313,7 +313,7 @@
     "providers": {
       "claude": { "sub": "Anthropic · balanced" },
       "gemini": { "sub": "Google · large context" },
-      "openai": { "sub": "GPT · versatile" },
+      "openai": { "sub": "OpenAI · versatile" },
       "ollama": { "name": "On your machine", "sub": "Ollama · private, offline" }
     },
     "styles": {

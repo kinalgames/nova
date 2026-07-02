@@ -7,6 +7,7 @@ import { setLanguage, type Language } from '../i18n'
 import { Icon } from './Icon'
 import { ToggleRow } from './ToggleRow'
 import { PresetCard } from './PresetCard'
+import { ProviderLogo } from './ProviderLogo'
 
 const TABS = [
   { id: 'general', labelKey: 'settings.tabGeneral', icon: 'settings' },
@@ -351,8 +352,8 @@ function Providers() {
         {v.providers.map((pr) => (
           <div key={pr.id} className="rounded-md border border-border bg-panel px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-sm font-mono text-body" style={{ background: pr.badgeBg, color: pr.badgeFg }}>
-                {pr.glyph}
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-sm" style={{ background: pr.badgeBg, color: pr.badgeFg }}>
+                <ProviderLogo id={pr.id} size={20} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-body">{pr.name} {pr.rec}</div>

@@ -110,7 +110,8 @@ export const provDefs: ProviderDef[] = [
   },
   {
     id: 'openai',
-    name: 'OpenAI',
+    // product-first naming, consistent with Claude/Gemini: ChatGPT by OpenAI
+    name: 'ChatGPT',
     glyph: 'O',
     badgeBg: 'var(--border)',
     badgeFg: 'var(--text)',

@@ -71,17 +71,28 @@ function Onboarding() {
   )
 }
 
-function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
+function EmailForm({
+  cta,
+  onSubmit,
+}: {
+  cta: string
+  /** resolves to an error message, or null on success */
+  onSubmit: (email: string, password: string) => Promise<string | null>
+}) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError(t('authForm.emailInvalid'))
     if (pw.length < 6) return setError(t('authForm.pwShort'))
     setError(null)
-    onSubmit()
+    setBusy(true)
+    void onSubmit(email, pw)
+      .then((err) => setError(err))
+      .finally(() => setBusy(false))
   }
   return (
     <form onSubmit={submit} className="flex flex-col gap-2.5">
@@ -112,7 +123,8 @@ function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
       )}
       <button
         type="submit"
-        className="cursor-pointer rounded-md border-none bg-ink p-3 text-center text-body font-medium text-bg"
+        disabled={busy}
+        className="cursor-pointer rounded-md border-none bg-ink p-3 text-center text-body font-medium text-bg disabled:cursor-default disabled:opacity-[.38]"
       >
         {cta}
       </button>
@@ -176,7 +188,7 @@ export function Auth() {
               {t('authForm.or')}
               <div className="h-px flex-1 bg-border" />
             </div>
-            <EmailForm cta={v.authCta} onSubmit={v.doLogin} />
+            <EmailForm cta={v.authCta} onSubmit={v.submitAuth} />
             <div className="mt-5 text-center text-ui text-muted">
               {v.authToggleText}{' '}
               <button

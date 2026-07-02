@@ -48,6 +48,7 @@ import {
 import { loadPersisted, PERSIST_KEY } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { API_BASE, streamChat } from '../services/llm'
+import { fetchMe, signIn, signOut, signUp } from '../services/auth'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
   addSibling,
@@ -1484,6 +1485,8 @@ function deriveValues(
     modelBName: findModel(s.slots.fast).name,
     modelAGlyph: findProvider(s.slots.smart.providerId).glyph,
     modelBGlyph: findProvider(s.slots.fast.providerId).glyph,
+    modelAProviderId: s.slots.smart.providerId,
+    modelBProviderId: s.slots.fast.providerId,
     modelABadgeBg: findProvider(s.slots.smart.providerId).badgeBg,
     modelABadgeFg: findProvider(s.slots.smart.providerId).badgeFg,
     modelBBadgeBg: findProvider(s.slots.fast.providerId).badgeBg,
@@ -1620,9 +1623,34 @@ function deriveValues(
     showAuth: nav.authView !== null,
     loggedIn: nav.authView === null,
     isLogin: nav.authView !== 'signup',
-    logout: () => navigate({ to: '/login' }),
+    logout: () => {
+      if (API_BASE) void signOut()
+      navigate({ to: '/login' })
+    },
     doLogin: () =>
       navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' }),
+    // real credential submit (BE1). Returns an error message for the form,
+    // or null on success (then navigates like the demo path). Without an
+    // API_BASE the fake doLogin path remains the demo-mode behaviour.
+    submitAuth: async (email: string, password: string): Promise<string | null> => {
+      if (!API_BASE) {
+        navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
+        return null
+      }
+      const err =
+        nav.authView === 'signup'
+          ? await signUp(email.split('@')[0] || email, email, password)
+          : await signIn(email, password)
+      if (err) return err
+      const me = await fetchMe()
+      if (me)
+        set({
+          userName: me.name,
+          ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+        })
+      navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
+      return null
+    },
     authTitle: nav.authView === 'signup' ? t('auth.signupTitle') : t('auth.loginTitle'),
     authSub: nav.authView === 'signup' ? t('auth.signupSub') : t('auth.loginSub'),
     authCta: nav.authView === 'signup' ? t('auth.signupCta') : t('auth.loginCta'),
