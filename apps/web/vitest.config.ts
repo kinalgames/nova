@@ -9,11 +9,13 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: false,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    // worker threads start faster than forks for jsdom; reusing the module
-    // graph across files in a worker (isolate:false) is safe here — every file
-    // clears localStorage and Testing-Library auto-unmounts after each test.
+    // worker threads start faster than forks for jsdom. Isolation stays ON:
+    // sharing the module graph across files (isolate:false) silently disables
+    // vi.mock for any module a previous file in the worker already imported —
+    // invisible on a 32-core dev box (one file per worker) but 16 tests failed
+    // on 2-core CI. Correctness beats the ~seconds saved.
     pool: 'threads',
-    isolate: false,
+    isolate: true,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'text', 'html'],
