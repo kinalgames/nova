@@ -351,7 +351,7 @@ function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) 
   return (
     <div
       className={`mt-1.5 flex items-center gap-0.5 ${
-        isLast ? '' : 'opacity-0 transition-opacity group-hover/msg:opacity-100 group-focus-within/msg:opacity-100'
+        isLast ? '' : 'touch-show opacity-0 transition-opacity group-hover/msg:opacity-100 group-focus-within/msg:opacity-100'
       }`}
     >
       <button type="button" aria-label={t('common.copy')} onClick={() => v.copyMessage(message.id)} className={btn}>

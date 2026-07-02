@@ -56,10 +56,10 @@ function ConvRow({ c }: { c: ConvVM }) {
               n="pin"
               size={12}
               fill="currentColor"
-              className="absolute right-2.5 flex-shrink-0 text-faint transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
+              className="touch-hide absolute right-2.5 flex-shrink-0 text-faint transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
             />
           )}
-          <div className="absolute right-1.5 flex items-center gap-0.5 rounded-md bg-[var(--side)] pl-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="touch-show absolute right-1.5 flex items-center gap-0.5 rounded-md bg-[var(--side)] pl-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <button
               type="button"
               aria-label={c.pinned ? t('common.unpin') : t('common.pin')}
@@ -151,7 +151,7 @@ export function Sidebar() {
               type="button"
               aria-label={t('nav.home')}
               onClick={v.goHome}
-              className="flex size-9 cursor-pointer items-center justify-center border-none bg-transparent transition-opacity group-hover:opacity-0"
+              className="touch-hide flex size-9 cursor-pointer items-center justify-center border-none bg-transparent transition-opacity group-hover:opacity-0"
             >
               <div className="size-[13px] shrink-0 rounded-full bg-ink shadow-[inset_-3px_-3px_0_var(--side)]" />
             </button>
@@ -159,7 +159,7 @@ export function Sidebar() {
               type="button"
               aria-label={t('nav.expandSidebar')}
               onClick={v.collapseSidebar}
-              className="pointer-events-none absolute inset-0 flex cursor-pointer items-center justify-center border-none bg-transparent text-muted opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+              className="touch-show pointer-events-none absolute inset-0 flex cursor-pointer items-center justify-center border-none bg-transparent text-muted opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
             >
               <Icon n="expandRail" size={16} />
             </button>
@@ -196,7 +196,7 @@ export function Sidebar() {
       </div>
 
       {/* lists */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-2 pt-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 pb-2 pt-3">
         {v.sidebarExpanded && (
           <div className="px-2 pb-2 font-mono text-eyebrow tracking-[.14em] text-label">{t('sidebar.projects')}</div>
         )}

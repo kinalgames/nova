@@ -24,7 +24,7 @@ export function MobileDrawer() {
         <Dialog.Overlay className="fixed inset-0 z-[48] animate-[dim_120ms_ease] bg-scrim" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed inset-y-0 left-0 z-[49] flex w-[282px] max-w-[84vw] flex-col overflow-hidden bg-side animate-[slideR_200ms_ease] outline-none"
+          className="fixed inset-y-0 left-0 z-[49] flex w-[282px] max-w-[84vw] flex-col overflow-hidden bg-side pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] animate-[slideR_200ms_ease] outline-none"
         >
           <VisuallyHidden asChild>
             <Dialog.Title>{t('nav.navigation')}</Dialog.Title>
@@ -56,7 +56,7 @@ export function MobileDrawer() {
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-2 pt-3.5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-2 pt-3.5">
             <div className="px-2 pb-2 font-mono text-eyebrow tracking-[0.14em] text-label">{t('sidebar.projects')}</div>
             {v.sideProjects.map((p) => (
               <Link

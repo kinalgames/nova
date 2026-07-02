@@ -29,7 +29,7 @@ export function SettingsDialog() {
           aria-describedby={undefined}
           className={
             mobile
-              ? 'fixed inset-0 z-[56] flex flex-col bg-bg outline-none animate-[slideR_180ms_ease]'
+              ? 'fixed inset-0 z-[56] flex flex-col bg-bg pb-[env(safe-area-inset-bottom)] outline-none animate-[slideR_180ms_ease]'
               : 'fixed left-1/2 top-1/2 z-[56] flex h-[640px] max-h-[88vh] w-[860px] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-border bg-bg shadow-overlay outline-none animate-[pop_160ms_var(--ease-paper)]'
           }
           style={mobile ? undefined : { flexDirection: 'row' }}
@@ -72,7 +72,7 @@ export function SettingsDialog() {
           </div>
 
           {/* panel */}
-          <div role="tabpanel" className="min-w-0 flex-1 overflow-y-auto">
+          <div role="tabpanel" className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="flex items-center justify-between px-6 pb-2 pt-5">
               <div className="font-display text-h3">
                 {t(TABS.find((tab) => tab.id === v.settingsTab)?.labelKey ?? 'settings.tabGeneral')}

@@ -451,11 +451,36 @@ button:focus-visible {
 
 /* a control must be at least a fingertip on touch screens — grow the box
    itself (centered content) rather than an overflowing pseudo that could
-   steal taps from neighbours */
-@media (max-width: 880px) {
+   steal taps from neighbours. Coarse pointers include tablets at desktop
+   widths (iPad landscape). */
+@media (max-width: 880px), (pointer: coarse) {
   .tap {
     min-width: 44px;
     min-height: 44px;
+  }
+}
+
+/* touch screens have no hover — controls revealed on hover stay visible and
+   their hover-swapped twins stay out of the way */
+@media (hover: none) {
+  .touch-show {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .touch-hide {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+/* iOS zooms the whole page when a focused field is under 16px — bump the
+   small field sizes on touch so focusing never jolts the viewport (the
+   composer's 18px lead size is untouched) */
+@media (pointer: coarse) {
+  :is(input, textarea, select).text-small,
+  :is(input, textarea, select).text-body,
+  :is(input, textarea, select).text-ui {
+    font-size: 16px;
   }
 }
 

@@ -51,7 +51,7 @@ function Shell() {
     : undefined
   return (
     <div
-      className={`fixed inset-0 flex overflow-hidden bg-bg font-sans text-text${v.themeClass ? ` ${v.themeClass}` : ''}`}
+      className={`fixed inset-0 flex overflow-hidden bg-bg pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] font-sans text-text${v.themeClass ? ` ${v.themeClass}` : ''}`}
       style={accentVar}
     >
       <Outlet />

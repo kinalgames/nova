@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as HoverCard from '@radix-ui/react-hover-card'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,8 @@ const menuItem =
 export function TopBar() {
   const { v } = useStore()
   const { t } = useTranslation()
+  // controlled so a TAP opens the usage detail too — hover-only dies on touch
+  const [meterOpen, setMeterOpen] = useState(false)
   if (!v.notQuiet) return null
   return (
     <div className="flex h-14 flex-shrink-0 items-center justify-between gap-2.5 border-b border-border bg-bg px-4">
@@ -56,10 +59,11 @@ export function TopBar() {
         )}
         {v.showMeter && (
           <>
-            <HoverCard.Root openDelay={120} closeDelay={80}>
+            <HoverCard.Root open={meterOpen} onOpenChange={setMeterOpen} openDelay={120} closeDelay={80}>
               <HoverCard.Trigger asChild>
                 <button
                   type="button"
+                  onClick={() => setMeterOpen((o) => !o)}
                   aria-label={`${v.meterLabel} — ${v.tokenDetail}`}
                   className="flex cursor-help items-center gap-2 border-none bg-transparent p-0 font-[inherit] outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 >

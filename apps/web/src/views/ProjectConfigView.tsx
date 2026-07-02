@@ -114,7 +114,7 @@ export function ProjectConfigView() {
                 type="button"
                 aria-label={t('projects.config.removeFile', { name: f.name })}
                 onClick={f.remove}
-                className="absolute -right-2 -top-2 flex cursor-pointer items-center justify-center rounded-full border border-border bg-panel p-1 text-faint opacity-0 shadow-overlay outline-none transition-opacity hover:text-danger group-hover/file:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="touch-show absolute -right-2 -top-2 flex cursor-pointer items-center justify-center rounded-full border border-border bg-panel p-1 text-faint opacity-0 shadow-overlay outline-none transition-opacity hover:text-danger group-hover/file:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <Icon n="close" size={12} />
               </button>
