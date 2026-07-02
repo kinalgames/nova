@@ -48,14 +48,43 @@ Server-side reuse of shipped client logic (pure modules, portable as-is):
 - `data/defs.ts` model catalog + pricing — the proxy validates model ids and
   meters cost from the same table.
 
-## Client integration model (proposed)
+## Client architecture — LOCAL-FIRST (decided)
 
-The client keeps its store as an **optimistic cache**: actions apply locally
-exactly as today, then reconcile with the API (mutation queue, last-write-wins
-per record to start). Chat streaming swaps `streamReply`'s fake engine for the
-SSE consumer — same `appendChild`/`updateMessage` calls, so MessageView and
-the whole A-track UI stay untouched. The fake service layer is kept behind a
-**demo mode** flag (logged-out experience + offline fallback + test harness).
+Owner requirements: native apps must be **as fast as possible**, OS-level
+native only (desktop likely Rust). That property comes from local-first, not
+from any server database: every read/write hits device-local SQLite (0ms),
+sync runs in the background.
+
+- **Sync = op-log**, not CRUD: the shipped thread tree is append-mostly by
+  design (edits/regenerates create SIBLING versions — the ‹i/n› feature), so
+  sync conflicts resolve by keeping both siblings. BE2 designs the op-log
+  protocol; it is the anchor for every future native client.
+- **SQLite on both ends**: device SQLite ↔ per-user DO SQLite — symmetric
+  schema, durable server-side op-log + snapshot.
+- **Search runs on-device** (SQLite FTS5 + `sqlite-vec`, OSS): instant,
+  offline, private. Server-side Vectorize remains optional for cross-device
+  cold-start and web.
+- **Native stack (decided)**: one **Rust core** (domain + SQLite + sync +
+  crypto) with **UniFFI** bindings → thin native UIs — desktop in Rust
+  (GPUI / iced / Slint, chosen via a spike), iOS SwiftUI, Android Compose.
+  Tauri is ruled out (webview ≠ native rendering). `packages/shared` (TS) is
+  the living spec the Rust core ports from.
+- **Web stays React** (already shipped) with its store as an optimistic
+  cache over the same op-log endpoints; long-term the Rust core can compile
+  to WASM to unify. The fake service layer stays behind a **demo mode** flag
+  (logged-out experience + offline fallback + test harness).
+- **Sequencing (decided)**: backend first (BE1–BE3 with op-log sync), native
+  clients start once the API is stable.
+
+Scale disciplines locked for 100M-user headroom:
+1. BE1 auth issues **bearer tokens from day one** (Better Auth bearer
+   plugin) alongside web session cookies — native clients never force an
+   auth rework.
+2. **Conversation list lives in the per-user DO from BE2** (not D1), and
+   sessions cache in KV — D1 stays a thin auth/user lookup, removing its
+   scale ceiling up front.
+3. The API is a product: REST /v1 + OpenAPI; every platform is just a
+   client; no web-only logic server-side.
 
 ## Zero-downtime deploy & update
 
@@ -85,10 +114,12 @@ single reload on `vite:preloadError`) · update-available toast
   (userName/assistantName) on `users`. Local dev is fully offline
   (`wrangler dev` with local D1) — no cloud account or secrets needed until
   deploy; OAuth credentials arrive later (email/password first).
-- **BE2 — sync & import**: metadata CRUD on D1 (settings/projects/
-  conversation list), message trees in the per-user DO, cursor pagination,
-  `POST /v1/import` (persist v5), client store becomes the optimistic cache;
-  date groups/archive/export/share keep working from server data.
+- **BE2 — op-log sync & import**: design the op-log protocol (append
+  message/version ops, selection moves, metadata patches) with the per-user
+  DO as the durable log + snapshot; conversation list lives in the DO, D1
+  stays thin (auth/user lookup); `POST /v1/import` (persist v5) replays a
+  localStorage user into ops; web store becomes the optimistic cache over
+  the same endpoints.
 - **BE3 — provider proxy + real streaming**: BYOK encrypted profiles, SSE
   chat with the rotation engine + real usage events; slots route to real
   models (Claude first, then OpenAI/Gemini/Ollama-remote).
