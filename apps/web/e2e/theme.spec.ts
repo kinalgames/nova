@@ -21,6 +21,22 @@ test('dark mode flips the interaction tokens (hover wash, scrim)', async ({ page
   expect(tokens.bg).toBe('#16130f')
 })
 
+test('fonts are self-hosted — zero third-party font requests', async ({ page }) => {
+  const external: string[] = []
+  page.on('request', (r) => {
+    if (/fonts\.googleapis|fonts\.gstatic/i.test(r.url())) external.push(r.url())
+  })
+  await page.goto('/demo/chat/c1')
+  await expect(page.getByText('Đối chiếu benchmark đối thủ').first()).toBeVisible()
+  expect(external).toHaveLength(0)
+  // the display serif actually loaded from our own origin
+  const fraunces = await page.evaluate(async () => {
+    await document.fonts.ready
+    return document.fonts.check('22px Fraunces')
+  })
+  expect(fraunces).toBe(true)
+})
+
 test('the sidebar marks the open conversation with aria-current', async ({ page }) => {
   await page.goto('/demo/chat/c1')
   const current = page.locator('aside [aria-current="page"]')

@@ -3,13 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
     <title>Nova</title>
+    <script>
+      // pre-paint theme: paint the page background in the right tone BEFORE
+      // CSS/JS arrive so a dark-mode boot never flashes white
+      try {
+        var key = location.pathname.indexOf('/demo') === 0 ? 'nova.flow.demo.v5' : 'nova.flow.settings.v5'
+        var theme = (JSON.parse(localStorage.getItem(key) || '{}').theme) || 'light'
+        var dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.style.background = dark ? '#16130f' : '#fbfaf6'
+      } catch (e) { /* first paint keeps the default */ }
+    </script>
   </head>
   <body>
     <div id="root"></div>

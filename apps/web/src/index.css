@@ -163,7 +163,7 @@
 
   /* type */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-body: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-body: 'Geist Sans', 'Geist', system-ui, -apple-system, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   /* motion — paper is calm: quiet durations, one easing */
