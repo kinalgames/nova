@@ -208,6 +208,8 @@ export interface NovaState {
   stickyProfile: Partial<Record<ProviderId, string>>
   /** profile id with an in-flight connection test (ephemeral, not persisted) */
   testingProfile: string | null
+  /** a newer deploy exists — show the update toast (ephemeral) */
+  updateReady: boolean
   presetDefault: Record<PresetId, boolean>
   /** staged attachments, keyed by conversation id (per-conversation tray) */
   staged: Record<string, StagedFile[]>

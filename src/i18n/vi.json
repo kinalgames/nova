@@ -150,6 +150,11 @@
   "topbar": {
     "focus": "Tập trung"
   },
+  "update": {
+    "ready": "Có phiên bản mới của Nova.",
+    "reload": "Tải lại",
+    "dismiss": "Để sau"
+  },
   "user": {
     "name": "Minh Trần",
     "firstName": "Minh",

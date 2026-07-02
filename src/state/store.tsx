@@ -40,12 +40,12 @@ import type {
   PreviewKind,
   SettingsTab,
   StagedFile,
-  Theme,
-  ThinkLevel,
   ViewName,
 } from './types'
 import { pickProfile } from './rotation'
+import { loadPersisted, PERSIST_KEY } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
+import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
   addSibling,
   appendChild,
@@ -103,40 +103,8 @@ function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
   return { view: 'home', authView: null }
 }
 
-// bump the version suffix whenever the persisted shape changes so stale data
-// from an older schema is ignored rather than corrupting the new state
-export const PERSIST_KEY = 'nova.flow.settings.v5'
-
-interface Persisted {
-  theme?: Theme
-  advanced?: boolean
-  accent?: string
-  model?: 'opus' | 'haiku'
-  focusDur?: '15' | '25' | '50'
-  barOn?: boolean
-  thinkingLevel?: ThinkLevel
-  activeSlot?: SlotId
-  slots?: Record<SlotId, ModelRef>
-  profiles?: NovaState['profiles']
-  autoRotate?: boolean
-  stickyProfile?: NovaState['stickyProfile']
-  tools?: NovaState['tools']
-  styles?: NovaState['styles']
-  projects?: NovaState['projects']
-  presetDefault?: Record<PresetId, boolean>
-  conversations?: NovaState['conversations']
-  activeConv?: string
-  threads?: NovaState['threads']
-}
-
-function loadPersisted(): Persisted {
-  try {
-    const raw = localStorage.getItem(PERSIST_KEY)
-    return raw ? (JSON.parse(raw) as Persisted) : {}
-  } catch {
-    return {}
-  }
-}
+// persisted-settings schema + stepwise migrations live in ./persist
+export { PERSIST_KEY }
 
 let _uid = 0
 const uid = () => `f${++_uid}`
@@ -188,6 +156,7 @@ function initialState(): NovaState {
     autoRotate: p.autoRotate ?? true,
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
+    updateReady: false,
     presetDefault: p.presetDefault ?? {
       code: false,
       design: false,
@@ -256,7 +225,7 @@ export function StoreProvider({
 
   // persist a slice of settings
   useEffect(() => {
-    const p: Persisted = {
+    const p: import('./persist').Persisted = {
       theme: s.theme,
       advanced: s.advanced,
       accent: s.accent,
@@ -308,6 +277,31 @@ export function StoreProvider({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [set])
+
+  // E1: poll /version.json for a newer deploy — on mount, on focus, and every
+  // minute. Skipped under vitest (the check itself is unit-tested in isolation).
+  /* v8 ignore start */
+  useEffect(() => {
+    if (import.meta.env.MODE === 'test') return
+    let stop = false
+    const check = async () => {
+      if (await newerBuildAvailable(BUILD_ID)) {
+        if (!stop) set({ updateReady: true })
+      }
+    }
+    void check()
+    const iv = setInterval(() => void check(), UPDATE_POLL_MS)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void check()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      stop = true
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [set])
+  /* v8 ignore stop */
 
   // global keyboard shortcuts
   useEffect(() => {
@@ -1263,6 +1257,11 @@ function deriveValues(
     modelMenuLabel: t('model.menuLabel'),
     autoRotate: s.autoRotate,
     toggleAutoRotate: () => set((x) => ({ autoRotate: !x.autoRotate })),
+    // E1 — update toast
+    updateReady: s.updateReady,
+    dismissUpdate: () => set({ updateReady: false }),
+    /* v8 ignore next — hard navigation, not reachable from the unit env */
+    reloadNow: () => window.location.reload(),
     // per-reply usage meta, advanced mode only: "1.2k↑ 3.4k↓ · ~$0.09"
     msgUsage: (m: Message): string | null => {
       const u = m.usage

@@ -61,10 +61,16 @@ backend — `limited`/`limitedUntil` are already modeled and unit-tested.
 | Rotation | Ordered priority + **sticky fallback**: use highest-priority active profile; on 429/limit mark `limited(+until)` and fall to the next; auto-recover to the higher profile when the limit expires. Toggle `autoRotate` per provider. No per-request round-robin. |
 | Usage & cost | Assistant messages carry `usage { inputTokens, outputTokens, modelId, profileId }` (estimated by the fake layer now; real API `usage` later — same schema). `cost = usage × pricing(modelId)`; profiles of kind Tài khoản cost 0 but still count tokens. Display: per-provider/profile usage table in Settings, per-reply meta in advanced mode (`· 1.2k↑ 3.4k↓ · ~$0.09`), monthly total. Pricing table lives in `data/defs.ts`. |
 
-## E — Zero-downtime client
-Update-available toast (version.json polling) · chunk-load-failure recovery
-(reload once) · stepwise persist migrations `migrate(vN→vN+1)` replacing
-"bump = discard".
+## E — Zero-downtime client (DONE)
+
+Shipped: `__BUILD_ID__` baked in + `/version.json` emitted at build
+(vite.config plugin); client polls on mount/focus/60s (`services/update.ts`)
+and shows a paper toast (`UpdateToast`) with reload/dismiss · chunk-load
+failure (`vite:preloadError`) reloads once, rate-limited via sessionStorage so
+a genuinely-missing chunk cannot loop · persist moved to `state/persist.ts`
+with STEPWISE migrations — v4→v5 maps `model`→`activeSlot` and connected
+provider keys→auth profiles, upgrades write the new key and remove the old
+("bump = discard" retired).
 
 ## B — Organization
 Date-grouped recents (Hôm nay/Hôm qua/Tuần này; needs real `updatedAt`) ·

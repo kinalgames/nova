@@ -151,6 +151,11 @@
   "topbar": {
     "focus": "Focus"
   },
+  "update": {
+    "ready": "A new version of Nova is available.",
+    "reload": "Reload",
+    "dismiss": "Later"
+  },
   "user": {
     "name": "Minh Trần",
     "firstName": "Minh",
