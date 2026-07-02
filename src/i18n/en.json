@@ -10,6 +10,11 @@
     "close": "Close",
     "rename": "Rename",
     "pin": "Pin to top",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "exportMd": "Export Markdown",
+    "exportJson": "Export JSON",
+    "share": "Share link",
     "unpin": "Unpin",
     "send": "Send",
     "stop": "Stop",
@@ -130,7 +135,15 @@
   },
   "sidebar": {
     "projects": "PROJECTS",
-    "recent": "RECENT · {{project}}"
+    "recent": "RECENT · {{project}}",
+    "archived": "ARCHIVED",
+    "group": {
+      "pinned": "PINNED",
+      "today": "TODAY",
+      "yesterday": "YESTERDAY",
+      "week": "THIS WEEK",
+      "older": "OLDER"
+    }
   },
   "model": {
     "smart": "Smart",
@@ -155,6 +168,9 @@
     "ready": "A new version of Nova is available.",
     "reload": "Reload",
     "dismiss": "Later"
+  },
+  "share": {
+    "copied": "Share link copied"
   },
   "user": {
     "name": "Minh Trần",

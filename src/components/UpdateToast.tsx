@@ -2,6 +2,21 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
+/** transient notice toast (share-link copied, …) — auto-clears from the store */
+export function NoticeToast() {
+  const { v } = useStore()
+  if (!v.toast) return null
+  return (
+    <div
+      role="status"
+      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-md border border-border bg-panel px-4 py-2.5 shadow-overlay animate-[fadeUp_180ms_var(--ease-paper)]"
+    >
+      <Icon n="check" size={14} className="text-accent" />
+      <span className="text-ui text-text">{v.toast}</span>
+    </div>
+  )
+}
+
 /** paper-style toast shown when a newer deploy is live — reload to pick it up */
 export function UpdateToast() {
   const { v } = useStore()

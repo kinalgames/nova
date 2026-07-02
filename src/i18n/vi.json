@@ -11,6 +11,11 @@
     "rename": "Đổi tên",
     "pin": "Ghim lên đầu",
     "unpin": "Bỏ ghim",
+    "archive": "Lưu trữ",
+    "unarchive": "Bỏ lưu trữ",
+    "exportMd": "Xuất Markdown",
+    "exportJson": "Xuất JSON",
+    "share": "Chia sẻ liên kết",
     "send": "Gửi",
     "stop": "Dừng",
     "convOptions": "Tùy chọn cuộc trò chuyện",
@@ -129,7 +134,15 @@
   },
   "sidebar": {
     "projects": "DỰ ÁN",
-    "recent": "GẦN ĐÂY · {{project}}"
+    "recent": "GẦN ĐÂY · {{project}}",
+    "archived": "LƯU TRỮ",
+    "group": {
+      "pinned": "GHIM",
+      "today": "HÔM NAY",
+      "yesterday": "HÔM QUA",
+      "week": "TUẦN NÀY",
+      "older": "CŨ HƠN"
+    }
   },
   "model": {
     "smart": "Thông minh",
@@ -154,6 +167,9 @@
     "ready": "Có phiên bản mới của Nova.",
     "reload": "Tải lại",
     "dismiss": "Để sau"
+  },
+  "share": {
+    "copied": "Đã chép liên kết chia sẻ"
   },
   "user": {
     "name": "Minh Trần",

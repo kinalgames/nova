@@ -135,6 +135,11 @@ export interface Conversation {
   demo?: boolean
   /** user-pinned to the top of the recent list */
   pinned?: boolean
+  /** epoch ms of the last message activity — drives date grouping; data
+   * predating the field groups as "older" until it sees activity */
+  updatedAt?: number
+  /** hidden from recents, listed in the collapsed LƯU TRỮ section */
+  archived?: boolean
 }
 
 export interface Project {
@@ -210,6 +215,10 @@ export interface NovaState {
   testingProfile: string | null
   /** a newer deploy exists — show the update toast (ephemeral) */
   updateReady: boolean
+  /** transient notice toast text (share-link copied, …), or null */
+  toast: string | null
+  /** the archived section in the sidebar is expanded (ephemeral) */
+  archivedOpen: boolean
   presetDefault: Record<PresetId, boolean>
   /** staged attachments, keyed by conversation id (per-conversation tray) */
   staged: Record<string, StagedFile[]>

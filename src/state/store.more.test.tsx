@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { renderStore } from '../test/util'
 
@@ -6,6 +6,72 @@ function setup() {
   return renderStore()
 }
 beforeEach(() => localStorage.clear())
+afterEach(() => vi.useRealTimers())
+
+describe('store — organization (Track B)', () => {
+  it('archives a conversation out of recents and restores it', async () => {
+    const { result } = await setup()
+    const c2 = () => result.current.v.sideConvs.find((c) => c.id === 'c2')
+    await act(async () => c2()!.archive())
+    expect(result.current.v.sideConvs.some((c) => c.id === 'c2')).toBe(false)
+    expect(result.current.v.archivedConvs.map((c) => c.id)).toEqual(['c2'])
+    await act(async () => result.current.v.toggleArchived())
+    expect(result.current.v.archivedOpen).toBe(true)
+    await act(async () => result.current.v.archivedConvs[0].archive())
+    expect(result.current.v.sideConvs.some((c) => c.id === 'c2')).toBe(true)
+    expect(result.current.v.archivedConvs).toHaveLength(0)
+  })
+
+  it('date-groups the recents — every conversation lands in exactly one group', async () => {
+    const { result } = await setup()
+    const groups = result.current.v.sideGroups
+    const all = groups.flatMap((g) => g.convs.map((c) => c.id))
+    expect(all.sort()).toEqual(['c1', 'c2', 'c3'])
+    expect(groups.every((g) => ['pinned', 'today', 'yesterday', 'week', 'older'].includes(g.id))).toBe(true)
+    expect(groups.length).toBeGreaterThan(1) // seeds are staggered across days
+    // pinning moves a conversation into the pinned group
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c3')!.pin())
+    expect(
+      result.current.v.sideGroups.find((g) => g.id === 'pinned')?.convs.map((c) => c.id),
+    ).toEqual(['c3'])
+  })
+
+  it('message activity moves the conversation into today', async () => {
+    vi.useFakeTimers()
+    const { result } = await renderStore({ path: '/chat/c3' })
+    await act(async () => result.current.set({ draft: 'chạm nhóm hôm nay' }))
+    await act(async () => result.current.v.send())
+    expect(
+      result.current.v.sideGroups.find((g) => g.id === 'today')?.convs.some((c) => c.id === 'c3'),
+    ).toBe(true)
+  })
+
+  it('share copies a link and raises the auto-clearing toast', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    const write = vi.fn()
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: write },
+      configurable: true,
+    })
+    await act(async () => result.current.v.sideConvs[0].share())
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('/share/'))
+    expect(result.current.s.toast).toBe('Đã chép liên kết chia sẻ')
+    await act(async () => vi.advanceTimersByTime(3000))
+    expect(result.current.s.toast).toBeNull()
+  })
+
+  it('exports markdown and json through the download service', async () => {
+    const { result } = await setup()
+    URL.createObjectURL = vi.fn(() => 'blob:x')
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    await act(async () => result.current.v.sideConvs[0].exportMd())
+    await act(async () => result.current.v.sideConvs[0].exportJson())
+    expect(click).toHaveBeenCalledTimes(2)
+    click.mockRestore()
+  })
+})
 
 describe('store — theme variants', () => {
   it('toggles light / dark', async () => {

@@ -9,7 +9,7 @@ import { Preview } from '../components/Preview'
 import { SettingsDialog } from '../components/SettingsDialog'
 import { QuietMode } from '../components/QuietMode'
 import { MobileDrawer } from '../components/MobileDrawer'
-import { UpdateToast } from '../components/UpdateToast'
+import { NoticeToast, UpdateToast } from '../components/UpdateToast'
 
 const SETTINGS_TABS = ['general', 'providers', 'assistant'] as const
 
@@ -58,6 +58,7 @@ function Shell() {
       <SettingsDialog />
       <QuietMode />
       <UpdateToast />
+      <NoticeToast />
 
       {/* paper fibre over the whole sheet */}
       <div className="grain" aria-hidden />

@@ -72,9 +72,16 @@ with STEPWISE migrations — v4→v5 maps `model`→`activeSlot` and connected
 provider keys→auth profiles, upgrades write the new key and remove the old
 ("bump = discard" retired).
 
-## B — Organization
-Date-grouped recents (Hôm nay/Hôm qua/Tuần này; needs real `updatedAt`) ·
-archive · export conversation (.md/.json) · share-link stub.
+## B — Organization (DONE)
+
+Shipped: `Conversation.updatedAt` (touched on every message activity; seeds
+staggered across days) with date-grouped recents — GHIM / HÔM NAY / HÔM QUA /
+TUẦN NÀY / CŨ HƠN (`state/organize.ts`, pure + tested; data predating the
+field groups as "Cũ hơn" — no persist bump needed for additive optional
+fields) · archive/unarchive per row menu with a collapsed LƯU TRỮ section ·
+export .md (visible path) and .json (full version tree, lossless) with
+sanitized filenames · share-link stub copies `https://nova.app/share/<id>`
+and confirms via the new auto-clearing NoticeToast.
 
 ## C — Projects completion
 Real project file upload/remove (store + preview) · project color on

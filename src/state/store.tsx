@@ -43,6 +43,12 @@ import type {
   ViewName,
 } from './types'
 import { pickProfile } from './rotation'
+import {
+  exportFilename,
+  exportJson as exportJsonOf,
+  exportMarkdown,
+  groupConvs,
+} from './organize'
 import { loadPersisted, PERSIST_KEY } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
@@ -109,6 +115,8 @@ export { PERSIST_KEY }
 let _uid = 0
 const uid = () => `f${++_uid}`
 
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+
 function initialState(): NovaState {
   const p = loadPersisted()
   return {
@@ -130,7 +138,14 @@ function initialState(): NovaState {
             ? { code: false, design: true, research: true, writing: true, data: false }
             : { code: false, design: false, research: false, writing: false, data: false },
       })),
-    conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
+    // seeds get staggered activity times so the date groups have content:
+    // c1 today · c2 yesterday · c3 this week · c4 older
+    conversations:
+      p.conversations ??
+      convDefs.map((c, i) => ({
+        ...c,
+        updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000,
+      })),
     deleting: [],
     activeConv: p.activeConv ?? 'c1',
     threads:
@@ -138,6 +153,8 @@ function initialState(): NovaState {
       Object.fromEntries(Object.entries(seedThreads).map(([id, ms]) => [id, fromLinear(ms)])),
     editingMsg: null,
     copiedMsg: null,
+    toast: null,
+    archivedOpen: false,
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
@@ -444,11 +461,15 @@ export function StoreProvider({
         profileId: profile?.id ?? '',
       }
       const replyId = uid()
-      set({
+      set((x) => ({
         typing: true,
         typingLabel:
           prev.thinkingLevel === 'off' ? i18n.t('chat.writingLabel') : i18n.t('chat.thinkingLabel'),
-      })
+        // message activity moves the conversation into today's group
+        conversations: x.conversations.map((c) =>
+          c.id === conv ? { ...c, updatedAt: Date.now() } : c,
+        ),
+      }))
       // after a "thinking" pause, append an empty Nova bubble and stream into it
       t1.current = setTimeout(() => {
         set((x) => ({
@@ -527,6 +548,7 @@ export function StoreProvider({
                 // seed the title from the prompt's first line so markdown
                 // fences and newlines never leak into the sidebar
                 title: titleFrom(text),
+                updatedAt: Date.now(),
                 projectId:
                   x.conversations.find((c) => c.id === navRef.current.activeConv)
                     ?.projectId ?? 'chung',
@@ -874,7 +896,10 @@ function deriveValues(
   const startChat = (projectId: string) => {
     const id = uid()
     set((x) => ({
-      conversations: [{ id, title: t('nav.newChat'), projectId }, ...x.conversations],
+      conversations: [
+        { id, title: t('nav.newChat'), projectId, updatedAt: Date.now() },
+        ...x.conversations,
+      ],
       threads: { ...x.threads, [id]: emptyThread() },
       activeConv: id,
       respState: 'done',
@@ -886,6 +911,11 @@ function deriveValues(
 
   const sortConvs = (list: NovaState['conversations']) =>
     [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+  const showToast = (msg: string) => {
+    clearTimeout(toastTimer)
+    set({ toast: msg })
+    toastTimer = setTimeout(() => set({ toast: null }), 2400)
+  }
   const mapConv = (c: NovaState['conversations'][number]) => {
     // bg-highlight only when this conversation is the one actually open; the
     // busy pulse follows the generating conversation across any route
@@ -895,6 +925,29 @@ function deriveValues(
       title: c.title,
       active: isActive,
       pinned: !!c.pinned,
+      archived: !!c.archived,
+      archive: () =>
+        set((x) => ({
+          conversations: x.conversations.map((k) =>
+            k.id === c.id ? { ...k, archived: !k.archived } : k,
+          ),
+        })),
+      exportMd: () =>
+        downloadFile(exportFilename(c.title, 'md'), exportMarkdown(c, s.threads[c.id]), 'text/markdown'),
+      exportJson: () =>
+        downloadFile(
+          exportFilename(c.title, 'json'),
+          exportJsonOf(c, s.threads[c.id]),
+          'application/json',
+        ),
+      share: () => {
+        try {
+          void navigator.clipboard?.writeText(`https://nova.app/share/${c.id}`)
+        } catch {
+          /* clipboard unavailable — the toast still confirms the intent */
+        }
+        showToast(t('share.copied'))
+      },
       busy: c.id === activeConv && s.typing,
       deleting: s.deleting.includes(c.id),
       bg: isActive ? 'var(--accent-soft)' : 'transparent',
@@ -1149,9 +1202,19 @@ function deriveValues(
     bg: p.id === currentProjectId ? 'var(--accent-soft)' : 'transparent',
     fg: p.id === currentProjectId ? 'var(--text)' : 'var(--text-2)',
   }))
-  const sideConvs = sortConvs(
-    s.conversations.filter((c) => c.projectId === currentProjectId),
-  ).map(mapConv)
+  const sideList = sortConvs(
+    s.conversations.filter((c) => c.projectId === currentProjectId && !c.archived),
+  )
+  const sideConvs = sideList.map(mapConv)
+  // date-grouped recents: pinned · hôm nay · hôm qua · tuần này · cũ hơn
+  const sideGroups = groupConvs(sideList).map((g) => ({
+    id: g.id,
+    label: t(`sidebar.group.${g.id}`),
+    convs: g.items.map(mapConv),
+  }))
+  const archivedConvs = s.conversations
+    .filter((c) => c.projectId === currentProjectId && c.archived)
+    .map(mapConv)
 
   const pickProjects = s.projects.map((p) => ({
     id: p.id,
@@ -1206,6 +1269,11 @@ function deriveValues(
       set((x) => ({ sidebarCollapsed: !x.sidebarCollapsed })),
     sideProjects,
     sideConvs,
+    sideGroups,
+    archivedConvs,
+    archivedOpen: s.archivedOpen,
+    toggleArchived: () => set((x) => ({ archivedOpen: !x.archivedOpen })),
+    toast: s.toast,
     pickProjects,
     setBg: nav.settingsOpen ? 'var(--accent-soft)' : 'transparent',
     setFg: nav.settingsOpen ? accentText : 'var(--text-2)',
