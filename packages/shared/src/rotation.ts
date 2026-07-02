@@ -1,4 +1,4 @@
-import type { AuthProfile } from './types'
+import type { AuthProfile } from './contracts'
 
 /**
  * Pick the auth profile a request routes through.

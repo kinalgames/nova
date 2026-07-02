@@ -54,23 +54,10 @@ export const presetDefs: PresetDef[] = [
   },
 ]
 
-export type ProviderId = 'claude' | 'gemini' | 'openai' | 'ollama'
-
-/** credential kinds a provider accepts — rendered as 「Tài khoản」/「Khóa API」 */
-export type ProfileKind = 'account' | 'api_key'
-
-export interface ModelDef {
-  /** canonical id — globally unique across providers */
-  id: string
-  /** display name */
-  name: string
-  /** USD per 1M input tokens (fake-but-realistic — drives the cost meter) */
-  inPrice: number
-  /** USD per 1M output tokens */
-  outPrice: number
-  /** fake-stream pace — ms between tokens */
-  pace: number
-}
+// provider/model contracts live in the shared domain package (the API uses
+// the same shapes); re-exported so existing client imports keep working
+import type { ModelDef, ModelRef, ProfileKind, ProviderId, SlotId } from '@nova/shared'
+export type { ModelDef, ModelRef, ProfileKind, ProviderId, SlotId } from '@nova/shared'
 
 export interface ProviderDef {
   id: ProviderId
@@ -154,16 +141,8 @@ export const provDefs: ProviderDef[] = [
   },
 ]
 
-/** the two quality slots the user routes chats through — each slot can point
- * at ANY provider's model (cross-provider), so “Thông minh” and “Nhanh” are
- * routing choices, not provider choices */
-export type SlotId = 'smart' | 'fast'
-
-export interface ModelRef {
-  providerId: ProviderId
-  modelId: string
-}
-
+/** the two quality slots route chats cross-provider — “Thông minh”/“Nhanh”
+ * are routing choices, not provider choices */
 export const defaultSlots: Record<SlotId, ModelRef> = {
   smart: { providerId: 'claude', modelId: 'claude-opus-4' },
   fast: { providerId: 'claude', modelId: 'claude-haiku-4' },

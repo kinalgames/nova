@@ -13,8 +13,13 @@ yarn-error.log*
 *.tsbuildinfo
 
 # TanStack Router generated route tree + plugin cache
-src/routeTree.gen.ts
+apps/web/src/routeTree.gen.ts
 .tanstack
+
+# wrangler
+.wrangler
+.dev.vars
+worker-configuration.d.ts
 
 # test/tooling artifacts
 coverage

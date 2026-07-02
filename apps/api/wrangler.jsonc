@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nova-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  }
+  // Bindings arrive with their phases:
+  //   BE1 — Better Auth secrets (wrangler secret put), KV for rate limits
+  //   BE2 — Hyperdrive → Neon Postgres
+  //   BE3 — provider BYOK master key (secret), usage Queues
+  //   BE4 — R2 bucket for project files/attachments
+  // After ANY binding change: `npm run cf-typegen -w @nova/api`.
+}

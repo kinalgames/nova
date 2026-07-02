@@ -1,23 +1,11 @@
-import type { ModelRef, PresetId, ProfileKind, ProviderId, SlotId } from '../data/defs'
+import type { AuthProfile, ModelRef, MsgUsage, SlotId } from '@nova/shared'
+import type { PresetId, ProviderId } from '../data/defs'
 import type { IconName } from '../components/Icon'
 import type { Thread } from './thread'
 
-/** lifecycle of an auth profile: usable → rate-limited → broken → not yet verified */
-export type ProfileStatus = 'active' | 'limited' | 'error' | 'untested'
-
-/** one credential a provider can be reached through — an OAuth account
- * (「Tài khoản」, cost 0) or an API key/endpoint (「Khóa API」, metered) */
-export interface AuthProfile {
-  id: string
-  /** user-given label */
-  name: string
-  kind: ProfileKind
-  /** masked key, account email, or endpoint URL */
-  credential: string
-  status: ProfileStatus
-  /** epoch ms when a 'limited' profile becomes usable again */
-  limitedUntil?: number
-}
+// domain contracts shared with the API — re-exported so existing client
+// imports keep working
+export type { AuthProfile, ModelRef, MsgUsage, ProfileKind, ProfileStatus, SlotId } from '@nova/shared'
 
 export type ViewName = 'home' | 'conversation' | 'projects' | 'project' | 'projectcfg'
 
@@ -27,16 +15,7 @@ export type RespState = 'done' | 'stream' | 'error' | 'approval'
 export type ThinkLevel = 'off' | 'low' | 'normal' | 'high'
 export type Theme = 'light' | 'dark' | 'auto'
 export type AuthView = null | 'login' | 'signup' | 'onboarding'
-/** token usage recorded on an assistant reply — the future backend writes the
- * real numbers; the fake layer estimates them so the UI stays honest */
-export interface MsgUsage {
-  inputTokens: number
-  outputTokens: number
-  modelId: string
-  profileId: string
-  /** epoch ms when the reply completed — drives the monthly roll-up */
-  at?: number
-}
+
 
 export type PreviewKind = 'image' | 'pdf' | 'code' | 'csv' | 'md'
 

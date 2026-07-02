@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pickProfile } from './rotation'
-import type { AuthProfile } from './types'
+import type { AuthProfile } from './contracts'
 
 const pf = (id: string, status: AuthProfile['status'], limitedUntil?: number): AuthProfile => ({
   id,

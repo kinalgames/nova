@@ -12,7 +12,8 @@
 | Database | **Postgres (Neon) via Hyperdrive**, Drizzle ORM (NOT D1 — messages volume outgrows SQLite's 10GB/no-interactive-transaction limits) |
 | Auth | **Better Auth** (≥1.5) — email+password + Google/GitHub OAuth, session cookies. Workers pitfalls: per-request instance on Hono context; always pass `ctx.waitUntil` |
 | Files | R2 (presigned upload, metadata in PG) |
-| Repo | pnpm workspaces monorepo: `apps/web` · `apps/api` · `packages/shared` (types + zod schemas shared by both sides) |
+| Repo | **npm workspaces** monorepo: `apps/web` · `apps/api` · `packages/shared` (pnpm was blocked by a corepack EPERM on the dev machine; npm→pnpm later is a cheap lockfile swap) |
+| Cost principle | **Free tier · Cloudflare-native · open source first** (user directive): Workers/R2/KV/Hyperdrive within CF free tiers, Neon free tier for PG, Hono/Better Auth/Drizzle all OSS — no paid third-party services without explicit sign-off |
 | API | REST `/v1`, cursor pagination, RFC 7807 errors + `code` + `request_id`, per-user rate limits (KV) |
 | Chat streaming | `POST /v1/conversations/:id/messages` → SSE: `message_start · block_delta · block_stop · message_stop · error` — maps 1:1 onto the client Message/Block model |
 | BYOK | provider keys write-only, AES-GCM envelope encryption at rest (master key = Worker secret), decrypt only in-Worker at proxy time, never logged, never returned |
@@ -70,10 +71,13 @@ single reload on `vite:preloadError`) · update-available toast
 
 ## Phasing
 
-- **BE0 — monorepo scaffold**: pnpm workspaces (`apps/web` = current src,
-  `apps/api` Hono skeleton + healthz, `packages/shared` = types/zod lifted
-  from `src/state/types.ts` + `data/defs.ts`), CI (gates mirror the current
-  npm scripts), wrangler config, staging + prod environments.
+- **BE0 — monorepo scaffold ✓ DONE**: npm workspaces (`apps/web` = the
+  complete client, all gates preserved; `apps/api` = Hono skeleton with
+  /healthz + wrangler.jsonc + tests; `packages/shared` = first shared
+  contracts — AuthProfile/ModelRef/SlotId/MsgUsage/… + the rotation engine,
+  consumed by BOTH web and api). GitHub Actions CI runs
+  typecheck/lint/coverage/build + e2e. Message/Block move to shared at BE2
+  (they still carry a web-only IconName dependency to untangle).
 - **BE1 — auth**: Better Auth, sessions, the existing /login /signup
   /onboarding screens go live; profile (userName/assistantName) on `users`.
 - **BE2 — sync & import**: settings/projects/conversations/messages CRUD,

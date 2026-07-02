@@ -10,10 +10,22 @@ hard borders, **flat at rest** (only overlays — palette, popovers, dropdowns,
 lightbox — cast shadow), ink-on-paper color, and type as the hero (display
 font **Fraunces**, body **Geist**, mono **Geist Mono**).
 
-> The app runs on **fake data and a fake service layer** — there is no backend.
-> The behavior is built to match production (streaming replies, per-conversation
-> history, provider key testing, file download, validated auth), so it is a
-> runnable MVP rather than a static mock.
+> The web app runs on **fake data and a fake service layer** (kept as demo
+> mode). The behavior matches production — streaming replies, per-conversation
+> history, provider profiles, file download, validated auth — so it is a
+> runnable MVP; the real API is being built in `apps/api`.
+
+## Monorepo
+
+```
+apps/web         — the React client (everything the UI-first phase shipped)
+apps/api         — Cloudflare Workers + Hono API (BE0 skeleton → BE5)
+packages/shared  — domain contracts + pure engines shared by both sides
+```
+
+npm workspaces — root scripts fan out: `npm run typecheck|lint|test|build`,
+`npm run dev` (web), `npm run dev:api` (wrangler dev). Backend plan:
+`docs/backend-architecture.md`.
 
 ## Stack
 
