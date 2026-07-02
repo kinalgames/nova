@@ -10,6 +10,8 @@ export interface ReplyOptions {
   slot: SlotId
   thinking: ThinkLevel
   project: string
+  /** project instructions (the project description) — steer the reply voice */
+  instructions?: string
 }
 
 const TEMPLATES: { match: RegExp; replies: string[] }[] = [
@@ -70,6 +72,11 @@ export function composeReply(userText: string, opts: ReplyOptions): string {
   // "Thông minh" answers a touch more thoroughly than "Nhanh"
   if (opts.slot === 'smart' && opts.thinking !== 'off') {
     body += ' Mình cũng đã cân nhắc vài phương án khác và chọn cái đánh đổi tốt nhất cho bạn.'
+  }
+  // project instructions visibly steer the fake reply — the real backend will
+  // inject them into the system prompt with the same contract
+  if (opts.instructions?.trim()) {
+    body += ` (Bám theo chỉ dẫn của dự án ${opts.project}.)`
   }
   return body
 }

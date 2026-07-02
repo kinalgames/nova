@@ -142,6 +142,17 @@ export interface Conversation {
   archived?: boolean
 }
 
+/** a reference document attached to a project */
+export interface ProjectFile {
+  id: string
+  kind: PreviewKind
+  name: string
+  /** human-readable size/detail line */
+  meta: string
+  /** object URL for a real uploaded image */
+  url?: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -152,6 +163,8 @@ export interface Project {
   isDefault?: boolean
   /** per-project skill presets */
   presets: Record<PresetId, boolean>
+  /** reference documents Nova consults for this project */
+  files?: ProjectFile[]
 }
 
 export interface StyleFlags {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
+import { projectAccents } from '../data/defs'
 
 const FIELD = 'field w-full rounded-md border border-border bg-bg px-3 py-2.5 text-body'
 const LABEL = 'mb-1.5 block font-mono text-eyebrow tracking-[.14em] text-label'
@@ -17,11 +18,13 @@ export function NewProjectDialog({
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [accent, setAccent] = useState(projectAccents[0])
 
   const close = (o: boolean) => {
     if (!o) {
       setName('')
       setDescription('')
+      setAccent(projectAccents[0])
     }
     onOpenChange(o)
   }
@@ -29,7 +32,7 @@ export function NewProjectDialog({
     e.preventDefault()
     const n = name.trim()
     if (!n) return
-    v.createProject(n, description.trim())
+    v.createProject(n, description.trim(), accent)
     close(false)
   }
 
@@ -67,6 +70,24 @@ export function NewProjectDialog({
                 placeholder={t('newProject.descPlaceholder')}
                 className={`${FIELD} resize-none leading-normal`}
               />
+            </div>
+            <div>
+              <span className={LABEL}>{t('newProject.colorLabel')}</span>
+              <div className="flex items-center gap-2">
+                {projectAccents.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    aria-label={t('newProject.colorAria', { color: a })}
+                    aria-pressed={accent === a}
+                    onClick={() => setAccent(a)}
+                    className={`size-6 cursor-pointer rounded-sm border-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                      accent === a ? 'border-ink' : 'border-transparent'
+                    }`}
+                    style={{ background: a }}
+                  />
+                ))}
+              </div>
             </div>
             <div className="mt-2 flex justify-end gap-2.5">
               <Dialog.Close asChild>

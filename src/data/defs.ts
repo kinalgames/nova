@@ -233,6 +233,16 @@ export const suggestionDefs: SuggestionDef[] = [
   { id: 'docs', glyph: 'file', bg: 'rgba(154,91,138,.12)', fg: 'var(--plum)' },
 ]
 
+/** accent swatches offered when creating/recolouring a project */
+export const projectAccents = [
+  'var(--accent)',
+  'var(--info)',
+  'var(--success)',
+  'var(--plum)',
+  'var(--warn)',
+  'var(--faint)',
+]
+
 export interface ProjectDef {
   id: string
   name: string

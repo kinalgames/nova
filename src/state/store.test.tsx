@@ -114,8 +114,9 @@ describe('store — composer send', () => {
     expect(msgText(result.current.v.sent.at(-1))).toBe('Tóm tắt giúp mình')
     expect(result.current.s.typing).toBe(true)
     expect(result.current.s.draft).toBe('')
-    // Nova answers after the scripted delay
-    act(() => vi.advanceTimersByTime(2000))
+    // Nova answers after the scripted delay (project instructions lengthen
+    // the aurora reply, so give the stream room to finish)
+    act(() => vi.advanceTimersByTime(4000))
     expect(result.current.s.typing).toBe(false)
     expect(result.current.v.sent.at(-1)?.who).toBe('NOVA')
     expect(result.current.v.sent.at(-1)?.role).toBe('assistant')

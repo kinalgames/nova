@@ -83,9 +83,20 @@ export .md (visible path) and .json (full version tree, lossless) with
 sanitized filenames · share-link stub copies `https://nova.app/share/<id>`
 and confirms via the new auto-clearing NoticeToast.
 
-## C — Projects completion
-Real project file upload/remove (store + preview) · project color on
-create/edit · project instructions actually consumed by `composeReply`.
+## C — Projects completion (DONE)
+
+Shipped: real project files — `Project.files` (upload via hidden input +
+`describeUpload` shared with the composer, per-row remove, opens in the
+preview overlay; aurora seeds plan.md/Brief/Khảo-sát as data) · project
+colour — swatch picker (`projectAccents` in defs) in the create dialog and
+config page, sidebar dot follows · project instructions — `composeReply`
+receives the project description as `instructions` and visibly steers the
+reply (“Bám theo chỉ dẫn của dự án …”); the default project stays neutral.
+The real backend will inject the same field into the system prompt.
+
+Note: the MCP preview browser crashed repeatedly during C3 verification
+(container instability, not the app) — C3's real-browser proof lives in the
+e2e suite instead (`project instructions visibly steer a project reply`).
 
 ## D — Account & settings
 Profile (name/avatar; "Minh Trần" is hardcoded today) · onboarding persists

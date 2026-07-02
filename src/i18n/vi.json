@@ -201,6 +201,8 @@
     "namePlaceholder": "VD: Aurora",
     "descLabel": "MÔ TẢ",
     "descPlaceholder": "Dự án này về điều gì? Nova nhớ trong mọi cuộc trò chuyện ở đây.",
+    "colorLabel": "Màu dự án",
+    "colorAria": "Chọn màu {{color}}",
     "submit": "Tạo dự án"
   },
   "settings": {
@@ -340,6 +342,11 @@
       "introAria": "Giới thiệu dự án",
       "filesLabel": "TỆP DỰ ÁN",
       "filesHelp": "Mọi tệp đã tải lên trong dự án. Nova đọc khi bạn cho phép.",
+      "colorLabel": "MÀU DỰ ÁN",
+      "colorAria": "Chọn màu {{color}}",
+      "upload": "Tải tệp lên",
+      "uploadAria": "Tải tệp vào dự án",
+      "removeFile": "Xóa tệp {{name}}",
       "skillsLabel": "KỸ NĂNG CHO DỰ ÁN NÀY",
       "skillsHelp": "Bật kỹ năng để Nova giỏi hơn ở dự án này.",
       "skillsKnows": "Nova ở đây biết:",

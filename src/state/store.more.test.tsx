@@ -73,6 +73,48 @@ describe('store — organization (Track B)', () => {
   })
 })
 
+describe('store — projects completion (Track C)', () => {
+  it('project instructions steer the reply; the default project stays neutral', async () => {
+    vi.useFakeTimers()
+    // c2 belongs to aurora, whose description acts as instructions
+    const aurora = await renderStore({ path: '/chat/c2' })
+    await act(async () => aurora.result.current.set({ draft: 'viết mở đầu giúp mình' }))
+    await act(async () => aurora.result.current.v.send())
+    await act(async () => vi.advanceTimersByTime(9000))
+    const reply = aurora.result.current.v.sent.at(-1)!
+    expect(reply.role).toBe('assistant')
+    expect(
+      reply.blocks.find((b) => b.type === 'text' && b.text.includes('Bám theo chỉ dẫn của dự án Aurora')),
+    ).toBeTruthy()
+  })
+
+  it('uploads and removes a real project file', async () => {
+    const { result } = await renderStore({ path: '/projects/aurora/config' })
+    const before = result.current.v.viewProjectFiles.length
+    const file = new File(['# notes'], 'notes.md', { type: 'text/markdown' })
+    await act(async () => result.current.v.addViewProjectFile(file))
+    const files = result.current.v.viewProjectFiles
+    expect(files).toHaveLength(before + 1)
+    const added = files.at(-1)!
+    expect(added.name).toBe('notes.md')
+    expect(added.kind).toBe('md')
+    // opening routes through the preview overlay
+    await act(async () => added.open())
+    expect(result.current.s.preview).toMatchObject({ kind: 'md', name: 'notes.md' })
+    await act(async () => added.remove())
+    expect(result.current.v.viewProjectFiles).toHaveLength(before)
+  })
+
+  it('creates a project with a chosen accent and recolours it later', async () => {
+    const { result } = await renderStore()
+    await act(async () => result.current.v.createProject('Màu sắc', '', 'var(--info)'))
+    const proj = result.current.s.projects.find((p) => p.name === 'Màu sắc')!
+    expect(proj.accent).toBe('var(--info)')
+    await act(async () => result.current.v.editProject(proj.id, { accent: 'var(--plum)' }))
+    expect(result.current.s.projects.find((p) => p.id === proj.id)?.accent).toBe('var(--plum)')
+  })
+})
+
 describe('store — theme variants', () => {
   it('toggles light / dark', async () => {
     const { result } = await setup()

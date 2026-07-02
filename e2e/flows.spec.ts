@@ -88,3 +88,13 @@ test('sending a message appends it and streams a reply', async ({ page }) => {
   // a NOVA reply streams in (generous timeout for thinking + stream)
   await expect(page.locator('main').getByText('NOVA').last()).toBeVisible({ timeout: 15_000 })
 })
+
+test('project instructions visibly steer a project reply', async ({ page }) => {
+  // c2 belongs to Aurora, whose description acts as project instructions
+  await page.goto('/chat/c2')
+  await page.getByRole('textbox', { name: 'Nhắn cho Nova' }).fill('Viết đoạn mở đầu thật ngắn')
+  await page.keyboard.press('Enter')
+  await expect(page.getByText(/Bám theo chỉ dẫn của dự án Aurora/)).toBeVisible({
+    timeout: 15_000,
+  })
+})

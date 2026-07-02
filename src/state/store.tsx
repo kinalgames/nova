@@ -37,7 +37,6 @@ import type {
   Block,
   Message,
   NovaState,
-  PreviewKind,
   SettingsTab,
   StagedFile,
   ViewName,
@@ -63,7 +62,7 @@ import {
   updateMessage,
   visiblePath,
 } from './thread'
-import { downloadFile, openFile, previewSample } from '../services/files'
+import { describeUpload, downloadFile, openFile, previewSample } from '../services/files'
 
 const ACCENT_DEFAULT = 'var(--accent)'
 
@@ -137,6 +136,14 @@ function initialState(): NovaState {
           d.id === 'aurora'
             ? { code: false, design: true, research: true, writing: true, data: false }
             : { code: false, design: false, research: false, writing: false, data: false },
+        files:
+          d.id === 'aurora'
+            ? [
+                { id: 'pjf-plan', kind: 'md' as const, name: 'plan.md', meta: '2.1 KB · vừa cập nhật' },
+                { id: 'pjf-brief', kind: 'pdf' as const, name: 'Brief-Aurora.pdf', meta: '1.2 MB · 8 trang' },
+                { id: 'pjf-survey', kind: 'csv' as const, name: 'Khảo-sát.csv', meta: '18 KB · 412 dòng' },
+              ]
+            : [],
       })),
     // seeds get staggered activity times so the date groups have content:
     // c1 today · c2 yesterday · c3 this week · c4 older
@@ -431,10 +438,10 @@ export function StoreProvider({
       clearTimeout(t2.current)
       clearInterval(tc.current)
       const prev = sRef.current
-      const projName =
-        prev.projects.find(
-          (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
-        )?.name ?? 'Chung'
+      const proj = prev.projects.find(
+        (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
+      )
+      const projName = proj?.name ?? 'Chung'
       // routing: the active slot names a {provider, model}; rotation picks the
       // auth profile (sticky + ordered fallback) the request bills against
       const ref = prev.slots[prev.activeSlot]
@@ -450,6 +457,8 @@ export function StoreProvider({
         slot: prev.activeSlot,
         thinking: prev.thinkingLevel,
         project: projName,
+        // project instructions steer the reply — the default project has none
+        instructions: proj?.isDefault ? '' : (proj?.description ?? ''),
       })
       const words = reply.split(' ')
       const step = model.pace
@@ -693,19 +702,7 @@ export function StoreProvider({
 
   const addUpload = useCallback(
     (file: File) => {
-      const isImg = file.type.startsWith('image/')
-      const ext = (file.name.split('.').pop() || '').toLowerCase()
-      let kind: PreviewKind = 'pdf'
-      if (isImg) kind = 'image'
-      else if (ext === 'pdf') kind = 'pdf'
-      else if (['py', 'js', 'ts', 'tsx', 'json', 'sh'].includes(ext)) kind = 'code'
-      else if (ext === 'csv') kind = 'csv'
-      else if (ext === 'md') kind = 'md'
-      const url = isImg ? URL.createObjectURL(file) : undefined
-      const size =
-        file.size > 1024 * 1024
-          ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
-          : `${Math.max(1, Math.round(file.size / 1024))} KB`
+      const { kind, size, url } = describeUpload(file)
       const item: StagedFile = { id: uid(), kind, name: file.name, size, url }
       const key = stagedKeyOf(navRef.current)
       set((x) => ({
@@ -861,18 +858,42 @@ function deriveValues(
   const currentProjectName = viewProject?.name ?? 'Chung'
 
   // ----- project CRUD (fake store — no backend) -----
-  const createProject = (name: string, description: string) => {
+  const createProject = (name: string, description: string, accent?: string) => {
     const id = uid()
     set((x) => ({
       projects: [
         ...x.projects,
-        { id, name, description, accent: ACCENT_DEFAULT, presets: { ...x.presetDefault } },
+        {
+          id,
+          name,
+          description,
+          accent: accent ?? ACCENT_DEFAULT,
+          presets: { ...x.presetDefault },
+          files: [],
+        },
       ],
     }))
     navigate({ to: '/projects/$projectId', params: { projectId: id } })
   }
-  const editProject = (id: string, patch: { name?: string; description?: string }) =>
+  const editProject = (id: string, patch: { name?: string; description?: string; accent?: string }) =>
     set((x) => ({ projects: x.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
+  const addProjectFile = (projectId: string, file: File) => {
+    const { kind, size, url } = describeUpload(file)
+    const item = { id: uid(), kind, name: file.name, meta: size, url }
+    set((x) => ({
+      projects: x.projects.map((p) =>
+        p.id === projectId ? { ...p, files: [...(p.files ?? []), item] } : p,
+      ),
+    }))
+  }
+  const removeProjectFile = (projectId: string, fileId: string) =>
+    set((x) => ({
+      projects: x.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, files: (p.files ?? []).filter((f) => f.id !== fileId) }
+          : p,
+      ),
+    }))
   const deleteProject = (id: string) => {
     set((x) => ({
       projects: x.projects.filter((p) => p.id !== id),
@@ -1549,6 +1570,16 @@ function deriveValues(
     viewProjectDescription: viewProject?.description ?? '',
     viewProjectAccent: viewProject?.accent ?? 'var(--faint)',
     viewProjectIsDefault: !!viewProject?.isDefault,
+    // reference documents — open in the preview overlay, removable in config
+    viewProjectFiles: (viewProject?.files ?? []).map((f) => ({
+      id: f.id,
+      name: f.name,
+      meta: f.meta,
+      kind: f.kind,
+      open: () => set({ preview: { kind: f.kind, name: f.name, url: f.url } }),
+      remove: () => removeProjectFile(viewProject?.id ?? 'chung', f.id),
+    })),
+    addViewProjectFile: (file: File) => addProjectFile(viewProject?.id ?? 'chung', file),
     viewProjectCount: convCount(viewProject?.id ?? 'chung'),
     viewProjectConvs: sortConvs(
       s.conversations.filter((c) => c.projectId === (viewProject?.id ?? 'chung')),

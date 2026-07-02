@@ -1,10 +1,20 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { PresetCard } from '../components/PresetCard'
 import { Icon } from '../components/Icon'
+import { projectAccents } from '../data/defs'
+import type { PreviewKind } from '../state/types'
+
+const BADGES: Record<PreviewKind, { cls: string; label: string }> = {
+  md: { cls: 'bg-fill text-accent-text', label: 'MD' },
+  pdf: { cls: 'bg-danger-bg text-danger-text', label: 'PDF' },
+  csv: { cls: 'bg-success-bg text-success-text', label: 'CSV' },
+  code: { cls: 'bg-info-bg text-info', label: 'CODE' },
+  image: { cls: 'bg-fill text-accent-text', label: 'IMG' },
+}
 
 const FILE_ROW =
   'flex cursor-pointer items-center gap-3 rounded-md border border-border bg-panel px-3 py-3 text-left'
@@ -16,6 +26,7 @@ export function ProjectConfigView() {
   const { v } = useStore()
   const { t } = useTranslation()
   const [confirming, setConfirming] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const id = v.viewProjectId
   const readOnly = v.viewProjectIsDefault
 
@@ -51,7 +62,26 @@ export function ProjectConfigView() {
         {readOnly && (
           <div className="mb-8 text-meta text-muted">{t('projects.config.readOnly')}</div>
         )}
-        {!readOnly && <div className="mb-8" />}
+        {!readOnly && (
+          <>
+            <div className={`${SECTION_LABEL} mb-2 mt-6`}>{t('projects.config.colorLabel')}</div>
+            <div className="mb-8 flex items-center gap-2">
+              {projectAccents.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  aria-label={t('projects.config.colorAria', { color: a })}
+                  aria-pressed={v.viewProjectAccent === a}
+                  onClick={() => v.editProject(id, { accent: a })}
+                  className={`size-6 cursor-pointer rounded-sm border-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                    v.viewProjectAccent === a ? 'border-ink' : 'border-transparent'
+                  }`}
+                  style={{ background: a }}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
         <div className={`${SECTION_LABEL} mb-2`}>{t('projects.config.introLabel')}</div>
         <div className="mb-3 text-ui leading-normal text-muted">
@@ -69,32 +99,46 @@ export function ProjectConfigView() {
         <div className="mb-3 text-ui leading-normal text-muted">
           {t('projects.config.filesHelp')}
         </div>
-        <div className="mb-8 flex flex-col gap-2">
-          <button type="button" onClick={v.openMd} className={FILE_ROW}>
-            <span className={`${FILE_BADGE} bg-fill text-accent-text`}>MD</span>
-            <div className="min-w-0 flex-1">
-              <div className="text-ui">plan.md</div>
-              <div className="text-meta text-muted">2.1 KB · vừa cập nhật</div>
+        <div className="mb-3 flex flex-col gap-2">
+          {v.viewProjectFiles.map((f) => (
+            <div key={f.id} className="group/file relative flex items-center">
+              <button type="button" onClick={f.open} className={`${FILE_ROW} min-w-0 flex-1`}>
+                <span className={`${FILE_BADGE} ${BADGES[f.kind].cls}`}>{BADGES[f.kind].label}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-ui">{f.name}</div>
+                  <div className="text-meta text-muted">{f.meta}</div>
+                </div>
+                <Icon n="expand" size={15} className="text-faint" />
+              </button>
+              <button
+                type="button"
+                aria-label={t('projects.config.removeFile', { name: f.name })}
+                onClick={f.remove}
+                className="absolute -right-2 -top-2 flex cursor-pointer items-center justify-center rounded-full border border-border bg-panel p-1 text-faint opacity-0 shadow-overlay outline-none transition-opacity hover:text-danger group-hover/file:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <Icon n="close" size={12} />
+              </button>
             </div>
-            <Icon n="expand" size={15} className="text-faint" />
-          </button>
-          <button type="button" onClick={v.openPdf} className={FILE_ROW}>
-            <span className={`${FILE_BADGE} bg-danger-bg text-danger-text`}>PDF</span>
-            <div className="min-w-0 flex-1">
-              <div className="text-ui">Brief-Aurora.pdf</div>
-              <div className="text-meta text-muted">1.2 MB · 8 trang</div>
-            </div>
-            <Icon n="expand" size={15} className="text-faint" />
-          </button>
-          <button type="button" onClick={v.openCsv} className={FILE_ROW}>
-            <span className={`${FILE_BADGE} bg-success-bg text-success-text`}>CSV</span>
-            <div className="min-w-0 flex-1">
-              <div className="text-ui">Khảo-sát.csv</div>
-              <div className="text-meta text-muted">18 KB · 412 dòng</div>
-            </div>
-            <Icon n="expand" size={15} className="text-faint" />
-          </button>
+          ))}
         </div>
+        <input
+          ref={fileInput}
+          type="file"
+          hidden
+          aria-label={t('projects.config.uploadAria')}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) v.addViewProjectFile(f)
+            e.target.value = ''
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => fileInput.current?.click()}
+          className="mb-8 inline-flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-transparent px-3 py-2 text-ui text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Icon n="plus" size={14} /> {t('projects.config.upload')}
+        </button>
 
         <div className={`${SECTION_LABEL} mb-2`}>{t('projects.config.skillsLabel')}</div>
         <div className="mb-3 text-ui leading-normal text-muted">

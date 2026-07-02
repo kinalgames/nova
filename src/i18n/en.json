@@ -202,6 +202,8 @@
     "namePlaceholder": "E.g. Aurora",
     "descLabel": "DESCRIPTION",
     "descPlaceholder": "What is this project about? Nova remembers it in every conversation here.",
+    "colorLabel": "Project color",
+    "colorAria": "Pick color {{color}}",
     "submit": "Create project"
   },
   "settings": {
@@ -342,6 +344,11 @@
       "introAria": "Project brief",
       "filesLabel": "PROJECT FILES",
       "filesHelp": "Every file uploaded in this project. Nova reads them when you allow it.",
+      "colorLabel": "PROJECT COLOR",
+      "colorAria": "Pick color {{color}}",
+      "upload": "Upload file",
+      "uploadAria": "Upload a file to this project",
+      "removeFile": "Remove file {{name}}",
       "skillsLabel": "SKILLS FOR THIS PROJECT",
       "skillsHelp": "Enable skills to make Nova better at this project.",
       "skillsKnows": "Nova here knows:",
