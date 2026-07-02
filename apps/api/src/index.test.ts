@@ -105,3 +105,63 @@ describe('nova-api skeleton', () => {
     expect(picked?.id).toBe('b')
   })
 })
+
+describe('BE3 — sealed BYOK surface', () => {
+  it('credentials CRUD requires a session', async () => {
+    for (const [method, path] of [
+      ['GET', '/v1/credentials'],
+      ['POST', '/v1/credentials'],
+      ['PATCH', '/v1/credentials/x'],
+      ['DELETE', '/v1/credentials/x'],
+    ] as const) {
+      const res = await app.request(path, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: method === 'GET' ? undefined : '{}',
+      })
+      expect(res.status, `${method} ${path}`).toBe(401)
+    }
+  })
+
+  it('a chat with BOTH credential sources is rejected', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        credentialId: 'abc',
+        profile: { kind: 'api_key', credential: 'sk-x' },
+      }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('a chat with NEITHER credential source is rejected', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+      }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('a stored-credential chat without a session is 401', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        credentialId: 'does-not-matter',
+      }),
+    })
+    expect(res.status).toBe(401)
+  })
+})

@@ -51,14 +51,20 @@ export interface SyncPullResponse {
   ops: SyncOp[]
 }
 
-/** request body of POST /v1/chat — the provider proxy contract */
+/** request body of POST /v1/chat — the provider proxy contract.
+ *  Exactly ONE of `credentialId` (BE3: server-side sealed BYOK, requires a
+ *  session) or `profile` (transitional: client-held credential in transit)
+ *  must be present. */
 export interface ChatProxyRequest {
   providerId: ProviderId
   model: string
   system?: string
   messages: ChatTurn[]
   maxTokens?: number
-  profile: { kind: ProfileKind; credential: string }
+  /** id of a stored server-side credential owned by the session user */
+  credentialId?: string
+  /** transitional client-held credential — retired once BYOK v2 ships */
+  profile?: { kind: ProfileKind; credential: string }
 }
 
 /** the two quality slots chats route through — cross-provider */

@@ -15,7 +15,9 @@ const VERSION = '2023-06-01'
 /** identity line Claude Code prepends; required for setup-token acceptance */
 const CLAUDE_CODE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
 
-export function anthropicHeaders(profile: ChatProxyRequest['profile']): Record<string, string> {
+export function anthropicHeaders(
+  profile: NonNullable<ChatProxyRequest['profile']>,
+): Record<string, string> {
   const base: Record<string, string> = {
     'content-type': 'application/json',
     'anthropic-version': VERSION,
@@ -32,7 +34,7 @@ export function anthropicHeaders(profile: ChatProxyRequest['profile']): Record<s
   return { ...base, 'x-api-key': profile.credential }
 }
 
-export function anthropicBody(req: ChatProxyRequest): string {
+export function anthropicBody(req: ResolvedChatRequest): string {
   // NOTE: no temperature/top_p/top_k — models ≥4.7 reject sampling params
   const system: { type: 'text'; text: string }[] = []
   if (req.profile.kind === 'account') system.push({ type: 'text', text: CLAUDE_CODE_IDENTITY })
@@ -46,8 +48,14 @@ export function anthropicBody(req: ChatProxyRequest): string {
   })
 }
 
+/** the proxy resolves the credential BEFORE calling — profile is guaranteed */
+export type ResolvedChatRequest = ChatProxyRequest & {
+  profile: NonNullable<ChatProxyRequest['profile']>
+}
+
 /** call the upstream with streaming enabled; the caller owns the response body */
-export function callAnthropic(req: ChatProxyRequest, signal?: AbortSignal): Promise<Response> {
+
+export function callAnthropic(req: ResolvedChatRequest, signal?: AbortSignal): Promise<Response> {
   return fetch(API_URL, {
     method: 'POST',
     headers: anthropicHeaders(req.profile),

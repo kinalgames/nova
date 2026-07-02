@@ -51,7 +51,7 @@ describe('real provider routing (nova-api proxy)', () => {
 
     // the request carried the REAL credential (never a seeded demo one) and
     // the visible history ending in the prompt
-    expect(calls[0].profile.credential).toBe('sk-ant-real-123')
+    expect(calls[0].profile?.credential).toBe('sk-ant-real-123')
     expect(calls[0].messages.at(-1)).toEqual({ role: 'user', content: 'chào Nova' })
     expect(calls[0].model).toBe('claude-opus-4-8')
   })

@@ -2,12 +2,13 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { ChatProxyRequest } from '@nova/shared'
 import { callAnthropic, toNovaStream } from './providers/anthropic'
-import { createAuth, type AuthEnv } from './auth'
+import { createAuth } from './auth'
+import { credentials, openCredential, type CredentialsEnv } from './credentials'
 import type { SyncOp } from '@nova/shared'
 
 export { UserStore } from './do/userStore'
 
-interface Env extends AuthEnv {
+interface Env extends CredentialsEnv {
   USER_STORE: DurableObjectNamespace
 }
 
@@ -57,6 +58,9 @@ app.get('/v1/me', async (c) => {
   })
 })
 
+// BE3: sealed BYOK CRUD (session-gated; secrets never round-trip)
+app.route('/v1/credentials', credentials)
+
 app.get('/healthz', (c) =>
   c.json({
     ok: true,
@@ -68,22 +72,26 @@ app.get('/healthz', (c) =>
 const problem = (status: number, code: string, detail: string) =>
   Response.json({ type: 'about:blank', status, code, detail }, { status })
 
-/** validate the proxy request shape without pulling a schema library yet */
+/** validate the proxy request shape without pulling a schema library yet.
+ *  Exactly one credential source: a stored credentialId OR an inline profile. */
 function parseChatRequest(body: unknown): ChatProxyRequest | null {
   if (typeof body !== 'object' || body === null) return null
   const b = body as Record<string, unknown>
   const profile = b.profile as Record<string, unknown> | undefined
   const messages = b.messages as unknown[] | undefined
+  const hasStored = typeof b.credentialId === 'string' && b.credentialId.trim() !== ''
+  const hasInline =
+    !!profile &&
+    (profile.kind === 'api_key' || profile.kind === 'account') &&
+    typeof profile.credential === 'string' &&
+    profile.credential.trim() !== ''
   if (
     b.providerId !== 'claude' ||
     typeof b.model !== 'string' ||
     !b.model ||
     !Array.isArray(messages) ||
     messages.length === 0 ||
-    !profile ||
-    (profile.kind !== 'api_key' && profile.kind !== 'account') ||
-    typeof profile.credential !== 'string' ||
-    !profile.credential.trim()
+    hasStored === hasInline // exactly one source
   )
     return null
   for (const m of messages) {
@@ -95,8 +103,13 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
 
 // — BE2: per-user op-log sync —
 async function userIdOf(c: { env: Env; req: { raw: Request } }): Promise<string | null> {
-  const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
-  return session?.user.id ?? null
+  try {
+    const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
+    return session?.user.id ?? null
+  } catch {
+    // fail CLOSED: an auth-backend hiccup is "no session", never a 500
+    return null
+  }
 }
 
 const userStub = (env: Env, userId: string) =>
@@ -137,9 +150,26 @@ app.post('/v1/chat', async (c) => {
   }
   const req = parseChatRequest(body)
   if (!req)
-    return problem(400, 'invalid_request', 'Expected {providerId:"claude", model, messages[], profile{kind, credential}}')
+    return problem(
+      400,
+      'invalid_request',
+      'Expected {providerId:"claude", model, messages[], credentialId | profile{kind, credential}}',
+    )
 
-  const upstream = await callAnthropic(req, c.req.raw.signal).catch(() => null)
+  // BE3: resolve a stored credential — session-gated, unsealed in memory only
+  if (req.credentialId) {
+    const uid = await userIdOf(c)
+    if (!uid) return problem(401, 'unauthenticated', 'A stored credential needs a session')
+    const stored = await openCredential(c.env, uid, req.credentialId)
+    if (!stored) return problem(404, 'credential_not_found', 'No such stored credential')
+    if (stored.providerId !== req.providerId)
+      return problem(400, 'credential_mismatch', 'Credential belongs to another provider')
+    req.profile = { kind: stored.kind as 'api_key' | 'account', credential: stored.credential }
+  }
+  const profile = req.profile
+  if (!profile) return problem(400, 'invalid_request', 'Missing credential source')
+
+  const upstream = await callAnthropic({ ...req, profile }, c.req.raw.signal).catch(() => null)
   if (!upstream) return problem(502, 'upstream_unreachable', 'Could not reach the provider')
 
   if (!upstream.ok) {

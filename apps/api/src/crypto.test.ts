@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { credentialHint, importCredentialsKey, open, seal } from './crypto'
 
-// deterministic 32-byte test key (NEVER a real secret)
-const TEST_KEY_B64 = Buffer.from(new Uint8Array(32).fill(7)).toString('base64')
+// deterministic 32-byte test key (NEVER a real secret) — btoa keeps the test
+// runnable under the workers-typed tsconfig (no node Buffer)
+const keyB64 = (fill: number) => btoa(String.fromCharCode(...new Uint8Array(32).fill(fill)))
+const TEST_KEY_B64 = keyB64(7)
 
 describe('credential envelope crypto (AES-256-GCM)', () => {
   it('round-trips a credential', async () => {
@@ -30,17 +32,13 @@ describe('credential envelope crypto (AES-256-GCM)', () => {
 
   it('rejects the wrong key', async () => {
     const key = await importCredentialsKey(TEST_KEY_B64)
-    const other = await importCredentialsKey(
-      Buffer.from(new Uint8Array(32).fill(9)).toString('base64'),
-    )
+    const other = await importCredentialsKey(keyB64(9))
     const sealed = await seal(key, 'secret')
     await expect(open(other, sealed)).rejects.toThrow()
   })
 
   it('refuses a short key outright', async () => {
-    await expect(importCredentialsKey(Buffer.from('short').toString('base64'))).rejects.toThrow(
-      /32 bytes/,
-    )
+    await expect(importCredentialsKey(btoa('short'))).rejects.toThrow(/32 bytes/)
   })
 
   it('hints never leak more than the tail', () => {
