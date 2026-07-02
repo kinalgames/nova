@@ -11,9 +11,9 @@ const POPUP =
   'origin-bottom animate-[fadeUp_140ms_var(--ease-paper)]'
 const POPUP_LABEL = 'px-3 pb-1 pt-2 font-mono text-eyebrow tracking-[0.14em] text-label'
 const ROW =
-  'flex cursor-pointer select-none items-center gap-3 rounded-sm px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
+  'flex cursor-pointer select-none items-center gap-3 rounded-sm px-3 py-2.5 outline-none data-[highlighted]:bg-hover-1'
 const TOOL_ROW =
-  'flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-3 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]'
+  'flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-3 py-2.5 outline-none data-[highlighted]:bg-hover-1'
 
 const badgeStyle: Record<string, { bg: string; fg: string; label: string }> = {
   pdf: { bg: 'var(--danger-bg)', fg: 'var(--danger-text)', label: 'PDF' },
@@ -36,7 +36,7 @@ function StagedItem({ f }: { f: StagedFile }) {
           type="button"
           aria-label={t('composer.openFile', { name: f.name })}
           onClick={() => v.openStaged(f)}
-          className="block size-[54px] cursor-pointer rounded-sm border border-[rgba(0,0,0,.06)] p-0"
+          className="block size-[54px] cursor-pointer rounded-sm border border-edge-soft p-0"
           style={{ background: bg }}
         />
         <button
@@ -241,7 +241,7 @@ export function Composer() {
                     <DropdownMenu.Item
                       key={i}
                       onSelect={pp.pick}
-                      className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2.5 text-ui text-text outline-none data-[highlighted]:bg-black/[0.04]"
+                      className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2.5 text-ui text-text outline-none data-[highlighted]:bg-hover-1"
                       style={{ background: pp.bg }}
                     >
                       <span className="size-[9px] rounded-xs" style={{ background: pp.dot }} />
@@ -279,7 +279,7 @@ export function Composer() {
                       <DropdownMenu.Item
                         key={i}
                         onSelect={pick}
-                        className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2.5 outline-none data-[highlighted]:bg-black/[0.04]"
+                        className="flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2.5 outline-none data-[highlighted]:bg-hover-1"
                       >
                         <div className="flex-1">
                           <div className="text-ui text-text">{label}</div>

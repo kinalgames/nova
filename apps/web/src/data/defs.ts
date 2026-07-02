@@ -21,21 +21,21 @@ export const presetDefs: PresetDef[] = [
     id: 'code',
     glyph: 'command',
     color: 'var(--info)',
-    badgeBg: 'rgba(59,91,169,.12)',
+    badgeBg: 'color-mix(in srgb, var(--info) 12%, transparent)',
     tools: ['bash', 'files', 'fetch'],
   },
   {
     id: 'design',
     glyph: 'design',
     color: 'var(--plum)',
-    badgeBg: 'rgba(154,91,138,.12)',
+    badgeBg: 'color-mix(in srgb, var(--plum) 12%, transparent)',
     tools: ['fetch', 'files'],
   },
   {
     id: 'research',
     glyph: 'search',
     color: 'var(--success)',
-    badgeBg: 'rgba(62,138,94,.12)',
+    badgeBg: 'color-mix(in srgb, var(--success) 12%, transparent)',
     tools: ['web', 'fetch'],
   },
   {
@@ -49,7 +49,7 @@ export const presetDefs: PresetDef[] = [
     id: 'data',
     glyph: 'data',
     color: 'var(--warn)',
-    badgeBg: 'rgba(181,133,63,.14)',
+    badgeBg: 'color-mix(in srgb, var(--warn) 14%, transparent)',
     tools: ['bash', 'files'],
   },
 ]
@@ -97,7 +97,7 @@ export const provDefs: ProviderDef[] = [
     id: 'gemini',
     name: 'Gemini',
     glyph: 'G',
-    badgeBg: 'rgba(59,91,169,.14)',
+    badgeBg: 'color-mix(in srgb, var(--info) 14%, transparent)',
     badgeFg: 'var(--info)',
     auth: ['account', 'api_key'],
     field: 'key',
@@ -191,9 +191,9 @@ export interface SuggestionDef {
 
 export const suggestionDefs: SuggestionDef[] = [
   { id: 'write', glyph: 'write', bg: 'var(--accent-soft)', fg: 'var(--accent)' },
-  { id: 'plan', glyph: 'plan', bg: 'rgba(59,91,169,.12)', fg: 'var(--info)' },
-  { id: 'learn', glyph: 'search', bg: 'rgba(62,138,94,.12)', fg: 'var(--success)' },
-  { id: 'docs', glyph: 'file', bg: 'rgba(154,91,138,.12)', fg: 'var(--plum)' },
+  { id: 'plan', glyph: 'plan', bg: 'color-mix(in srgb, var(--info) 12%, transparent)', fg: 'var(--info)' },
+  { id: 'learn', glyph: 'search', bg: 'color-mix(in srgb, var(--success) 12%, transparent)', fg: 'var(--success)' },
+  { id: 'docs', glyph: 'file', bg: 'color-mix(in srgb, var(--plum) 12%, transparent)', fg: 'var(--plum)' },
 ]
 
 /** accent swatches offered when creating/recolouring a project */

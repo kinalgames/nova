@@ -10,7 +10,7 @@ export const MENU_LABEL =
 
 export const MENU_ITEM =
   'flex cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2 text-ui ' +
-  'text-text outline-none data-[highlighted]:bg-black/[0.04]'
+  'text-text outline-none data-[highlighted]:bg-hover-1'
 
 export const MENU_ITEM_DANGER = `${MENU_ITEM} text-danger`
 

@@ -39,7 +39,7 @@ export function NewProjectDialog({
   return (
     <Dialog.Root open={open} onOpenChange={close}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_120ms_ease] bg-[rgba(27,26,22,0.28)]" />
+        <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_120ms_ease] bg-scrim" />
         <Dialog.Content className="fixed left-1/2 top-[20%] z-[60] w-[460px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] rounded-lg border border-border bg-panel p-6 shadow-overlay outline-none">
           <Dialog.Title className="font-display text-h3">{t('newProject.title')}</Dialog.Title>
           <Dialog.Description className="mb-5 mt-1 text-ui text-muted">

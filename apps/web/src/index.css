@@ -47,6 +47,13 @@
   --color-code-bg: var(--code-bg);
   --color-code-fg: var(--code-fg);
   --color-code-dim: var(--code-dim);
+  --color-hover-1: var(--hover-1);
+  --color-hover-2: var(--hover-2);
+  --color-scrim: var(--scrim);
+  --color-scrim-strong: var(--scrim-strong);
+  --color-scrim-lightbox: var(--scrim-lightbox);
+  --color-border-hover: var(--border-hover);
+  --color-edge-soft: var(--edge-soft);
 
   --font-display: var(--font-display);
   --font-sans: var(--font-body);
@@ -101,6 +108,18 @@
   /* hairline rules — like ruled lines on paper, never UI chrome */
   --border: #e5e0d5;
   --border-2: #ece7dd;
+  --border-hover: #d9d2c4;
+
+  /* interaction tints — hover/highlight washes that must flip with the theme */
+  --hover-1: rgba(0, 0, 0, 0.035);
+  --hover-2: rgba(0, 0, 0, 0.05);
+  /* a soft edge on top of imagery/thumbnails */
+  --edge-soft: rgba(0, 0, 0, 0.06);
+
+  /* overlay scrims — ink-tinted on paper, deeper in the dark */
+  --scrim: rgba(27, 26, 22, 0.28);
+  --scrim-strong: rgba(20, 18, 15, 0.45);
+  --scrim-lightbox: rgba(20, 18, 15, 0.82);
 
   /* accent — one colored pen */
   --accent: #be6a3a;
@@ -192,6 +211,15 @@
 
   --border: #322d26;
   --border-2: #2a251f;
+  --border-hover: #4a443b;
+
+  --hover-1: rgba(255, 255, 255, 0.06);
+  --hover-2: rgba(255, 255, 255, 0.09);
+  --edge-soft: rgba(255, 255, 255, 0.08);
+
+  --scrim: rgba(0, 0, 0, 0.5);
+  --scrim-strong: rgba(0, 0, 0, 0.65);
+  --scrim-lightbox: rgba(0, 0, 0, 0.88);
 
   --accent: #cf7c4b;
   --accent-soft: rgba(207, 124, 75, 0.16);
@@ -217,6 +245,8 @@
 
   --shadow-overlay: 0 24px 70px rgba(0, 0, 0, 0.5);
   --shadow-pop: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --knob: #e8e2d6;
+  --knob-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   --placeholder: #6f695e;
 }
 
@@ -383,21 +413,10 @@ button:focus-visible {
   }
 }
 
-/* hover helper: elements with data-hover-bg lighten on hover */
+/* hover helper for rows whose background is set inline (inline style beats a
+   hover: variant) — the wash flips with the theme via --hover-1 */
 [data-hover="soft"]:hover {
-  background: rgba(0, 0, 0, 0.035) !important;
-}
-[data-hover="soft2"]:hover {
-  background: rgba(0, 0, 0, 0.04) !important;
-}
-[data-hover="border"]:hover {
-  border-color: #d9d2c4 !important;
-}
-[data-hover="white"]:hover {
-  background: #fff !important;
-}
-[data-hover="text"]:hover {
-  color: var(--text) !important;
+  background: var(--hover-1) !important;
 }
 
 /* turning to a new part of the same page — a quiet rise, not a window swap */

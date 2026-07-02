@@ -66,7 +66,7 @@ export function ProjectView() {
                 to="/chat/$convId"
                 params={{ convId: c.id }}
                 onClick={c.onSelect}
-                className="flex items-center gap-3 border-b border-border px-1 py-3.5 text-text no-underline hover:bg-black/[0.02]"
+                className="flex items-center gap-3 border-b border-border px-1 py-3.5 text-text no-underline hover:bg-hover-1"
               >
                 <span className="min-w-0 flex-1 truncate text-lead">{c.title}</span>
                 {c.pinned && (

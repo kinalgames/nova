@@ -8,7 +8,7 @@ import { Icon } from './Icon'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 const navRow =
-  'flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-black/[0.035] focus-visible:bg-black/[0.05]'
+  'flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-hover-1 focus-visible:bg-hover-2'
 
 export function MobileDrawer() {
   const { v } = useStore()
@@ -21,7 +21,7 @@ export function MobileDrawer() {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[48] animate-[dim_120ms_ease] bg-[rgba(27,26,22,0.28)]" />
+        <Dialog.Overlay className="fixed inset-0 z-[48] animate-[dim_120ms_ease] bg-scrim" />
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed inset-y-0 left-0 z-[49] flex w-[282px] max-w-[84vw] flex-col overflow-hidden bg-side animate-[slideR_200ms_ease] outline-none"
@@ -80,7 +80,7 @@ export function MobileDrawer() {
             {v.sideConvs.map((c) => (
               <div
                 key={c.id}
-                className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-black/[0.035]"
+                className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-hover-1"
                 style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
               >
                 <Link

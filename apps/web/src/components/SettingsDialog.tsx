@@ -24,7 +24,7 @@ export function SettingsDialog() {
   return (
     <Dialog.Root open={v.settingsOpen} onOpenChange={(o) => !o && v.closeSettings()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[55] animate-[dim_140ms_ease] bg-[rgba(20,18,15,0.45)]" />
+        <Dialog.Overlay className="fixed inset-0 z-[55] animate-[dim_140ms_ease] bg-scrim-strong" />
         <Dialog.Content
           aria-describedby={undefined}
           className={
@@ -61,7 +61,7 @@ export function SettingsDialog() {
                     (mobile ? 'px-3 py-1.5 ' : 'px-3 py-2 ') +
                     (active
                       ? 'bg-accent-soft text-accent-text ' + (mobile ? '' : 'shadow-[inset_2px_0_0_var(--accent)]')
-                      : 'bg-transparent text-text-2 hover:bg-black/[0.04]')
+                      : 'bg-transparent text-text-2 hover:bg-hover-1')
                   }
                 >
                   <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? 'text-accent' : 'opacity-50')} />

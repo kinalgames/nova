@@ -17,14 +17,14 @@ export function Preview() {
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_140ms_ease] bg-[rgba(20,18,15,0.82)]" />
+        <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_140ms_ease] bg-scrim-lightbox" />
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed inset-0 z-[60] flex flex-col outline-none"
         >
-          <div className="flex h-14 flex-shrink-0 items-center justify-between px-4 text-[#ece7dd]">
+          <div className="flex h-14 flex-shrink-0 items-center justify-between px-4 text-code-fg">
             <Dialog.Title className="text-ui font-normal">
-              {v.previewName} <span className="text-meta text-[#9c958a]">· {v.previewMeta}</span>
+              {v.previewName} <span className="text-meta text-code-dim">· {v.previewMeta}</span>
             </Dialog.Title>
             <div className="flex items-center gap-4 text-small">
               <button

@@ -56,7 +56,7 @@ export function HomeView() {
               type="button"
               key={i}
               onClick={g.go}
-              className="w-full cursor-pointer rounded-md border border-border bg-panel px-4 py-3 text-left hover:border-[#d9d2c4]"
+              className="w-full cursor-pointer rounded-md border border-border bg-panel px-4 py-3 text-left hover:border-border-hover"
             >
               <div className="flex items-center gap-2">
                 <span

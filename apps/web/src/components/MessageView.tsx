@@ -101,7 +101,7 @@ function FilePill({ f }: { f: MsgAttachment }) {
       <button
         type="button"
         onClick={() => openPreview(v, f.open ?? 'image')}
-        className="relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-[rgba(0,0,0,.06)] bg-[linear-gradient(135deg,#E7C9A8,#C98F86_55%,#7E6E92)] text-left"
+        className="relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-edge-soft bg-[linear-gradient(135deg,#E7C9A8,#C98F86_55%,#7E6E92)] text-left"
       >
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[linear-gradient(transparent,rgba(0,0,0,.45))] px-2 py-1.5">
           <span className="text-eyebrow text-white">{f.name}</span>

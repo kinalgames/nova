@@ -9,7 +9,7 @@ const menuContent =
   'z-40 min-w-[18rem] max-w-[92vw] overflow-hidden rounded-md border border-border bg-panel p-0 shadow-overlay ' +
   'animate-[fadeUp_140ms_var(--ease-paper)] origin-top'
 const menuItem =
-  'flex cursor-pointer select-none items-start gap-3 px-4 py-3 text-body outline-none data-[highlighted]:bg-black/[0.035]'
+  'flex cursor-pointer select-none items-start gap-3 px-4 py-3 text-body outline-none data-[highlighted]:bg-hover-1'
 
 export function TopBar() {
   const { v } = useStore()
@@ -136,7 +136,7 @@ export function TopBar() {
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 onSelect={() => v.openSettings('providers')}
-                className="flex cursor-pointer select-none items-center gap-2 border-t border-border px-4 py-3 text-small text-muted outline-none data-[highlighted]:bg-black/[0.035]"
+                className="flex cursor-pointer select-none items-center gap-2 border-t border-border px-4 py-3 text-small text-muted outline-none data-[highlighted]:bg-hover-1"
               >
                 <Icon n="settings" size={14} /> {t('model.changeProvider')}
               </DropdownMenu.Item>
