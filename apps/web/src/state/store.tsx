@@ -49,6 +49,14 @@ import { loadPersisted, PERSIST_KEY, persistKeyFor } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { API_BASE, streamChat } from '../services/llm'
 import { fetchMe, getToken, signIn, signOut, signUp } from '../services/auth'
+import {
+  addCredential,
+  deleteCredential,
+  listCredentials,
+  patchCredential,
+  pingCredential,
+  type ServerCredential,
+} from '../services/credentials'
 import { pullOps, pushOps } from '../services/sync'
 import { diffRecords, fromRecords, toRecords, type SyncRecord } from './syncmap'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
@@ -133,6 +141,8 @@ export function __resetSync() {
 
 /** registered by the provider so login can start syncing WITHOUT a reload */
 let triggerSyncHydrate: (() => void) | null = null
+// BE3: login also re-hydrates the server-side credential list
+let triggerCredHydrate: (() => void) | null = null
 
 /** the persisted slice of the store — single source for localStorage + sync */
 function persistSliceOf(s: NovaState): import('./persist').Persisted {
@@ -455,6 +465,49 @@ export function StoreProvider({
     }
   }, [hydrateSync])
 
+  // BE3: real mode reads provider credentials from the server (sealed BYOK).
+  // The first hydration MIGRATES any client-held real profiles up once — the
+  // secret leaves the browser one last time, then only hints remain.
+  const hydrateCredentials = useCallback(async () => {
+    if (demo || !API_BASE || !getToken()) return
+    let rows = await listCredentials()
+    if (!rows) return
+    if (rows.length === 0) {
+      const local = sRef.current.profiles
+      let migrated = false
+      for (const pid of Object.keys(local) as ProviderId[]) {
+        for (const f of local[pid] ?? []) {
+          if (!f.demo && !f.server && f.credential.trim()) {
+            await addCredential(pid, f.kind, f.name, f.credential)
+            migrated = true
+          }
+        }
+      }
+      if (migrated) rows = (await listCredentials()) ?? []
+    }
+    const fromServer = (r: ServerCredential): AuthProfile => ({
+      id: r.id,
+      name: r.name,
+      kind: r.kind,
+      credential: r.hint,
+      status: r.status,
+      server: true,
+    })
+    const profiles: NovaState['profiles'] = { claude: [], gemini: [], openai: [], ollama: [] }
+    for (const r of rows) profiles[r.providerId]?.push(fromServer(r))
+    set({ profiles })
+  }, [demo, set])
+
+  useEffect(() => {
+    triggerCredHydrate = () => void hydrateCredentials()
+    // defer past the commit — hydration always sets state asynchronously
+    const boot = setTimeout(() => void hydrateCredentials(), 0)
+    return () => {
+      clearTimeout(boot)
+      triggerCredHydrate = null
+    }
+  }, [hydrateCredentials])
+
   // E1: poll /version.json for a newer deploy — on mount, on focus, and every
   // minute. Skipped under vitest (the check itself is unit-tested in isolation).
   /* v8 ignore start */
@@ -680,7 +733,11 @@ export function StoreProvider({
             model: ref.modelId,
             system: instructions || undefined,
             messages: turns,
-            profile: { kind: liveProfile.kind, credential: liveProfile.credential },
+            // server-backed profiles chat by id — the secret stays sealed
+            // server-side; transitional local profiles still send inline
+            ...(liveProfile.server
+              ? { credentialId: liveProfile.id }
+              : { profile: { kind: liveProfile.kind, credential: liveProfile.credential } }),
           },
           {
             onDelta: (text) => {
@@ -1393,6 +1450,32 @@ function deriveValues(
     set((x) => ({ slots: { ...x.slots, [slot]: refM } }))
   const addProfile = (providerId: ProviderId, kind: ProfileKind, name: string, credential: string) => {
     const fallbackName = kind === 'account' ? t('settings.kindAccount') : t('settings.kindApiKey')
+    // real mode with a session seals the credential server-side — the browser
+    // keeps only the returned hint
+    if (!demo && API_BASE && getToken()) {
+      void addCredential(providerId, kind, name.trim() || fallbackName, credential.trim()).then(
+        (row) => {
+          if (!row) return
+          set((x) => ({
+            profiles: {
+              ...x.profiles,
+              [providerId]: [
+                ...(x.profiles[providerId] ?? []),
+                {
+                  id: row.id,
+                  name: row.name,
+                  kind: row.kind,
+                  credential: row.hint,
+                  status: row.status,
+                  server: true,
+                } satisfies AuthProfile,
+              ],
+            },
+          }))
+        },
+      )
+      return
+    }
     const prof: AuthProfile = {
       id: uid(),
       name: name.trim() || fallbackName,
@@ -1404,8 +1487,10 @@ function deriveValues(
       profiles: { ...x.profiles, [providerId]: [...(x.profiles[providerId] ?? []), prof] },
     }))
   }
-  const removeProfile = (providerId: ProviderId, profileId: string) =>
-    set((x) => {
+  const removeProfile = (providerId: ProviderId, profileId: string) => {
+    const row = s.profiles[providerId]?.find((f) => f.id === profileId)
+    if (row?.server) void deleteCredential(profileId) // optimistic — list re-syncs on next boot
+    return set((x) => {
       const sticky = { ...x.stickyProfile }
       if (sticky[providerId] === profileId) delete sticky[providerId]
       return {
@@ -1416,6 +1501,7 @@ function deriveValues(
         stickyProfile: sticky,
       }
     })
+  }
   const moveProfile = (providerId: ProviderId, profileId: string, delta: -1 | 1) =>
     set((x) => {
       const list = [...(x.profiles[providerId] ?? [])]
@@ -1423,9 +1509,33 @@ function deriveValues(
       const j = i + delta
       if (i < 0 || j < 0 || j >= list.length) return {}
       ;[list[i], list[j]] = [list[j], list[i]]
+      // server-backed rows persist the new rotation order (priority = index)
+      list.forEach((f, idx) => {
+        if (f.server) void patchCredential(f.id, { priority: idx })
+      })
       return { profiles: { ...x.profiles, [providerId]: list } }
     })
   const testProfile = (providerId: ProviderId, profileId: string) => {
+    // a server-backed credential gets a REAL probe: a 1-token chat through
+    // the stored id against the provider's cheapest model
+    const row = s.profiles[providerId]?.find((f) => f.id === profileId)
+    if (row?.server && !demo && API_BASE) {
+      set({ testingProfile: profileId })
+      const model = findProvider(providerId).models.at(-1)?.id ?? ''
+      void pingCredential(profileId, providerId, model).then((status) => {
+        void patchCredential(profileId, { status })
+        set((x) => ({
+          testingProfile: null,
+          profiles: {
+            ...x.profiles,
+            [providerId]: (x.profiles[providerId] ?? []).map((f) =>
+              f.id === profileId ? { ...f, status, limitedUntil: undefined } : f,
+            ),
+          },
+        }))
+      })
+      return
+    }
     set({ testingProfile: profileId })
     setTimeout(() => {
       set((x) => ({
@@ -1835,6 +1945,7 @@ function deriveValues(
       }
       // start syncing this user's op-log immediately — no reload needed
       triggerSyncHydrate?.()
+      triggerCredHydrate?.()
       navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
       return null
     },

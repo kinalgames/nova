@@ -23,6 +23,9 @@ export interface AuthProfile {
   limitedUntil?: number
   /** seeded showcase credential — never routed to a real provider */
   demo?: boolean
+  /** BE3: lives sealed on the server — `credential` holds only the …tail hint;
+   *  chats reference it by id (credentialId), the secret never re-enters the client */
+  server?: boolean
 }
 
 /** one turn of a chat request as the provider proxy consumes it */
