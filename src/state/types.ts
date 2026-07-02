@@ -1,8 +1,23 @@
-import type { PresetId, ProviderId, ProviderStatus } from '../data/defs'
+import type { ModelRef, PresetId, ProfileKind, ProviderId, SlotId } from '../data/defs'
 import type { IconName } from '../components/Icon'
 import type { Thread } from './thread'
 
-export type LiveProviderStatus = ProviderStatus | 'testing' | 'error'
+/** lifecycle of an auth profile: usable → rate-limited → broken → not yet verified */
+export type ProfileStatus = 'active' | 'limited' | 'error' | 'untested'
+
+/** one credential a provider can be reached through — an OAuth account
+ * (「Tài khoản」, cost 0) or an API key/endpoint (「Khóa API」, metered) */
+export interface AuthProfile {
+  id: string
+  /** user-given label */
+  name: string
+  kind: ProfileKind
+  /** masked key, account email, or endpoint URL */
+  credential: string
+  status: ProfileStatus
+  /** epoch ms when a 'limited' profile becomes usable again */
+  limitedUntil?: number
+}
 
 export type ViewName = 'home' | 'conversation' | 'projects' | 'project' | 'projectcfg'
 
@@ -12,7 +27,14 @@ export type RespState = 'done' | 'stream' | 'error' | 'approval'
 export type ThinkLevel = 'off' | 'low' | 'normal' | 'high'
 export type Theme = 'light' | 'dark' | 'auto'
 export type AuthView = null | 'login' | 'signup' | 'onboarding'
-export type ModelId = 'opus' | 'haiku'
+/** token usage recorded on an assistant reply — the future backend writes the
+ * real numbers; the fake layer estimates them so the UI stays honest */
+export interface MsgUsage {
+  inputTokens: number
+  outputTokens: number
+  modelId: string
+  profileId: string
+}
 
 export type PreviewKind = 'image' | 'pdf' | 'code' | 'csv' | 'md'
 
@@ -99,6 +121,8 @@ export interface Message {
   approval?: { tool: string; command: string }
   /** UI-only reader feedback on an assistant reply */
   feedback?: 'up' | 'down'
+  /** token usage + routing of an assistant reply (account profiles cost 0) */
+  usage?: MsgUsage
   blocks: Block[]
 }
 
@@ -164,7 +188,10 @@ export interface NovaState {
   theme: Theme
   focusDur: '15' | '25' | '50'
   styles: StyleFlags
-  model: ModelId
+  /** which quality slot new messages route through */
+  activeSlot: SlotId
+  /** cross-provider model routing per slot */
+  slots: Record<SlotId, ModelRef>
   tools: ToolFlags
   draft: string
   q: string
@@ -173,9 +200,14 @@ export interface NovaState {
   barOn: boolean
   copied: boolean
   tokenPct: string
-  activeProvider: ProviderId
-  providerKeys: Record<ProviderId, string>
-  providerStatus: Record<ProviderId, LiveProviderStatus>
+  /** auth profiles per provider, ordered by rotation priority */
+  profiles: Record<ProviderId, AuthProfile[]>
+  /** rotate to the next usable profile when one hits a limit */
+  autoRotate: boolean
+  /** sticky rotation pointer — the profile each provider is currently pinned to */
+  stickyProfile: Partial<Record<ProviderId, string>>
+  /** profile id with an in-flight connection test (ephemeral, not persisted) */
+  testingProfile: string | null
   presetDefault: Record<PresetId, boolean>
   /** staged attachments, keyed by conversation id (per-conversation tray) */
   staged: Record<string, StagedFile[]>

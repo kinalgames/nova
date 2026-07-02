@@ -502,6 +502,9 @@ export function MessageView({
         {state === 'streaming' && (
           <span className="text-meta text-faint">{t('chat.streamReplying')}</span>
         )}
+        {v.msgUsage(message) && (
+          <span className="font-mono text-meta text-faint">{v.msgUsage(message)}</span>
+        )}
       </div>
 
       {trace && <BlockView block={trace} />}

@@ -35,7 +35,22 @@ line, in the composer's visible project — instead of appending to the
 last-open thread; Home gets its own staged-files bucket (`HOME_TRAY`) so a new
 chat never inherits another conversation's attachments.
 
-## P — Provider & assistant depth (approved decisions)
+## P — Provider & assistant depth (DONE — UI-first scope)
+
+Shipped: cross-provider slots (`slots: {smart, fast}` × `{providerId, modelId}`,
+`activeSlot` replaces the old `model`/`activeProvider`), `ModelDef` catalog with
+per-1M pricing + stream pace in `data/defs.ts`, `AuthProfile` lists per provider
+(add/test/reorder/remove, 「Tài khoản」/「Khóa API」), rotation engine
+(`state/rotation.ts` — ordered priority + sticky fallback, `autoRotate` toggle),
+`usage` on every streamed reply + conversation cost meter + per-reply advanced
+meta + all-time per-profile totals, providers without a usable profile are not
+routable (disabled chips + hint). PERSIST v4→v5.
+
+Deviations from the letter of the spec (deliberate, documented):
+reorder uses accessible ↑↓ arrows instead of drag; slots always point at a
+concrete model (no `null` = recommended); monthly usage total deferred until
+real timestamps land (B track); real OAuth flows/429 handling arrive with the
+backend — `limited`/`limitedUntil` are already modeled and unit-tested.
 
 | Item | Decision |
 |---|---|

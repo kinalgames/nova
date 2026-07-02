@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { composeReply, resetReplySeed, thinkingDelay, tokenInterval } from './chat'
+import { composeReply, estimateTokens, resetReplySeed, thinkingDelay } from './chat'
+import { defaultSlots, findModel } from '../data/defs'
 
 beforeEach(() => resetReplySeed(1))
 
 describe('chat service — composeReply', () => {
   it('returns a contextual reply for known intents', () => {
     const r = composeReply('giúp sửa bug component React', {
-      model: 'haiku',
+      slot: 'fast',
       thinking: 'normal',
       project: 'Aurora',
     })
@@ -19,28 +20,32 @@ describe('chat service — composeReply', () => {
     let sawProject = false
     for (let i = 0; i < 6; i++) {
       resetReplySeed(i + 1)
-      const r = composeReply('zzz', { model: 'haiku', thinking: 'off', project: 'Aurora' })
+      const r = composeReply('zzz', { slot: 'fast', thinking: 'off', project: 'Aurora' })
       expect(r).not.toContain('{project}')
       if (r.includes('Aurora')) sawProject = true
     }
     expect(sawProject).toBe(true)
   })
 
-  it('Thông minh (opus) with thinking adds a deliberation note', () => {
+  it('Thông minh (smart slot) with thinking adds a deliberation note', () => {
     resetReplySeed(3)
-    const opus = composeReply('viết email', { model: 'opus', thinking: 'high', project: 'X' })
+    const smart = composeReply('viết email', { slot: 'smart', thinking: 'high', project: 'X' })
     resetReplySeed(3)
-    const haiku = composeReply('viết email', { model: 'haiku', thinking: 'high', project: 'X' })
-    expect(opus.length).toBeGreaterThan(haiku.length)
+    const fast = composeReply('viết email', { slot: 'fast', thinking: 'high', project: 'X' })
+    expect(smart.length).toBeGreaterThan(fast.length)
   })
 })
 
-describe('chat service — pacing', () => {
+describe('chat service — pacing & usage', () => {
   it('thinking delay scales with level', () => {
     expect(thinkingDelay('off')).toBe(0)
     expect(thinkingDelay('high')).toBeGreaterThan(thinkingDelay('low'))
   })
-  it('Nhanh (haiku) streams faster than Thông minh (opus)', () => {
-    expect(tokenInterval('haiku')).toBeLessThan(tokenInterval('opus'))
+  it('the default fast model streams quicker than the default smart model', () => {
+    expect(findModel(defaultSlots.fast).pace).toBeLessThan(findModel(defaultSlots.smart).pace)
+  })
+  it('estimates tokens at roughly four characters each, never zero', () => {
+    expect(estimateTokens('x'.repeat(400))).toBe(100)
+    expect(estimateTokens('a')).toBe(1)
   })
 })

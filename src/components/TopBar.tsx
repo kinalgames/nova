@@ -96,22 +96,40 @@ export function TopBar() {
               <div className="px-4 pb-1.5 pt-3 font-mono text-micro tracking-[0.14em] text-faint">
                 {v.modelMenuLabel}
               </div>
-              <DropdownMenu.Item onSelect={v.pickOpus} className={menuItem}>
+              <DropdownMenu.Item onSelect={v.pickSmart} className={menuItem}>
                 <span className="mt-1.5 size-[7px] rounded-full bg-accent" />
                 <div className="flex-1">
                   <div className="text-body text-text">{v.modelAMode}</div>
-                  <div className="text-small text-muted">{v.modelADesc}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted">
+                    <span
+                      className="flex size-4 items-center justify-center rounded-xs font-mono text-micro"
+                      style={{ background: v.modelABadgeBg, color: v.modelABadgeFg }}
+                    >
+                      {v.modelAGlyph}
+                    </span>
+                    {v.modelAName}
+                    <span className="text-faint">· {v.modelADesc}</span>
+                  </div>
                 </div>
                 {v.checkA && <Icon n="check" size={14} className="mt-1 text-accent" />}
               </DropdownMenu.Item>
               <DropdownMenu.Item
-                onSelect={v.pickHaiku}
+                onSelect={v.pickFast}
                 className={`${menuItem} border-t border-border`}
               >
                 <span className="mt-1.5 size-[7px] rounded-full bg-border" />
                 <div className="flex-1">
                   <div className="text-body text-text">{v.modelBMode}</div>
-                  <div className="text-small text-muted">{v.modelBDesc}</div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted">
+                    <span
+                      className="flex size-4 items-center justify-center rounded-xs font-mono text-micro"
+                      style={{ background: v.modelBBadgeBg, color: v.modelBBadgeFg }}
+                    >
+                      {v.modelBGlyph}
+                    </span>
+                    {v.modelBName}
+                    <span className="text-faint">· {v.modelBDesc}</span>
+                  </div>
                 </div>
                 {v.checkB && <Icon n="check" size={14} className="mt-1 text-accent" />}
               </DropdownMenu.Item>

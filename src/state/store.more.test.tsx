@@ -55,11 +55,26 @@ describe('store — skill presets', () => {
   })
 })
 
-describe('store — providers', () => {
-  it('selects a provider', async () => {
+describe('store — model slots (cross-provider routing)', () => {
+  it('routes the fast slot to another provider\u2019s model', async () => {
     const { result } = await setup()
-    await act(async () => result.current.v.providers[1].select())
-    expect(result.current.s.activeProvider).toBe('gemini')
+    const openai = result.current.v.providers.find((p) => p.id === 'openai')!
+    const mini = openai.models.find((m) => m.id === 'gpt-5-mini')!
+    expect(mini.enabled).toBe(true)
+    await act(async () => mini.useFast())
+    expect(result.current.s.slots.fast).toEqual({
+      providerId: 'openai',
+      modelId: 'gpt-5-mini',
+    })
+    // the menu renders [provider icon][model name] for the slot
+    expect(result.current.v.modelBName).toBe('GPT-5 mini')
+    expect(result.current.v.modelBGlyph).toBe('O')
+    // the smart slot is untouched — slots are independent
+    expect(result.current.s.slots.smart.providerId).toBe('claude')
+    // a provider with no usable profile is not routable
+    const gemini = result.current.v.providers.find((p) => p.id === 'gemini')!
+    expect(gemini.models[0].enabled).toBe(false)
+    expect(gemini.needProfileHint).not.toBe('')
   })
 })
 

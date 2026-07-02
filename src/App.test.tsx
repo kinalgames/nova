@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { makeUser, renderApp } from './test/util'
 import { screen, within } from '@testing-library/react'
+import { PERSIST_KEY } from './state/store'
 
 beforeEach(() => localStorage.clear())
 
@@ -49,7 +50,7 @@ describe('App — root redirect', () => {
 
   it('redirects the root to the persisted last conversation', async () => {
     localStorage.setItem(
-      'nova.flow.settings.v4',
+      PERSIST_KEY,
       JSON.stringify({
         activeConv: 'c3',
         conversations: [

@@ -14,19 +14,28 @@ import type { TFunction } from 'i18next'
 import i18n from '../i18n'
 import {
   convDefs,
+  defaultSlots,
+  findModel,
+  findModelById,
+  findProvider,
   presetDefs,
+  profileStatusMap,
   projectDefs,
   provDefs,
+  seedProfiles,
   seedThreads,
-  statusMap,
   suggestionDefs,
+  type ModelRef,
   type PresetId,
+  type ProfileKind,
   type ProviderId,
+  type SlotId,
 } from '../data/defs'
 import type {
+  AuthProfile,
   AuthView,
   Block,
-  LiveProviderStatus,
+  Message,
   NovaState,
   PreviewKind,
   SettingsTab,
@@ -35,7 +44,8 @@ import type {
   ThinkLevel,
   ViewName,
 } from './types'
-import { composeReply, thinkingDelay, tokenInterval } from '../services/chat'
+import { pickProfile } from './rotation'
+import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import {
   addSibling,
   appendChild,
@@ -63,6 +73,8 @@ function titleFrom(text: string): string {
   const line = (text.split('\n').find((l) => l.trim()) ?? text).trim()
   return line.length > 48 ? `${line.slice(0, 48)}…` : line
 }
+
+const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
 /** Navigation state derived from the URL — the single source of truth for
  *  which view/auth screen is showing and which Settings tab (if any) is open. */
@@ -93,7 +105,7 @@ function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
 
 // bump the version suffix whenever the persisted shape changes so stale data
 // from an older schema is ignored rather than corrupting the new state
-export const PERSIST_KEY = 'nova.flow.settings.v4'
+export const PERSIST_KEY = 'nova.flow.settings.v5'
 
 interface Persisted {
   theme?: Theme
@@ -103,9 +115,11 @@ interface Persisted {
   focusDur?: '15' | '25' | '50'
   barOn?: boolean
   thinkingLevel?: ThinkLevel
-  activeProvider?: ProviderId
-  providerKeys?: NovaState['providerKeys']
-  providerStatus?: NovaState['providerStatus']
+  activeSlot?: SlotId
+  slots?: Record<SlotId, ModelRef>
+  profiles?: NovaState['profiles']
+  autoRotate?: boolean
+  stickyProfile?: NovaState['stickyProfile']
   tools?: NovaState['tools']
   styles?: NovaState['styles']
   projects?: NovaState['projects']
@@ -160,7 +174,8 @@ function initialState(): NovaState {
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
     styles: p.styles ?? { concise: true, warm: false, formal: false, humor: false },
-    model: p.model ?? 'opus',
+    activeSlot: p.activeSlot ?? 'smart',
+    slots: p.slots ?? defaultSlots,
     tools: p.tools ?? { web: true, fetch: true, files: true, bash: true },
     draft: '',
     q: '',
@@ -169,19 +184,10 @@ function initialState(): NovaState {
     barOn: p.barOn ?? true,
     copied: false,
     tokenPct: '42%',
-    activeProvider: p.activeProvider ?? 'claude',
-    providerKeys:
-      p.providerKeys ??
-      (Object.fromEntries(provDefs.map((d) => [d.id, d.fieldValue])) as Record<
-        ProviderId,
-        string
-      >),
-    providerStatus:
-      p.providerStatus ??
-      (Object.fromEntries(provDefs.map((d) => [d.id, d.status])) as Record<
-        ProviderId,
-        LiveProviderStatus
-      >),
+    profiles: p.profiles ?? structuredClone(seedProfiles),
+    autoRotate: p.autoRotate ?? true,
+    stickyProfile: p.stickyProfile ?? {},
+    testingProfile: null,
     presetDefault: p.presetDefault ?? {
       code: false,
       design: false,
@@ -254,13 +260,14 @@ export function StoreProvider({
       theme: s.theme,
       advanced: s.advanced,
       accent: s.accent,
-      model: s.model,
+      activeSlot: s.activeSlot,
+      slots: s.slots,
       focusDur: s.focusDur,
       barOn: s.barOn,
       thinkingLevel: s.thinkingLevel,
-      activeProvider: s.activeProvider,
-      providerKeys: s.providerKeys,
-      providerStatus: s.providerStatus,
+      profiles: s.profiles,
+      autoRotate: s.autoRotate,
+      stickyProfile: s.stickyProfile,
       tools: s.tools,
       styles: s.styles,
       projects: s.projects,
@@ -278,13 +285,14 @@ export function StoreProvider({
     s.theme,
     s.advanced,
     s.accent,
-    s.model,
     s.focusDur,
     s.barOn,
     s.thinkingLevel,
-    s.activeProvider,
-    s.providerKeys,
-    s.providerStatus,
+    s.activeSlot,
+    s.slots,
+    s.profiles,
+    s.autoRotate,
+    s.stickyProfile,
     s.tools,
     s.styles,
     s.projects,
@@ -416,13 +424,31 @@ export function StoreProvider({
         prev.projects.find(
           (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
         )?.name ?? 'Chung'
+      // routing: the active slot names a {provider, model}; rotation picks the
+      // auth profile (sticky + ordered fallback) the request bills against
+      const ref = prev.slots[prev.activeSlot]
+      const model = findModel(ref)
+      const profile = pickProfile(
+        prev.profiles[ref.providerId] ?? [],
+        prev.stickyProfile[ref.providerId],
+        prev.autoRotate,
+      )
+      if (profile && prev.stickyProfile[ref.providerId] !== profile.id)
+        set((x) => ({ stickyProfile: { ...x.stickyProfile, [ref.providerId]: profile.id } }))
       const reply = composeReply(prompt, {
-        model: prev.model,
+        slot: prev.activeSlot,
         thinking: prev.thinkingLevel,
         project: projName,
       })
       const words = reply.split(' ')
-      const step = tokenInterval(prev.model)
+      const step = model.pace
+      // fake usage estimate — the real backend records exact counts later
+      const usage = {
+        inputTokens: estimateTokens(prompt),
+        outputTokens: estimateTokens(reply),
+        modelId: model.id,
+        profileId: profile?.id ?? '',
+      }
       const replyId = uid()
       set({
         typing: true,
@@ -456,7 +482,14 @@ export function StoreProvider({
           }))
           if (i >= words.length) {
             clearInterval(tc.current)
-            set({ typing: false, tokenPct: `${Math.min(98, 42 + words.length)}%` })
+            set((x) => ({
+              typing: false,
+              tokenPct: `${Math.min(98, 42 + words.length)}%`,
+              threads: {
+                ...x.threads,
+                [conv]: updateMessage(x.threads[conv], replyId, { usage }),
+              },
+            }))
           }
         }, step)
       }, thinkingDelay(prev.thinkingLevel))
@@ -902,6 +935,42 @@ function deriveValues(
   if (activeThreadTree)
     for (const msg of activeThread) versions[msg.id] = siblingInfo(activeThreadTree, msg.id)
   const activeStaged = s.staged[stagedKeyOf(nav)] ?? []
+
+  // usage accounting — account profiles cost 0, keys/endpoints are metered by
+  // the model's per-1M pricing
+  const allProfiles = Object.values(s.profiles).flat()
+  const costOf = (u: NonNullable<Message['usage']>): number => {
+    const prof = allProfiles.find((f) => f.id === u.profileId)
+    if (prof && prof.kind === 'account') return 0
+    const md = findModelById(u.modelId)
+    return md ? (u.inputTokens * md.inPrice + u.outputTokens * md.outPrice) / 1e6 : 0
+  }
+  const fmtCost = (c: number) => (c < 0.0001 ? '<$0.0001' : `$${c.toFixed(4)}`)
+
+  // conversation-level roll-up for the meter
+  let usageIn = 0
+  let usageOut = 0
+  let usageCost = 0
+  for (const m of activeThread) {
+    const u = m.usage
+    if (!u) continue
+    usageIn += u.inputTokens
+    usageOut += u.outputTokens
+    usageCost += costOf(u)
+  }
+
+  // all-time totals per auth profile (every thread, every version) — shown in
+  // Settings so the user sees what each profile has consumed
+  const profileTotals: Record<string, { inTok: number; outTok: number; cost: number }> = {}
+  for (const th of Object.values(s.threads))
+    for (const m of Object.values(th.byId)) {
+      const u = m.usage
+      if (!u || !u.profileId) continue
+      const agg = (profileTotals[u.profileId] ??= { inTok: 0, outTok: 0, cost: 0 })
+      agg.inTok += u.inputTokens
+      agg.outTok += u.outputTokens
+      agg.cost += costOf(u)
+    }
   const activeIsDemo = !!activeConvObj?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
@@ -944,59 +1013,136 @@ function deriveValues(
       .map((p) => t(`vocab.presets.${p.id}.name`))
       .join(' · ') || t('projects.config.skillsBasic')
 
-  const liveStatusMap: Record<LiveProviderStatus, { badge: string; fg: string; bg: string }> = {
-    connected: { ...statusMap.connected, badge: t('vocab.status.connected') },
-    add: { ...statusMap.add, badge: t('vocab.status.add') },
-    local: { ...statusMap.local, badge: t('vocab.status.local') },
-    testing: { badge: t('vocab.status.testing'), fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
-    error: { badge: t('vocab.status.error'), fg: 'var(--danger-text)', bg: 'var(--danger-bg)' },
+  // — auth profiles: ordered by rotation priority within each provider —
+  const setSlot = (slot: SlotId, refM: ModelRef) =>
+    set((x) => ({ slots: { ...x.slots, [slot]: refM } }))
+  const addProfile = (providerId: ProviderId, kind: ProfileKind, name: string, credential: string) => {
+    const fallbackName = kind === 'account' ? t('settings.kindAccount') : t('settings.kindApiKey')
+    const prof: AuthProfile = {
+      id: uid(),
+      name: name.trim() || fallbackName,
+      kind,
+      credential: credential.trim(),
+      status: 'untested',
+    }
+    set((x) => ({
+      profiles: { ...x.profiles, [providerId]: [...(x.profiles[providerId] ?? []), prof] },
+    }))
   }
-  const setProviderKey = (id: ProviderId, value: string) =>
-    set((x) => ({ providerKeys: { ...x.providerKeys, [id]: value } }))
-  const testProvider = (id: ProviderId) => {
-    set((x) => ({ providerStatus: { ...x.providerStatus, [id]: 'testing' } }))
+  const removeProfile = (providerId: ProviderId, profileId: string) =>
+    set((x) => {
+      const sticky = { ...x.stickyProfile }
+      if (sticky[providerId] === profileId) delete sticky[providerId]
+      return {
+        profiles: {
+          ...x.profiles,
+          [providerId]: (x.profiles[providerId] ?? []).filter((f) => f.id !== profileId),
+        },
+        stickyProfile: sticky,
+      }
+    })
+  const moveProfile = (providerId: ProviderId, profileId: string, delta: -1 | 1) =>
+    set((x) => {
+      const list = [...(x.profiles[providerId] ?? [])]
+      const i = list.findIndex((f) => f.id === profileId)
+      const j = i + delta
+      if (i < 0 || j < 0 || j >= list.length) return {}
+      ;[list[i], list[j]] = [list[j], list[i]]
+      return { profiles: { ...x.profiles, [providerId]: list } }
+    })
+  const testProfile = (providerId: ProviderId, profileId: string) => {
+    set({ testingProfile: profileId })
     setTimeout(() => {
-      set((x) => {
-        const ok = (x.providerKeys[id] || '').trim().length > 4
-        const next: LiveProviderStatus = ok ? (id === 'ollama' ? 'local' : 'connected') : 'error'
-        return { providerStatus: { ...x.providerStatus, [id]: next } }
-      })
+      set((x) => ({
+        testingProfile: null,
+        profiles: {
+          ...x.profiles,
+          [providerId]: (x.profiles[providerId] ?? []).map((f) =>
+            f.id === profileId
+              ? {
+                  ...f,
+                  // fake check: accounts always connect; keys need plausible length
+                  status:
+                    f.kind === 'account' || f.credential.trim().length > 4
+                      ? ('active' as const)
+                      : ('error' as const),
+                  limitedUntil: undefined,
+                }
+              : f,
+          ),
+        },
+      }))
     }, 900)
   }
   const providers = provDefs.map((p) => {
-    const active = s.activeProvider === p.id
-    const status = s.providerStatus[p.id]
-    const st = liveStatusMap[status]
+    const profs = s.profiles[p.id] ?? []
+    const current = pickProfile(profs, s.stickyProfile[p.id], s.autoRotate)
+    const agg = profs.some((f) => f.status === 'active')
+      ? ('active' as const)
+      : profs.some((f) => f.status === 'limited')
+        ? ('limited' as const)
+        : profs.some((f) => f.status === 'error')
+          ? ('error' as const)
+          : profs.length
+            ? ('untested' as const)
+            : null
+    const aggColors = agg ? profileStatusMap[agg] : { fg: 'var(--warn-text)', bg: 'var(--warn-bg)' }
     return {
       id: p.id,
-      active,
-      select: () => set({ activeProvider: p.id }),
       name: p.id === 'ollama' ? t('vocab.providers.ollama.name') : p.name,
       sub: t(`vocab.providers.${p.id}.sub`),
       glyph: p.glyph,
       badgeBg: p.badgeBg,
       badgeFg: p.badgeFg,
-      badge: st.badge,
-      statusFg: st.fg,
-      statusBg: st.bg,
       rec: p.rec ? t('vocab.recommended') : '',
-      border: active ? accent : 'var(--border)',
-      bg: 'var(--panel)',
-      radioBd: active ? accent : 'var(--border)',
-      radioBg: active ? accent : 'transparent',
-      radioDot: active ? 'var(--panel)' : 'transparent',
-      showKey: active,
+      badge: agg ? t(`vocab.profileStatus.${agg}`) : t('vocab.profileStatus.none'),
+      statusFg: aggColors.fg,
+      statusBg: aggColors.bg,
       fieldLabel: p.field === 'key' ? t('settings.apiKey') : t('settings.endpoint'),
-      fieldValue: s.providerKeys[p.id],
-      setKey: (value: string) => setProviderKey(p.id, value),
-      test: () => testProvider(p.id),
-      testing: status === 'testing',
-      fieldAction: p.field === 'key' ? t('settings.saveTest') : t('settings.test'),
-      models: p.models.map((m, i) => ({
-        name: m,
-        fg: i === 0 ? accentText : 'var(--muted)',
-        bg: i === 0 ? 'var(--accent-soft)' : 'var(--panel)',
-        bd: i === 0 ? 'var(--accent-line)' : 'var(--border)',
+      placeholder: p.placeholder,
+      kinds: p.auth.map((k) => ({
+        kind: k,
+        label: t(k === 'account' ? 'settings.kindAccount' : 'settings.kindApiKey'),
+      })),
+      profiles: profs.map((f, i) => ({
+        id: f.id,
+        name: f.name,
+        kindLabel: t(f.kind === 'account' ? 'settings.kindAccount' : 'settings.kindApiKey'),
+        credential: f.credential,
+        badge: t(`vocab.profileStatus.${f.status}`),
+        statusFg: profileStatusMap[f.status].fg,
+        statusBg: profileStatusMap[f.status].bg,
+        inUse: current?.id === f.id,
+        usage: profileTotals[f.id]
+          ? `${fmtTokens(profileTotals[f.id].inTok)}↑ ${fmtTokens(profileTotals[f.id].outTok)}↓ · ${
+              profileTotals[f.id].cost === 0 ? t('meter.costFree') : fmtCost(profileTotals[f.id].cost)
+            }`
+          : '',
+        testing: s.testingProfile === f.id,
+        test: () => testProfile(p.id, f.id),
+        remove: () => removeProfile(p.id, f.id),
+        moveUp: () => moveProfile(p.id, f.id, -1),
+        moveDown: () => moveProfile(p.id, f.id, 1),
+        canUp: i > 0,
+        canDown: i < profs.length - 1,
+      })),
+      addProfile: (kind: ProfileKind, name: string, credential: string) =>
+        addProfile(p.id, kind, name, credential),
+      // approved spec: a provider without a usable auth profile cannot be routed to
+      modelsEnabled: current != null,
+      needProfileHint: current == null ? t('settings.needProfileHint') : '',
+      models: p.models.map((m) => ({
+        id: m.id,
+        name: m.name,
+        enabled: current != null,
+        price:
+          m.inPrice === 0
+            ? t('settings.priceFree')
+            : `$${m.inPrice} / $${m.outPrice} · 1M`,
+        smartOn: s.slots.smart.providerId === p.id && s.slots.smart.modelId === m.id,
+        fastOn: s.slots.fast.providerId === p.id && s.slots.fast.modelId === m.id,
+        useSmart: () => setSlot('smart', { providerId: p.id, modelId: m.id }),
+        useFast: () => setSlot('fast', { providerId: p.id, modelId: m.id }),
       })),
     }
   })
@@ -1098,14 +1244,32 @@ function deriveValues(
     notQuiet: !s.quiet,
     showMeter: isDesktop,
     meterLabel: t('meter.label'),
-    modelLabel: s.model === 'opus' ? t('model.smart') : t('model.fast'),
+    modelLabel: s.activeSlot === 'smart' ? t('model.smart') : t('model.fast'),
     modelAMode: t('model.smart'),
     modelBMode: t('model.fast'),
     modelADesc: t('model.smartDesc'),
     modelBDesc: t('model.fastDesc'),
-    checkA: s.model === 'opus' ? '✓' : '',
-    checkB: s.model === 'haiku' ? '✓' : '',
+    // each slot renders as [provider icon][model name] — cross-provider routing
+    modelAName: findModel(s.slots.smart).name,
+    modelBName: findModel(s.slots.fast).name,
+    modelAGlyph: findProvider(s.slots.smart.providerId).glyph,
+    modelBGlyph: findProvider(s.slots.fast.providerId).glyph,
+    modelABadgeBg: findProvider(s.slots.smart.providerId).badgeBg,
+    modelABadgeFg: findProvider(s.slots.smart.providerId).badgeFg,
+    modelBBadgeBg: findProvider(s.slots.fast.providerId).badgeBg,
+    modelBBadgeFg: findProvider(s.slots.fast.providerId).badgeFg,
+    checkA: s.activeSlot === 'smart' ? '✓' : '',
+    checkB: s.activeSlot === 'fast' ? '✓' : '',
     modelMenuLabel: t('model.menuLabel'),
+    autoRotate: s.autoRotate,
+    toggleAutoRotate: () => set((x) => ({ autoRotate: !x.autoRotate })),
+    // per-reply usage meta, advanced mode only: "1.2k↑ 3.4k↓ · ~$0.09"
+    msgUsage: (m: Message): string | null => {
+      const u = m.usage
+      if (!u || !adv) return null
+      const c = costOf(u)
+      return `${fmtTokens(u.inputTokens)}↑ ${fmtTokens(u.outputTokens)}↓${c > 0 ? ` · ~${fmtCost(c)}` : ''}`
+    },
     // conversation states
     respState: rs,
     isStream: rs === 'stream',
@@ -1384,7 +1548,13 @@ function deriveValues(
     activeCount,
     tokenPct: s.tokenPct,
     tokenLabel: t('meter.tokenLabel'),
-    tokenDetail: t('meter.tokenDetail'),
+    tokenDetail: usageIn + usageOut > 0
+      ? t('meter.usageDetail', {
+          inTok: fmtTokens(usageIn),
+          outTok: fmtTokens(usageOut),
+          cost: usageCost === 0 ? t('meter.costFree') : fmtCost(usageCost),
+        })
+      : t('meter.tokenDetail'),
     copyLabel: s.copied ? t('common.copied') : t('common.copy'),
     copied: s.copied,
     quietClock: '24:13',
@@ -1404,8 +1574,8 @@ function deriveValues(
     },
     togglePalette: () => set((x) => ({ palette: !x.palette, drawerOpen: false })),
     closeMenus: () => set({ palette: false }),
-    pickOpus: () => set({ model: 'opus' }),
-    pickHaiku: () => set({ model: 'haiku' }),
+    pickSmart: () => set({ activeSlot: 'smart' }),
+    pickFast: () => set({ activeSlot: 'fast' }),
     enterQuiet: () => set({ quiet: true }),
     exitQuiet: () => set({ quiet: false }),
     onDraft: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>

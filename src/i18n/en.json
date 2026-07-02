@@ -135,8 +135,8 @@
   "model": {
     "smart": "Smart",
     "fast": "Fast",
-    "smartDesc": "Opus 4.8 · deep answers",
-    "fastDesc": "Haiku 4.8 · quick replies",
+    "smartDesc": "Deep, considered answers",
+    "fastDesc": "Quick, economical replies",
     "menuLabel": "ASSISTANT MODE",
     "modeAria": "Reply mode: {{label}}",
     "changeProvider": "Change provider →"
@@ -144,7 +144,9 @@
   "meter": {
     "label": "memory",
     "tokenLabel": "58% left",
-    "tokenDetail": "84k / 200k tokens · 58% left"
+    "tokenDetail": "84k / 200k tokens · 58% left",
+    "usageDetail": "{{inTok}} in · {{outTok}} out · {{cost}}",
+    "costFree": "free (Account)"
   },
   "topbar": {
     "focus": "Focus"
@@ -200,15 +202,27 @@
     "focusSection": "FOCUS MODE",
     "sessionLength": "Session length",
     "account": "ACCOUNT",
-    "providersModels": "NOVA USES MODELS FROM",
-    "useProvider": "Use {{name}}",
-    "modelsAvailable": "AVAILABLE MODELS",
+    "providersModels": "PROVIDERS & MODELS",
+    "modelsAvailable": "MODELS · USED FOR",
     "addCustom": "Add a custom provider (OpenAI‑compatible)",
     "apiKey": "API KEY",
     "endpoint": "SERVER ADDRESS",
     "testing": "Testing…",
-    "saveTest": "Save & test",
     "test": "Test",
+    "kindAccount": "Account",
+    "kindApiKey": "API key",
+    "profilesLabel": "CONNECTION PROFILES",
+    "profileInUse": "in use",
+    "addProfile": "Add profile",
+    "profileName": "Label",
+    "addAction": "Add",
+    "removeProfile": "Remove profile {{name}}",
+    "moveUp": "Raise priority of {{name}}",
+    "moveDown": "Lower priority of {{name}}",
+    "autoRotate": "Auto-rotate profiles",
+    "autoRotateDesc": "When a profile hits its limit, switch to the next one in priority order.",
+    "priceFree": "Free",
+    "needProfileHint": "Add a connection profile to use this provider's models.",
     "styleSection": "REPLY STYLE",
     "skillsSection": "NOVA'S SKILLS",
     "skillsScope": "On/off for every project",
@@ -243,12 +257,12 @@
   },
   "vocab": {
     "recommended": "· recommended",
-    "status": {
-      "connected": "Connected",
-      "add": "Add key",
-      "local": "Local",
-      "testing": "Testing…",
-      "error": "Invalid key"
+    "profileStatus": {
+      "active": "Active",
+      "limited": "Rate-limited",
+      "error": "Error",
+      "untested": "Untested",
+      "none": "Not connected"
     },
     "providers": {
       "claude": { "sub": "Anthropic · balanced" },

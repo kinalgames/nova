@@ -55,7 +55,22 @@ export const presetDefs: PresetDef[] = [
 ]
 
 export type ProviderId = 'claude' | 'gemini' | 'openai' | 'ollama'
-export type ProviderStatus = 'connected' | 'add' | 'local'
+
+/** credential kinds a provider accepts — rendered as 「Tài khoản」/「Khóa API」 */
+export type ProfileKind = 'account' | 'api_key'
+
+export interface ModelDef {
+  /** canonical id — globally unique across providers */
+  id: string
+  /** display name */
+  name: string
+  /** USD per 1M input tokens (fake-but-realistic — drives the cost meter) */
+  inPrice: number
+  /** USD per 1M output tokens */
+  outPrice: number
+  /** fake-stream pace — ms between tokens */
+  pace: number
+}
 
 export interface ProviderDef {
   id: ProviderId
@@ -63,10 +78,13 @@ export interface ProviderDef {
   glyph: string
   badgeBg: string
   badgeFg: string
-  status: ProviderStatus
-  models: string[]
+  /** credential kinds this provider supports, in the order the add-menu offers them */
+  auth: ProfileKind[]
+  /** what an api_key-kind credential means for this provider */
   field: 'key' | 'endpoint'
-  fieldValue: string
+  /** placeholder for the credential input — translated at consumption when needed */
+  placeholder: string
+  models: ModelDef[]
   rec: boolean
 }
 
@@ -77,10 +95,14 @@ export const provDefs: ProviderDef[] = [
     glyph: 'C',
     badgeBg: 'var(--accent-soft)',
     badgeFg: 'var(--accent)',
-    status: 'connected',
-    models: ['claude‑opus‑4', 'claude‑sonnet‑4', 'claude‑haiku‑4'],
+    auth: ['account', 'api_key'],
     field: 'key',
-    fieldValue: 'sk‑ant‑••••••••••  4f2a',
+    placeholder: 'sk-ant-…',
+    models: [
+      { id: 'claude-opus-4', name: 'Claude Opus 4', inPrice: 15, outPrice: 75, pace: 32 },
+      { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', inPrice: 3, outPrice: 15, pace: 24 },
+      { id: 'claude-haiku-4', name: 'Claude Haiku 4', inPrice: 0.8, outPrice: 4, pace: 16 },
+    ],
     rec: true,
   },
   {
@@ -89,10 +111,13 @@ export const provDefs: ProviderDef[] = [
     glyph: 'G',
     badgeBg: 'rgba(59,91,169,.14)',
     badgeFg: 'var(--info)',
-    status: 'add',
-    models: ['gemini‑2.5‑pro', 'gemini‑2.5‑flash'],
+    auth: ['account', 'api_key'],
     field: 'key',
-    fieldValue: 'Dán API key của bạn…',
+    placeholder: 'AIza…',
+    models: [
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', inPrice: 1.25, outPrice: 10, pace: 28 },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', inPrice: 0.15, outPrice: 0.6, pace: 14 },
+    ],
     rec: false,
   },
   {
@@ -101,10 +126,14 @@ export const provDefs: ProviderDef[] = [
     glyph: 'O',
     badgeBg: 'var(--border)',
     badgeFg: 'var(--text)',
-    status: 'connected',
-    models: ['gpt‑5', 'gpt‑5‑mini', 'o4'],
+    auth: ['api_key'],
     field: 'key',
-    fieldValue: 'sk‑••••••••••••  9c1d',
+    placeholder: 'sk-…',
+    models: [
+      { id: 'gpt-5', name: 'GPT-5', inPrice: 1.25, outPrice: 10, pace: 26 },
+      { id: 'gpt-5-mini', name: 'GPT-5 mini', inPrice: 0.25, outPrice: 2, pace: 15 },
+      { id: 'o4', name: 'o4', inPrice: 2, outPrice: 8, pace: 30 },
+    ],
     rec: false,
   },
   {
@@ -113,19 +142,79 @@ export const provDefs: ProviderDef[] = [
     glyph: '◍',
     badgeBg: 'var(--success-bg)',
     badgeFg: 'var(--success)',
-    status: 'local',
-    models: ['llama3.2', 'qwen2.5', 'mistral‑nemo'],
+    auth: ['api_key'],
     field: 'endpoint',
-    fieldValue: 'http://localhost:11434',
+    placeholder: 'http://localhost:11434',
+    models: [
+      { id: 'llama3.2', name: 'Llama 3.2', inPrice: 0, outPrice: 0, pace: 20 },
+      { id: 'qwen2.5', name: 'Qwen 2.5', inPrice: 0, outPrice: 0, pace: 20 },
+      { id: 'mistral-nemo', name: 'Mistral Nemo', inPrice: 0, outPrice: 0, pace: 20 },
+    ],
     rec: false,
   },
 ]
 
-// badge text is translated at consumption (vocab.status.*)
-export const statusMap: Record<ProviderStatus, { fg: string; bg: string }> = {
-  connected: { fg: 'var(--success-text)', bg: 'var(--success-bg)' },
-  add: { fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
-  local: { fg: 'var(--success-text)', bg: 'var(--success-bg)' },
+/** the two quality slots the user routes chats through — each slot can point
+ * at ANY provider's model (cross-provider), so “Thông minh” and “Nhanh” are
+ * routing choices, not provider choices */
+export type SlotId = 'smart' | 'fast'
+
+export interface ModelRef {
+  providerId: ProviderId
+  modelId: string
+}
+
+export const defaultSlots: Record<SlotId, ModelRef> = {
+  smart: { providerId: 'claude', modelId: 'claude-opus-4' },
+  fast: { providerId: 'claude', modelId: 'claude-haiku-4' },
+}
+
+export function findProvider(id: ProviderId): ProviderDef {
+  // provDefs covers every ProviderId — the fallback guards corrupted persisted refs
+  return provDefs.find((p) => p.id === id) ?? provDefs[0]
+}
+
+/** look a model up by its globally-unique id (usage records store only the id) */
+export function findModelById(modelId: string): ModelDef | undefined {
+  for (const p of provDefs) {
+    const m = p.models.find((x) => x.id === modelId)
+    if (m) return m
+  }
+  return undefined
+}
+
+export function findModel(ref: ModelRef): ModelDef {
+  const prov = findProvider(ref.providerId)
+  return prov.models.find((m) => m.id === ref.modelId) ?? prov.models[0]
+}
+
+// chip colours per profile status — badge text translated at consumption (vocab.profileStatus.*)
+export const profileStatusMap: Record<
+  'active' | 'limited' | 'error' | 'untested',
+  { fg: string; bg: string }
+> = {
+  active: { fg: 'var(--success-text)', bg: 'var(--success-bg)' },
+  limited: { fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
+  error: { fg: 'var(--danger-text)', bg: 'var(--danger-bg)' },
+  untested: { fg: 'var(--muted)', bg: 'var(--fill)' },
+}
+
+/** seeded auth profiles — ordered by rotation priority within each provider */
+export const seedProfiles: Record<
+  ProviderId,
+  { id: string; name: string; kind: ProfileKind; credential: string; status: 'active' | 'limited' | 'error' | 'untested' }[]
+> = {
+  claude: [
+    { id: 'pf-claude-acc', name: 'Cá nhân', kind: 'account', credential: 'minh@studio.vn', status: 'active' },
+    { id: 'pf-claude-key', name: 'Dự phòng', kind: 'api_key', credential: 'sk-ant-••••••••  4f2a', status: 'active' },
+  ],
+  gemini: [],
+  openai: [
+    { id: 'pf-openai-key', name: 'Khóa chính', kind: 'api_key', credential: 'sk-••••••••  9c1d', status: 'active' },
+  ],
+  ollama: [
+    { id: 'pf-ollama', name: 'Máy này', kind: 'api_key', credential: 'http://localhost:11434', status: 'active' },
+  ],
 }
 
 export type SuggestionId = 'write' | 'plan' | 'learn' | 'docs'

@@ -14,7 +14,7 @@ describe('store — initial state', () => {
   it('boots into a conversation with the default model, light theme', async () => {
     const { result } = await setup()
     expect(result.current.v.isConv).toBe(true)
-    expect(result.current.s.model).toBe('opus')
+    expect(result.current.s.activeSlot).toBe('smart')
     expect(result.current.s.theme).toBe('light')
     expect(result.current.v.dark).toBe(false)
   })
@@ -39,13 +39,13 @@ describe('store — navigation', () => {
 })
 
 describe('store — model & thinking', () => {
-  it('switches model and reflects the label', async () => {
+  it('switches the active slot and reflects the label', async () => {
     const { result } = await setup()
-    act(() => result.current.v.pickHaiku())
-    expect(result.current.s.model).toBe('haiku')
+    act(() => result.current.v.pickFast())
+    expect(result.current.s.activeSlot).toBe('fast')
     expect(result.current.v.modelLabel).toBe('Nhanh')
-    act(() => result.current.v.pickOpus())
-    expect(result.current.s.model).toBe('opus')
+    act(() => result.current.v.pickSmart())
+    expect(result.current.s.activeSlot).toBe('smart')
     expect(result.current.v.modelLabel).toBe('Thông minh')
   })
 
@@ -96,9 +96,9 @@ describe('store — theme persistence', () => {
   })
 
   it('restores persisted settings on a fresh mount', async () => {
-    localStorage.setItem(PERSIST_KEY, JSON.stringify({ model: 'haiku', advanced: true }))
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ activeSlot: 'fast', advanced: true }))
     const { result } = await setup()
-    expect(result.current.s.model).toBe('haiku')
+    expect(result.current.s.activeSlot).toBe('fast')
     expect(result.current.s.advanced).toBe(true)
   })
 })

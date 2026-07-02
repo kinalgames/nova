@@ -134,8 +134,8 @@
   "model": {
     "smart": "Thông minh",
     "fast": "Nhanh",
-    "smartDesc": "Opus 4.8 · trả lời sâu",
-    "fastDesc": "Haiku 4.8 · phản hồi nhanh",
+    "smartDesc": "Trả lời sâu, cân nhắc kỹ",
+    "fastDesc": "Phản hồi nhanh, tiết kiệm",
     "menuLabel": "CHẾ ĐỘ TRỢ LÝ",
     "modeAria": "Chế độ trả lời: {{label}}",
     "changeProvider": "Đổi nhà cung cấp →"
@@ -143,7 +143,9 @@
   "meter": {
     "label": "bộ nhớ",
     "tokenLabel": "còn 58%",
-    "tokenDetail": "84k / 200k token · còn 58%"
+    "tokenDetail": "84k / 200k token · còn 58%",
+    "usageDetail": "{{inTok}} vào · {{outTok}} ra · {{cost}}",
+    "costFree": "miễn phí (Tài khoản)"
   },
   "topbar": {
     "focus": "Tập trung"
@@ -199,15 +201,27 @@
     "focusSection": "CHẾ ĐỘ TẬP TRUNG",
     "sessionLength": "Thời lượng phiên",
     "account": "TÀI KHOẢN",
-    "providersModels": "NOVA DÙNG MÔ HÌNH",
-    "useProvider": "Dùng {{name}}",
-    "modelsAvailable": "MÔ HÌNH KHẢ DỤNG",
+    "providersModels": "NHÀ CUNG CẤP & MÔ HÌNH",
+    "modelsAvailable": "MÔ HÌNH · DÙNG CHO",
     "addCustom": "Thêm nhà cung cấp tùy chỉnh (OpenAI‑compatible)",
     "apiKey": "API KEY",
     "endpoint": "ĐỊA CHỈ MÁY CHỦ",
     "testing": "Đang kiểm tra…",
-    "saveTest": "Lưu & kiểm tra",
     "test": "Kiểm tra",
+    "kindAccount": "Tài khoản",
+    "kindApiKey": "Khóa API",
+    "profilesLabel": "HỒ SƠ KẾT NỐI",
+    "profileInUse": "đang dùng",
+    "addProfile": "Thêm hồ sơ",
+    "profileName": "Tên gợi nhớ",
+    "addAction": "Thêm",
+    "removeProfile": "Xóa hồ sơ {{name}}",
+    "moveUp": "Tăng ưu tiên {{name}}",
+    "moveDown": "Giảm ưu tiên {{name}}",
+    "autoRotate": "Tự xoay vòng hồ sơ",
+    "autoRotateDesc": "Chạm hạn mức thì chuyển sang hồ sơ kế tiếp theo thứ tự ưu tiên.",
+    "priceFree": "Miễn phí",
+    "needProfileHint": "Thêm hồ sơ kết nối để dùng model của nhà cung cấp này.",
     "styleSection": "PHONG CÁCH TRẢ LỜI",
     "skillsSection": "KỸ NĂNG CỦA NOVA",
     "skillsScope": "Bật/tắt cho mọi dự án",
@@ -242,12 +256,12 @@
   },
   "vocab": {
     "recommended": "· khuyên dùng",
-    "status": {
-      "connected": "Đã kết nối",
-      "add": "Thêm khóa",
-      "local": "Cục bộ",
-      "testing": "Đang kiểm tra…",
-      "error": "Khóa không hợp lệ"
+    "profileStatus": {
+      "active": "Hoạt động",
+      "limited": "Chạm hạn mức",
+      "error": "Lỗi",
+      "untested": "Chưa kiểm tra",
+      "none": "Chưa kết nối"
     },
     "providers": {
       "claude": { "sub": "Anthropic · cân bằng" },

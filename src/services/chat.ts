@@ -2,10 +2,12 @@
 // like a real streaming chat backend (no network). Keeps the UI honest: the
 // composer drives real exchanges, streamed token-by-token.
 
-import type { ModelId, ThinkLevel } from '../state/types'
+import type { SlotId } from '../data/defs'
+import type { ThinkLevel } from '../state/types'
 
 export interface ReplyOptions {
-  model: ModelId
+  /** which quality slot the chat routes through — “smart” answers more thoroughly */
+  slot: SlotId
   thinking: ThinkLevel
   project: string
 }
@@ -66,7 +68,7 @@ export function composeReply(userText: string, opts: ReplyOptions): string {
   let body = group ? pick(group.replies) : pick(FALLBACKS)
   body = body.replace('{project}', opts.project)
   // "Thông minh" answers a touch more thoroughly than "Nhanh"
-  if (opts.model === 'opus' && opts.thinking !== 'off') {
+  if (opts.slot === 'smart' && opts.thinking !== 'off') {
     body += ' Mình cũng đã cân nhắc vài phương án khác và chọn cái đánh đổi tốt nhất cho bạn.'
   }
   return body
@@ -77,7 +79,7 @@ export function thinkingDelay(level: ThinkLevel): number {
   return { off: 0, low: 280, normal: 650, high: 1200 }[level]
 }
 
-/** ms between streamed words, by model (Nhanh streams faster). */
-export function tokenInterval(model: ModelId): number {
-  return model === 'haiku' ? 16 : 32
+/** rough token estimate for the fake usage meter (≈ 4 chars per token) */
+export function estimateTokens(text: string): number {
+  return Math.max(1, Math.ceil(text.length / 4))
 }

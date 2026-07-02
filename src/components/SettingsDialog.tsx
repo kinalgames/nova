@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Switch from '@radix-ui/react-switch'
 import { useTranslation } from 'react-i18next'
@@ -184,16 +185,88 @@ function General() {
   )
 }
 
+type ProviderVM = ReturnType<typeof useStore>['v']['providers'][number]
+
+/** inline add-profile form — kind picker (「Tài khoản」/「Khóa API」) + label + credential */
+function AddProfileForm({ pr }: { pr: ProviderVM }) {
+  const { t } = useTranslation()
+  const [kind, setKind] = useState(pr.kinds[0].kind)
+  const [name, setName] = useState('')
+  const [cred, setCred] = useState('')
+  const submit = () => {
+    if (!cred.trim()) return
+    pr.addProfile(kind, name, cred)
+    setName('')
+    setCred('')
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {pr.kinds.length > 1 && (
+        <div className="flex overflow-hidden rounded-sm border border-border">
+          {pr.kinds.map((k) => (
+            <button
+              key={k.kind}
+              type="button"
+              aria-pressed={kind === k.kind}
+              onClick={() => setKind(k.kind)}
+              className={`cursor-pointer border-none px-2.5 py-1.5 font-mono text-eyebrow ${
+                kind === k.kind ? 'bg-accent-soft text-accent-text' : 'bg-transparent text-muted'
+              }`}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={t('settings.profileName')}
+        aria-label={`${t('settings.profileName')} — ${pr.name}`}
+        className="field w-32 rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
+      />
+      <input
+        value={cred}
+        onChange={(e) => setCred(e.target.value)}
+        placeholder={pr.placeholder}
+        aria-label={`${pr.fieldLabel} — ${pr.name}`}
+        spellCheck={false}
+        className="field min-w-0 flex-1 rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!cred.trim()}
+        aria-label={`${t('settings.addProfile')} — ${pr.name}`}
+        className="cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2.5 py-1.5 font-mono text-eyebrow text-accent-text disabled:cursor-default disabled:opacity-[.38]"
+      >
+        {t('settings.addAction')}
+      </button>
+    </div>
+  )
+}
+
 function Providers() {
   const { v } = useStore()
   const { t } = useTranslation()
+  const iconBtn =
+    'flex cursor-pointer items-center border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
   return (
     <>
       <div className={`${LABEL} mb-3`}>{t('settings.providersModels')}</div>
+      <div className="mb-4 rounded-md border border-border bg-panel px-4">
+        <ToggleRow
+          title={t('settings.autoRotate')}
+          sub={t('settings.autoRotateDesc')}
+          on={v.autoRotate}
+          onToggle={v.toggleAutoRotate}
+          last
+        />
+      </div>
       <div className="mb-3 flex flex-col gap-2.5">
         {v.providers.map((pr) => (
-          <div key={pr.id} className="rounded-md border px-4 py-3" style={{ borderColor: pr.border, background: pr.bg }}>
-            <button type="button" onClick={pr.select} aria-pressed={pr.active} aria-label={t('settings.useProvider', { name: pr.name })} className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent text-left">
+          <div key={pr.id} className="rounded-md border border-border bg-panel px-4 py-3">
+            <div className="flex items-center gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-sm font-mono text-body" style={{ background: pr.badgeBg, color: pr.badgeFg }}>
                 {pr.glyph}
               </div>
@@ -204,39 +277,85 @@ function Providers() {
               <span className="whitespace-nowrap rounded-xs px-2 py-1 font-mono text-eyebrow" style={{ color: pr.statusFg, background: pr.statusBg }}>
                 {pr.badge}
               </span>
-              <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: pr.radioBd, background: pr.radioBg }}>
-                <span className="size-[7px] rounded-full" style={{ background: pr.radioDot }} />
-              </span>
-            </button>
-            {pr.showKey && (
-              <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
-                <div>
-                  <label className="mb-1.5 block font-mono text-micro tracking-[.12em] text-faint">{pr.fieldLabel}</label>
-                  <div className="field flex items-center gap-2 rounded-sm border border-border bg-panel py-1.5 pl-3 pr-2">
-                    <input
-                      value={pr.fieldValue}
-                      onChange={(e) => pr.setKey(e.target.value)}
-                      aria-label={`${pr.fieldLabel} — ${pr.name}`}
-                      spellCheck={false}
-                      className="min-w-0 flex-1 bg-transparent font-mono text-small text-text"
-                    />
-                    <button type="button" onClick={pr.test} disabled={pr.testing} className="cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2 py-1 font-mono text-eyebrow text-accent-text">
-                      {pr.testing ? t('settings.testing') : pr.fieldAction}
+            </div>
+
+            <div className="mt-3 border-t border-border pt-3">
+              <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.profilesLabel')}</div>
+              <div className="flex flex-col gap-1.5">
+                {pr.profiles.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2">
+                    <span className="whitespace-nowrap rounded-xs bg-fill px-1.5 py-0.5 font-mono text-eyebrow text-muted">{f.kindLabel}</span>
+                    <span className="min-w-0 truncate text-small text-text">{f.name}</span>
+                    <span className="hidden min-w-0 flex-1 truncate font-mono text-eyebrow text-faint sm:block">
+                      {f.credential}
+                      {f.usage && <span className="ml-2 text-muted">{f.usage}</span>}
+                    </span>
+                    {f.inUse && <span className="whitespace-nowrap font-mono text-eyebrow text-accent-text">● {t('settings.profileInUse')}</span>}
+                    <span className="ml-auto whitespace-nowrap rounded-xs px-1.5 py-0.5 font-mono text-eyebrow" style={{ color: f.statusFg, background: f.statusBg }}>
+                      {f.badge}
+                    </span>
+                    <button type="button" onClick={f.test} disabled={f.testing} aria-label={`${t('settings.test')} — ${f.name}`} className={`${iconBtn} font-mono text-eyebrow`}>
+                      {f.testing ? t('settings.testing') : t('settings.test')}
+                    </button>
+                    <button type="button" onClick={f.moveUp} disabled={!f.canUp} aria-label={t('settings.moveUp', { name: f.name })} className={iconBtn}>
+                      <Icon n="caret" size={13} className="rotate-180" />
+                    </button>
+                    <button type="button" onClick={f.moveDown} disabled={!f.canDown} aria-label={t('settings.moveDown', { name: f.name })} className={iconBtn}>
+                      <Icon n="caret" size={13} />
+                    </button>
+                    <button type="button" onClick={f.remove} aria-label={t('settings.removeProfile', { name: f.name })} className={iconBtn}>
+                      <Icon n="close" size={13} />
                     </button>
                   </div>
-                </div>
-                <div>
-                  <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.modelsAvailable')}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {pr.models.map((md, i) => (
-                      <span key={i} className="rounded-sm border px-2.5 py-1 font-mono text-meta" style={{ color: md.fg, background: md.bg, borderColor: md.bd }}>
-                        {md.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-            )}
+              <AddProfileForm pr={pr} />
+            </div>
+
+            <div className="mt-3 border-t border-border pt-3">
+              <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.modelsAvailable')}</div>
+              {pr.needProfileHint && (
+                <div className="mb-2 text-small text-muted">{pr.needProfileHint}</div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                {pr.models.map((md) => (
+                  <div key={md.id} className="flex items-center gap-2">
+                    <span className="font-mono text-meta text-text">{md.name}</span>
+                    <span className="font-mono text-eyebrow text-faint">{md.price}</span>
+                    <span className="ml-auto flex gap-1.5">
+                      <button
+                        type="button"
+                        aria-pressed={md.smartOn}
+                        aria-label={`${t('model.smart')} — ${md.name}`}
+                        onClick={md.useSmart}
+                        disabled={!md.enabled}
+                        className={`cursor-pointer rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
+                          md.smartOn
+                            ? 'border-accent-line bg-accent-soft text-accent-text'
+                            : 'border-border bg-transparent text-muted'
+                        }`}
+                      >
+                        {t('model.smart')}
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={md.fastOn}
+                        aria-label={`${t('model.fast')} — ${md.name}`}
+                        onClick={md.useFast}
+                        disabled={!md.enabled}
+                        className={`cursor-pointer rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
+                          md.fastOn
+                            ? 'border-accent-line bg-accent-soft text-accent-text'
+                            : 'border-border bg-transparent text-muted'
+                        }`}
+                      >
+                        {t('model.fast')}
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ))}
       </div>

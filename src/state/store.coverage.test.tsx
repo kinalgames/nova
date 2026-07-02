@@ -293,26 +293,43 @@ describe('store — auth toggle branches', () => {
   })
 })
 
-describe('store — provider key + connection test', () => {
-  it('saves a key and a valid key tests as connected', async () => {
+describe('store — auth profiles + connection test', () => {
+  it('adds an api-key profile and a valid key tests as active', async () => {
     vi.useFakeTimers()
     const { result } = await setup()
     const claude = () => result.current.v.providers.find((p) => p.id === 'claude')!
-    await act(async () => claude().setKey('sk-ant-new-key-123456'))
-    expect(result.current.s.providerKeys.claude).toBe('sk-ant-new-key-123456')
-    await act(async () => claude().test())
-    expect(result.current.s.providerStatus.claude).toBe('testing')
+    await act(async () => claude().addProfile('api_key', 'Khóa mới', 'sk-ant-new-key-123456'))
+    const added = () => result.current.s.profiles.claude.at(-1)!
+    expect(added().status).toBe('untested')
+    expect(added().name).toBe('Khóa mới')
+    await act(async () => claude().profiles.find((f) => f.id === added().id)!.test())
+    expect(result.current.s.testingProfile).toBe(added().id)
     await act(async () => vi.advanceTimersByTime(1000))
-    expect(result.current.s.providerStatus.claude).toBe('connected')
+    expect(added().status).toBe('active')
+    expect(result.current.s.testingProfile).toBeNull()
   })
-  it('a too-short key tests as error', async () => {
+  it('a too-short key tests as error, and remove clears the profile', async () => {
     vi.useFakeTimers()
     const { result } = await setup()
     const gemini = () => result.current.v.providers.find((p) => p.id === 'gemini')!
-    await act(async () => gemini().setKey('x'))
-    await act(async () => gemini().test())
+    expect(gemini().badge).toBe('Chưa kết nối')
+    await act(async () => gemini().addProfile('api_key', '', 'x'))
+    // an empty label falls back to the kind name
+    expect(result.current.s.profiles.gemini[0].name).toBe('Khóa API')
+    await act(async () => gemini().profiles[0].test())
     await act(async () => vi.advanceTimersByTime(1000))
-    expect(result.current.s.providerStatus.gemini).toBe('error')
+    expect(result.current.s.profiles.gemini[0].status).toBe('error')
+    await act(async () => gemini().profiles[0].remove())
+    expect(result.current.s.profiles.gemini).toHaveLength(0)
+  })
+  it('reorders profiles — priority moves with the arrows', async () => {
+    const { result } = await setup()
+    const claude = () => result.current.v.providers.find((p) => p.id === 'claude')!
+    const namesBefore = result.current.s.profiles.claude.map((f) => f.name)
+    await act(async () => claude().profiles[1].moveUp())
+    expect(result.current.s.profiles.claude.map((f) => f.name)).toEqual(
+      [namesBefore[1], namesBefore[0]],
+    )
   })
 })
 
@@ -350,6 +367,48 @@ describe('store — streaming chat engine', () => {
     await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.typing).toBe(false)
     expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(0)
+  })
+
+  it('a streamed reply records usage; an account profile meters as free', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    await act(async () => result.current.set({ draft: 'tính chi phí giúp mình' }))
+    await act(async () => result.current.v.send())
+    await act(async () => vi.advanceTimersByTime(8000))
+    const nova = result.current.v.sent.at(-1)!
+    expect(nova.usage).toBeDefined()
+    expect(nova.usage!.modelId).toBe('claude-opus-4')
+    // rotation picked the top-priority claude profile and pinned it (sticky)
+    expect(nova.usage!.profileId).toBe('pf-claude-acc')
+    expect(result.current.s.stickyProfile.claude).toBe('pf-claude-acc')
+    expect(nova.usage!.outputTokens).toBeGreaterThan(0)
+    // 「Tài khoản」 profiles cost nothing — the meter says so
+    expect(result.current.v.tokenDetail).toContain('miễn phí')
+    // advanced mode reveals the per-reply usage meta
+    await act(async () => result.current.set({ advanced: true }))
+    expect(result.current.v.msgUsage(nova)).toMatch(/↑ .*↓/)
+    await act(async () => result.current.set({ advanced: false }))
+    expect(result.current.v.msgUsage(nova)).toBeNull()
+  })
+
+  it('an api-key profile meters real cost on the usage line', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    await act(async () =>
+      result.current.set({
+        slots: {
+          smart: { providerId: 'openai', modelId: 'gpt-5' },
+          fast: { providerId: 'claude', modelId: 'claude-haiku-4' },
+        },
+      }),
+    )
+    await act(async () => result.current.set({ draft: 'phân tích số liệu bán hàng' }))
+    await act(async () => result.current.v.send())
+    await act(async () => vi.advanceTimersByTime(8000))
+    const nova = result.current.v.sent.at(-1)!
+    expect(nova.usage!.modelId).toBe('gpt-5')
+    expect(nova.usage!.profileId).toBe('pf-openai-key')
+    expect(result.current.v.tokenDetail).toMatch(/\$\d/)
   })
 
   it('a message composed on Home starts a fresh conversation instead of appending', async () => {
@@ -472,14 +531,12 @@ describe('store — composer canSend & stop', () => {
 describe('store — labels are unified (advanced no longer rebrands them)', () => {
   it('keeps friendly labels even with advanced on (+ haiku / ollama coverage)', async () => {
     const { result } = await setup()
-    await act(async () =>
-      result.current.set({ advanced: true, model: 'haiku', activeProvider: 'ollama' }),
-    )
+    await act(async () => result.current.set({ advanced: true, activeSlot: 'fast' }))
     expect(result.current.v.bashLabel).toBe('Chạy lệnh')
     expect(result.current.v.tokenLabel).toBe('còn 58%')
     expect(result.current.v.meterLabel).toBe('bộ nhớ')
     expect(result.current.v.modelMenuLabel).toBe('CHẾ ĐỘ TRỢ LÝ')
-    expect(result.current.v.modelADesc).toBe('Opus 4.8 · trả lời sâu')
+    expect(result.current.v.modelADesc).toBe('Trả lời sâu, cân nhắc kỹ')
     expect(result.current.v.traceCaret).toBe('5 công cụ · 6.4 giây')
     expect(result.current.v.modelLabel).toBe('Nhanh')
     // ollama uses an endpoint field, not an API key
