@@ -28,7 +28,7 @@ export function HomeView() {
           className="text-center font-display leading-tight tracking-[-.01em]"
           style={{ fontSize: v.heroSize }}
         >
-          {t('home.greetingName', { greeting: t(greetingKey()), name: t('user.firstName') })}
+          {t('home.greetingName', { greeting: t(greetingKey()), name: v.userFirstName })}
         </div>
         <div className="mt-3 text-center text-lead text-muted">{t('home.tagline')}</div>
         <div className="field mt-8 flex w-full items-end gap-3 rounded-lg border border-border bg-panel px-4 py-4">

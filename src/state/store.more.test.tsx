@@ -73,6 +73,62 @@ describe('store — organization (Track B)', () => {
   })
 })
 
+describe('store — account & settings (Track D)', () => {
+  it('renaming the profile drives greetings, labels and new messages', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.setUserName('Lan Phương'))
+    expect(result.current.v.userFirstName).toBe('Lan')
+    expect(result.current.v.userName).toBe('Lan Phương')
+    await act(async () => result.current.set({ draft: 'xin chào' }))
+    await act(async () => result.current.v.send())
+    expect(result.current.v.sent.at(-1)?.who).toBe('LAN')
+  })
+
+  it('the assistant name labels new replies', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    await act(async () => result.current.v.setAssistantName('Trợ lý'))
+    await act(async () => result.current.set({ draft: 'chào bạn nhé' }))
+    await act(async () => result.current.v.send())
+    await act(async () => vi.advanceTimersByTime(9000))
+    expect(result.current.v.sent.at(-1)?.who).toBe('TRỢ LÝ')
+  })
+
+  it('completeOnboarding persists assistant name, styles and the default slot', async () => {
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.v.completeOnboarding({
+        assistantName: '  ',
+        styles: { concise: false, warm: true, formal: false, humor: false },
+        slot: 'fast',
+      }),
+    )
+    // blank name falls back to Nova; the rest persists
+    expect(result.current.s.assistantName).toBe('Nova')
+    expect(result.current.s.styles.warm).toBe(true)
+    expect(result.current.s.activeSlot).toBe('fast')
+    expect(result.current.v.showAuth).toBe(false)
+  })
+
+  it('exports all local data as a json download', async () => {
+    const { result } = await setup()
+    URL.createObjectURL = vi.fn(() => 'blob:x')
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    await act(async () => result.current.v.exportAllData())
+    expect(click).toHaveBeenCalledTimes(1)
+    click.mockRestore()
+  })
+
+  it('the cheatsheet dialog opens and closes', async () => {
+    const { result } = await setup()
+    await act(async () => result.current.v.openCheatsheet())
+    expect(result.current.s.cheatsheet).toBe(true)
+    await act(async () => result.current.v.closeCheatsheet())
+    expect(result.current.s.cheatsheet).toBe(false)
+  })
+})
+
 describe('store — projects completion (Track C)', () => {
   it('project instructions steer the reply; the default project stays neutral', async () => {
     vi.useFakeTimers()

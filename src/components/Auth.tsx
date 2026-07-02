@@ -4,6 +4,73 @@ import { useStore } from '../state/store'
 
 const INPUT = 'field w-full rounded-md border border-border bg-panel px-3 py-3 text-body'
 
+/** onboarding — every choice here persists into the store for real */
+function Onboarding() {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const [name, setName] = useState(v.assistantName)
+  const [styles, setStyles] = useState(v.stylesState)
+  const [slot, setSlot] = useState<'smart' | 'fast'>('smart')
+  const styleChip = (key: 'concise' | 'warm' | 'formal') => (
+    <button
+      type="button"
+      aria-pressed={styles[key]}
+      onClick={() => setStyles((s) => ({ ...s, [key]: !s[key] }))}
+      className={`cursor-pointer rounded-sm border px-3 py-1.5 text-ui ${
+        styles[key]
+          ? 'border-accent bg-accent-soft text-accent-text'
+          : 'border-border bg-transparent text-muted'
+      }`}
+    >
+      {t(`vocab.styles.${key}`)}
+    </button>
+  )
+  const slotCard = (id: 'smart' | 'fast', label: string, sub: string) => (
+    <button
+      type="button"
+      aria-pressed={slot === id}
+      onClick={() => setSlot(id)}
+      className={`flex-1 cursor-pointer rounded-md border px-3 py-3 text-left ${
+        slot === id ? 'border-accent bg-accent-soft' : 'border-border bg-transparent'
+      }`}
+    >
+      <div className="text-ui">{label}</div>
+      <div className="text-meta text-muted">{sub}</div>
+    </button>
+  )
+  return (
+    <>
+      <div className="text-center font-display text-h2 leading-tight">{t('authForm.welcome')}</div>
+      <div className="mb-6 mt-2 text-center text-body text-muted">{t('authForm.welcomeSub')}</div>
+      <div className="mb-2 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.assistantName')}</div>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        aria-label={t('authForm.assistantName')}
+        className="field mb-5 w-full rounded-md border border-border bg-panel px-3 py-3 text-body"
+      />
+      <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.styleLabel')}</div>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {styleChip('concise')}
+        {styleChip('warm')}
+        {styleChip('formal')}
+      </div>
+      <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.defaultModel')}</div>
+      <div className="mb-6 flex gap-2">
+        {slotCard('smart', t('model.smart'), t('model.smartDesc'))}
+        {slotCard('fast', t('model.fast'), t('model.fastDesc'))}
+      </div>
+      <button
+        type="button"
+        onClick={() => v.completeOnboarding({ assistantName: name, styles, slot })}
+        className="cursor-pointer rounded-md border-none bg-ink p-3 text-center text-body font-medium text-bg"
+      >
+        {t('authForm.start')}
+      </button>
+    </>
+  )
+}
+
 function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
@@ -123,38 +190,7 @@ export function Auth() {
           </>
         )}
 
-        {v.isOnboarding && (
-          <>
-            <div className="text-center font-display text-h2 leading-tight">{t('authForm.welcome')}</div>
-            <div className="mb-6 mt-2 text-center text-body text-muted">{t('authForm.welcomeSub')}</div>
-            <div className="mb-2 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.assistantName')}</div>
-            <input defaultValue="Nova" className="field mb-5 w-full rounded-md border border-border bg-panel px-3 py-3 text-body" />
-            <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.styleLabel')}</div>
-            <div className="mb-5 flex flex-wrap gap-2">
-              <span className="rounded-sm border border-accent bg-accent-soft px-3 py-1.5 text-ui text-accent-text">{t('vocab.styles.concise')}</span>
-              <span className="rounded-sm border border-border px-3 py-1.5 text-ui text-muted">{t('vocab.styles.warm')}</span>
-              <span className="rounded-sm border border-border px-3 py-1.5 text-ui text-muted">{t('vocab.styles.formal')}</span>
-            </div>
-            <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.defaultModel')}</div>
-            <div className="mb-6 flex gap-2">
-              <div className="flex-1 rounded-md border border-accent bg-accent-soft px-3 py-3">
-                <div className="text-ui">{t('model.smart')}</div>
-                <div className="text-meta text-muted">Opus 4.8</div>
-              </div>
-              <div className="flex-1 rounded-md border border-border px-3 py-3">
-                <div className="text-ui">{t('model.fast')}</div>
-                <div className="text-meta text-muted">Haiku 4.8</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={v.finishOnboarding}
-              className="cursor-pointer rounded-md border-none bg-ink p-3 text-center text-body font-medium text-bg"
-            >
-              {t('authForm.start')}
-            </button>
-          </>
-        )}
+        {v.isOnboarding && <Onboarding />}
       </div>
     </div>
   )

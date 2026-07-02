@@ -101,6 +101,7 @@ export function SettingsDialog() {
 function General() {
   const { v } = useStore()
   const { t, i18n } = useTranslation()
+  const [confirmClear, setConfirmClear] = useState(false)
   const langBtn = (lng: Language, label: string) => (
     <button
       type="button"
@@ -172,11 +173,86 @@ function General() {
         </div>
       </div>
 
+      <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.profileSection')}</div>
+      <div className="flex flex-col gap-3 border-b border-border px-0.5 py-3">
+        <div>
+          <label className="mb-1.5 block font-mono text-micro tracking-[.12em] text-faint" htmlFor="pf-username">
+            {t('settings.yourName')}
+          </label>
+          <input
+            id="pf-username"
+            value={v.userName}
+            onChange={(e) => v.setUserName(e.target.value)}
+            className="field w-full rounded-sm border border-border bg-panel px-3 py-2 text-body"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block font-mono text-micro tracking-[.12em] text-faint" htmlFor="pf-assistant">
+            {t('settings.assistantName')}
+          </label>
+          <input
+            id="pf-assistant"
+            value={v.assistantName}
+            onChange={(e) => v.setAssistantName(e.target.value)}
+            className="field w-full rounded-sm border border-border bg-panel px-3 py-2 text-body"
+          />
+        </div>
+      </div>
+
+      <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.dataSection')}</div>
+      <div className="flex flex-col gap-2 border-b border-border px-0.5 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-body">{t('settings.exportAll')}</div>
+            <div className="text-small text-muted">{t('settings.exportAllHelp')}</div>
+          </div>
+          <button
+            type="button"
+            onClick={v.exportAllData}
+            className="shrink-0 cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-text-2"
+          >
+            {t('settings.exportAllAction')}
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-body">{t('settings.clearAll')}</div>
+            <div className="text-small text-muted">{t('settings.clearAllHelp')}</div>
+          </div>
+          {confirmClear ? (
+            <span className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={v.clearAllData}
+                className="cursor-pointer rounded-sm border-none bg-danger-strong px-3 py-1.5 text-small text-on-ink"
+              >
+                {t('settings.clearAllConfirm')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                className="cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-muted"
+              >
+                {t('common.cancel')}
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmClear(true)}
+              className="shrink-0 cursor-pointer rounded-sm border border-danger-line bg-transparent px-3 py-1.5 text-small text-danger"
+            >
+              {t('settings.clearAllAction')}
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.account')}</div>
       <div className="flex items-center gap-3 px-0.5 py-3">
         <div className="size-[38px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
         <div className="min-w-0 flex-1">
-          <div className="text-body">{t('user.name')}</div>
+          <div className="text-body">{v.userName}</div>
           <div className="text-small text-muted">minh@aurora.studio · {t('user.plan')}</div>
         </div>
         <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint">{t('nav.logout')}</button>

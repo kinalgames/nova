@@ -98,7 +98,21 @@ Note: the MCP preview browser crashed repeatedly during C3 verification
 (container instability, not the app) — C3's real-browser proof lives in the
 e2e suite instead (`project instructions visibly steer a project reply`).
 
-## D — Account & settings
-Profile (name/avatar; "Minh Trần" is hardcoded today) · onboarding persists
-choices · data controls (export all / clear all) · keyboard-shortcuts
-cheatsheet dialog.
+## D — Account & settings (DONE)
+
+Shipped: profile — `userName` + `assistantName` persisted, editable in
+Settings → Chung (HỒ SƠ); sidebar/account/greeting labels and NEW message
+`who` tags follow (seeded history keeps its original labels) · onboarding
+choices persist for real — assistant name, style chips and the default slot
+write through `completeOnboarding` · data controls — export-all (JSON of the
+persisted store) + clear-all with inline confirm and reload · keyboard
+cheatsheet dialog (only shortcuts that actually exist: ⌘K · ⌘. · ⏎ · ⇧⏎ ·
+Esc), opened from the shortcuts bar.
+
+With D, every planned UI-first track (A · P · E · B · C · D) is COMPLETE —
+next phase: backend (`docs/backend-architecture.md`) + the deliberate debts
+below.
+
+Remaining deliberate debts: i18n phase 2 (locale-aware demo seed content) ·
+shiki bundle slimming (wasm engine ~230 kB gz) · monthly usage totals (needs
+real timestamps) · real OAuth/429 handling with the backend.

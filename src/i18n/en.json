@@ -172,6 +172,16 @@
   "share": {
     "copied": "Share link copied"
   },
+  "cheatsheet": {
+    "title": "Keyboard shortcuts",
+    "sub": "Move faster from the keyboard.",
+    "openAria": "View keyboard shortcuts",
+    "palette": "Open the command palette",
+    "focus": "Focus mode",
+    "send": "Send the message",
+    "newline": "New line inside a message",
+    "close": "Close the open overlay"
+  },
   "user": {
     "name": "Minh Trần",
     "firstName": "Minh",
@@ -244,6 +254,17 @@
     "moveDown": "Lower priority of {{name}}",
     "autoRotate": "Auto-rotate profiles",
     "autoRotateDesc": "When a profile hits its limit, switch to the next one in priority order.",
+    "profileSection": "YOUR PROFILE",
+    "yourName": "YOUR NAME",
+    "assistantName": "ASSISTANT NAME",
+    "dataSection": "DATA",
+    "exportAll": "Export all data",
+    "exportAllHelp": "Download every conversation, project and setting as JSON.",
+    "exportAllAction": "Download",
+    "clearAll": "Clear all data",
+    "clearAllHelp": "Wipe everything stored on this device and restart. Cannot be undone.",
+    "clearAllAction": "Clear…",
+    "clearAllConfirm": "Delete forever",
     "priceFree": "Free",
     "needProfileHint": "Add a connection profile to use this provider's models.",
     "styleSection": "REPLY STYLE",

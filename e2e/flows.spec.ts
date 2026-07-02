@@ -89,6 +89,15 @@ test('sending a message appends it and streams a reply', async ({ page }) => {
   await expect(page.locator('main').getByText('NOVA').last()).toBeVisible({ timeout: 15_000 })
 })
 
+test('profile rename flows into the sidebar; the cheatsheet opens from the bar', async ({ page }) => {
+  await page.goto('/chat/c1?settings=general')
+  await page.getByLabel('TÊN CỦA BẠN').fill('Lan Phương')
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('Lan Phương').first()).toBeVisible()
+  await page.getByRole('button', { name: 'Xem bảng phím tắt' }).click()
+  await expect(page.getByText('Mở bảng lệnh')).toBeVisible()
+})
+
 test('project instructions visibly steer a project reply', async ({ page }) => {
   // c2 belongs to Aurora, whose description acts as project instructions
   await page.goto('/chat/c2')

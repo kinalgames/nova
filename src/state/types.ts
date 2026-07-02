@@ -232,6 +232,12 @@ export interface NovaState {
   toast: string | null
   /** the archived section in the sidebar is expanded (ephemeral) */
   archivedOpen: boolean
+  /** the keyboard-shortcuts cheatsheet dialog is open (ephemeral) */
+  cheatsheet: boolean
+  /** display name of the user — drives the MINH label and greetings */
+  userName: string
+  /** what the assistant is called — drives the NOVA label */
+  assistantName: string
   presetDefault: Record<PresetId, boolean>
   /** staged attachments, keyed by conversation id (per-conversation tray) */
   staged: Record<string, StagedFile[]>

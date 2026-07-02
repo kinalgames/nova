@@ -275,7 +275,7 @@ export function Sidebar() {
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
-              aria-label={t('nav.accountAria', { name: t('user.name') })}
+              aria-label={t('nav.accountAria', { name: v.userName })}
               data-hover="soft"
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-sm border-none bg-transparent px-2.5 py-2"
               style={{ justifyContent: v.railJustify }}
@@ -284,7 +284,7 @@ export function Sidebar() {
               {v.sidebarExpanded && (
                 <>
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="truncate text-small">{t('user.name')}</div>
+                    <div className="truncate text-small">{v.userName}</div>
                   </div>
                   <Icon n="more" size={15} className="text-faint" />
                 </>
@@ -296,7 +296,7 @@ export function Sidebar() {
               <div className="flex items-center gap-2.5 px-2.5 py-2">
                 <div className="size-[30px] flex-shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
                 <div className="min-w-0">
-                  <div className="text-ui text-text">{t('user.name')}</div>
+                  <div className="text-ui text-text">{v.userName}</div>
                   <div className="text-meta text-muted">{t('user.plan')}</div>
                 </div>
               </div>

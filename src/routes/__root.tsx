@@ -10,6 +10,7 @@ import { SettingsDialog } from '../components/SettingsDialog'
 import { QuietMode } from '../components/QuietMode'
 import { MobileDrawer } from '../components/MobileDrawer'
 import { NoticeToast, UpdateToast } from '../components/UpdateToast'
+import { CheatsheetDialog } from '../components/CheatsheetDialog'
 
 const SETTINGS_TABS = ['general', 'providers', 'assistant'] as const
 
@@ -59,6 +60,7 @@ function Shell() {
       <QuietMode />
       <UpdateToast />
       <NoticeToast />
+      <CheatsheetDialog />
 
       {/* paper fibre over the whole sheet */}
       <div className="grain" aria-hidden />

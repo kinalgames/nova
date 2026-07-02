@@ -116,6 +116,9 @@ const uid = () => `f${++_uid}`
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
+/** the uppercase first-name tag rendered beside a user message */
+const whoLabel = (name: string) => (name.trim().split(/\s+/)[0] || 'BẠN').toUpperCase()
+
 function initialState(): NovaState {
   const p = loadPersisted()
   return {
@@ -162,6 +165,9 @@ function initialState(): NovaState {
     copiedMsg: null,
     toast: null,
     archivedOpen: false,
+    cheatsheet: false,
+    userName: p.userName ?? i18n.t('user.name'),
+    assistantName: p.assistantName ?? 'Nova',
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
@@ -253,6 +259,8 @@ export function StoreProvider({
       theme: s.theme,
       advanced: s.advanced,
       accent: s.accent,
+      userName: s.userName,
+      assistantName: s.assistantName,
       activeSlot: s.activeSlot,
       slots: s.slots,
       focusDur: s.focusDur,
@@ -278,6 +286,8 @@ export function StoreProvider({
     s.theme,
     s.advanced,
     s.accent,
+    s.userName,
+    s.assistantName,
     s.focusDur,
     s.barOn,
     s.thinkingLevel,
@@ -488,7 +498,7 @@ export function StoreProvider({
             [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
               id: replyId,
               role: 'assistant',
-              who: 'NOVA',
+              who: (prev.assistantName.trim() || 'Nova').toUpperCase(),
               blocks: [{ type: 'text', size: 'lead', text: '' }],
             }),
           },
@@ -572,7 +582,7 @@ export function StoreProvider({
         [convId]: appendToLeaf(x.threads[convId] ?? emptyThread(), {
           id: userId,
           role: 'user',
-          who: i18n.t('user.who'),
+          who: whoLabel(sRef.current.userName),
           blocks: userBlocks,
         }),
       },
@@ -1346,6 +1356,23 @@ function deriveValues(
     modelMenuLabel: t('model.menuLabel'),
     autoRotate: s.autoRotate,
     toggleAutoRotate: () => set((x) => ({ autoRotate: !x.autoRotate })),
+    // D — profile, data controls, cheatsheet
+    stylesState: s.styles,
+    userName: s.userName,
+    userFirstName: s.userName.trim().split(/\s+/)[0] || s.userName,
+    setUserName: (name: string) => set({ userName: name }),
+    assistantName: s.assistantName,
+    setAssistantName: (name: string) => set({ assistantName: name }),
+    exportAllData: () =>
+      downloadFile('nova-data.json', localStorage.getItem(PERSIST_KEY) ?? '{}', 'application/json'),
+    /* v8 ignore next 4 — hard navigation, not reachable from the unit env */
+    clearAllData: () => {
+      localStorage.removeItem(PERSIST_KEY)
+      window.location.reload()
+    },
+    cheatsheet: s.cheatsheet,
+    openCheatsheet: () => set({ cheatsheet: true }),
+    closeCheatsheet: () => set({ cheatsheet: false }),
     // E1 — update toast
     updateReady: s.updateReady,
     dismissUpdate: () => set({ updateReady: false }),
@@ -1439,6 +1466,19 @@ function deriveValues(
     isOnboarding: nav.authView === 'onboarding',
     isLoginForm: nav.authView === 'login' || nav.authView === 'signup',
     finishOnboarding: () => navigate({ to: '/' }),
+    // onboarding choices persist for real — name, reply style, default slot
+    completeOnboarding: (opts: {
+      assistantName: string
+      styles: NovaState['styles']
+      slot: SlotId
+    }) => {
+      set({
+        assistantName: opts.assistantName.trim() || 'Nova',
+        styles: opts.styles,
+        activeSlot: opts.slot,
+      })
+      navigate({ to: '/' })
+    },
     showAuth: nav.authView !== null,
     loggedIn: nav.authView === null,
     isLogin: nav.authView !== 'signup',

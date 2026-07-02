@@ -24,13 +24,20 @@ function AppLayout() {
           <Outlet />
         </main>
 
-        {/* bottom shortcut hints (advanced desktop) */}
+        {/* bottom shortcut hints (advanced desktop) — click for the cheatsheet */}
         {v.showBar && (
-          <footer className="flex h-[30px] shrink-0 items-center justify-center gap-4 border-t border-border font-mono text-eyebrow text-faint">
-            <span>{t('shortcutsBar.cmd')}</span>
-            <span>{t('shortcutsBar.focus')}</span>
-            <span>{t('shortcutsBar.send')}</span>
-            <span>{t('shortcutsBar.history')}</span>
+          <footer className="flex h-[30px] shrink-0 items-center justify-center border-t border-border">
+            <button
+              type="button"
+              onClick={v.openCheatsheet}
+              aria-label={t('cheatsheet.openAria')}
+              className="flex h-full cursor-pointer items-center gap-4 border-none bg-transparent px-4 font-mono text-eyebrow text-faint outline-none hover:text-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+            >
+              <span>{t('shortcutsBar.cmd')}</span>
+              <span>{t('shortcutsBar.focus')}</span>
+              <span>{t('shortcutsBar.send')}</span>
+              <span>{t('shortcutsBar.history')}</span>
+            </button>
           </footer>
         )}
       </div>

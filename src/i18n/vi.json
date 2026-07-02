@@ -171,6 +171,16 @@
   "share": {
     "copied": "Đã chép liên kết chia sẻ"
   },
+  "cheatsheet": {
+    "title": "Phím tắt",
+    "sub": "Thao tác nhanh hơn trên bàn phím.",
+    "openAria": "Xem bảng phím tắt",
+    "palette": "Mở bảng lệnh",
+    "focus": "Chế độ tập trung",
+    "send": "Gửi tin nhắn",
+    "newline": "Xuống dòng trong tin nhắn",
+    "close": "Đóng overlay đang mở"
+  },
   "user": {
     "name": "Minh Trần",
     "firstName": "Minh",
@@ -243,6 +253,17 @@
     "moveDown": "Giảm ưu tiên {{name}}",
     "autoRotate": "Tự xoay vòng hồ sơ",
     "autoRotateDesc": "Chạm hạn mức thì chuyển sang hồ sơ kế tiếp theo thứ tự ưu tiên.",
+    "profileSection": "HỒ SƠ CỦA BẠN",
+    "yourName": "TÊN CỦA BẠN",
+    "assistantName": "TÊN TRỢ LÝ",
+    "dataSection": "DỮ LIỆU",
+    "exportAll": "Xuất toàn bộ dữ liệu",
+    "exportAllHelp": "Tải mọi hội thoại, dự án và cài đặt dưới dạng JSON.",
+    "exportAllAction": "Tải xuống",
+    "clearAll": "Xóa toàn bộ dữ liệu",
+    "clearAllHelp": "Xóa sạch dữ liệu trên máy này và khởi động lại. Không hoàn tác được.",
+    "clearAllAction": "Xóa…",
+    "clearAllConfirm": "Xóa vĩnh viễn",
     "priceFree": "Miễn phí",
     "needProfileHint": "Thêm hồ sơ kết nối để dùng model của nhà cung cấp này.",
     "styleSection": "PHONG CÁCH TRẢ LỜI",

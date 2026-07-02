@@ -14,6 +14,8 @@ export interface Persisted {
   theme?: Theme
   advanced?: boolean
   accent?: string
+  userName?: string
+  assistantName?: string
   focusDur?: '15' | '25' | '50'
   barOn?: boolean
   thinkingLevel?: ThinkLevel
