@@ -36,15 +36,15 @@ export const seedEn: SeedData = {
   ],
   profiles: {
     claude: [
-      { id: 'pf-claude-acc', name: 'Personal', kind: 'account', credential: 'minh@studio.vn', status: 'active' },
-      { id: 'pf-claude-key', name: 'Backup', kind: 'api_key', credential: 'sk-ant-••••••••  4f2a', status: 'active' },
+      { id: 'pf-claude-acc', name: 'Personal', kind: 'account', credential: 'minh@studio.vn', status: 'active', demo: true },
+      { id: 'pf-claude-key', name: 'Backup', kind: 'api_key', credential: 'sk-ant-••••••••  4f2a', status: 'active', demo: true },
     ],
     gemini: [],
     openai: [
-      { id: 'pf-openai-key', name: 'Main key', kind: 'api_key', credential: 'sk-••••••••  9c1d', status: 'active' },
+      { id: 'pf-openai-key', name: 'Main key', kind: 'api_key', credential: 'sk-••••••••  9c1d', status: 'active', demo: true },
     ],
     ollama: [
-      { id: 'pf-ollama', name: 'This machine', kind: 'api_key', credential: 'http://localhost:11434', status: 'active' },
+      { id: 'pf-ollama', name: 'This machine', kind: 'api_key', credential: 'http://localhost:11434', status: 'active', demo: true },
     ],
   },
   projectFiles: [

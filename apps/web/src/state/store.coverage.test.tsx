@@ -377,7 +377,7 @@ describe('store — streaming chat engine', () => {
     await act(async () => vi.advanceTimersByTime(8000))
     const nova = result.current.v.sent.at(-1)!
     expect(nova.usage).toBeDefined()
-    expect(nova.usage!.modelId).toBe('claude-opus-4')
+    expect(nova.usage!.modelId).toBe('claude-opus-4-8')
     // rotation picked the top-priority claude profile and pinned it (sticky)
     expect(nova.usage!.profileId).toBe('pf-claude-acc')
     expect(result.current.s.stickyProfile.claude).toBe('pf-claude-acc')
@@ -398,7 +398,7 @@ describe('store — streaming chat engine', () => {
       result.current.set({
         slots: {
           smart: { providerId: 'openai', modelId: 'gpt-5' },
-          fast: { providerId: 'claude', modelId: 'claude-haiku-4' },
+          fast: { providerId: 'claude', modelId: 'claude-haiku-4-5' },
         },
       }),
     )

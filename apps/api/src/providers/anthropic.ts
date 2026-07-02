@@ -1,0 +1,140 @@
+// Anthropic Messages API adapter — the first real provider (BE3 slice pulled
+// forward). Two credential kinds, matching the product's 「Tài khoản」/「Khóa API」:
+//
+//  - api_key  → `x-api-key` (the officially supported path)
+//  - account  → a Claude subscription setup-token (sk-ant-oat01-…) sent the
+//    way Claude Code sends it: Authorization Bearer + oauth beta flags + the
+//    Claude Code identity system block. EXPERIMENTAL — not an official API
+//    surface; Anthropic can change or reject it at any time, and it must only
+//    ever run against the user's OWN subscription.
+
+import type { ChatProxyRequest } from '@nova/shared'
+
+const API_URL = 'https://api.anthropic.com/v1/messages'
+const VERSION = '2023-06-01'
+/** identity line Claude Code prepends; required for setup-token acceptance */
+const CLAUDE_CODE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
+
+export function anthropicHeaders(profile: ChatProxyRequest['profile']): Record<string, string> {
+  const base: Record<string, string> = {
+    'content-type': 'application/json',
+    'anthropic-version': VERSION,
+  }
+  if (profile.kind === 'account') {
+    return {
+      ...base,
+      authorization: `Bearer ${profile.credential}`,
+      'anthropic-beta': 'oauth-2025-04-20,claude-code-20250219',
+      'user-agent': 'claude-cli/2.1.0 (external, cli)',
+      'x-app': 'cli',
+    }
+  }
+  return { ...base, 'x-api-key': profile.credential }
+}
+
+export function anthropicBody(req: ChatProxyRequest): string {
+  // NOTE: no temperature/top_p/top_k — models ≥4.7 reject sampling params
+  const system: { type: 'text'; text: string }[] = []
+  if (req.profile.kind === 'account') system.push({ type: 'text', text: CLAUDE_CODE_IDENTITY })
+  if (req.system?.trim()) system.push({ type: 'text', text: req.system })
+  return JSON.stringify({
+    model: req.model,
+    max_tokens: req.maxTokens ?? 8192,
+    stream: true,
+    ...(system.length ? { system } : {}),
+    messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+  })
+}
+
+/** call the upstream with streaming enabled; the caller owns the response body */
+export function callAnthropic(req: ChatProxyRequest, signal?: AbortSignal): Promise<Response> {
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: anthropicHeaders(req.profile),
+    body: anthropicBody(req),
+    signal,
+  })
+}
+
+export interface NovaStreamEvent {
+  type: 'message_start' | 'block_delta' | 'message_stop' | 'error'
+  text?: string
+  usage?: { inputTokens: number; outputTokens: number }
+  code?: string
+  message?: string
+}
+
+/**
+ * Transform the Anthropic SSE stream into Nova's event contract:
+ * message_start · block_delta{text} · message_stop{usage} · error.
+ */
+export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  const decoder = new TextDecoder()
+  const encoder = new TextEncoder()
+  let buffer = ''
+  let inputTokens = 0
+  let outputTokens = 0
+
+  const emit = (
+    controller: TransformStreamDefaultController<Uint8Array>,
+    event: NovaStreamEvent,
+  ) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+
+  const handleLine = (line: string, controller: TransformStreamDefaultController<Uint8Array>) => {
+    if (!line.startsWith('data:')) return
+    const raw = line.slice(5).trim()
+    if (!raw || raw === '[DONE]') return
+    let evt: {
+      type?: string
+      message?: { usage?: { input_tokens?: number; output_tokens?: number } }
+      usage?: { output_tokens?: number }
+      delta?: { type?: string; text?: string }
+      error?: { type?: string; message?: string }
+    }
+    try {
+      evt = JSON.parse(raw)
+    } catch {
+      return
+    }
+    switch (evt.type) {
+      case 'message_start':
+        inputTokens = evt.message?.usage?.input_tokens ?? 0
+        emit(controller, { type: 'message_start' })
+        break
+      case 'content_block_delta':
+        if (evt.delta?.type === 'text_delta' && evt.delta.text)
+          emit(controller, { type: 'block_delta', text: evt.delta.text })
+        break
+      case 'message_delta':
+        outputTokens = evt.usage?.output_tokens ?? outputTokens
+        break
+      case 'message_stop':
+        emit(controller, { type: 'message_stop', usage: { inputTokens, outputTokens } })
+        break
+      case 'error':
+        emit(controller, {
+          type: 'error',
+          code: evt.error?.type ?? 'upstream_error',
+          message: evt.error?.message ?? 'Provider stream error',
+        })
+        break
+    }
+  }
+
+  return upstream.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        buffer += decoder.decode(chunk, { stream: true })
+        let idx: number
+        while ((idx = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, idx).trimEnd()
+          buffer = buffer.slice(idx + 1)
+          handleLine(line, controller)
+        }
+      },
+      flush(controller) {
+        if (buffer) handleLine(buffer.trimEnd(), controller)
+      },
+    }),
+  )
+}

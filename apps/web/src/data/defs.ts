@@ -85,10 +85,11 @@ export const provDefs: ProviderDef[] = [
     auth: ['account', 'api_key'],
     field: 'key',
     placeholder: 'sk-ant-…',
+    // real Anthropic catalog (2026-07): dateless pinned ids, current pricing
     models: [
-      { id: 'claude-opus-4', name: 'Claude Opus 4', inPrice: 15, outPrice: 75, pace: 32 },
-      { id: 'claude-sonnet-4', name: 'Claude Sonnet 4', inPrice: 3, outPrice: 15, pace: 24 },
-      { id: 'claude-haiku-4', name: 'Claude Haiku 4', inPrice: 0.8, outPrice: 4, pace: 16 },
+      { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', inPrice: 5, outPrice: 25, pace: 32 },
+      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', inPrice: 2, outPrice: 10, pace: 24 },
+      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', inPrice: 1, outPrice: 5, pace: 16 },
     ],
     rec: true,
   },
@@ -144,8 +145,8 @@ export const provDefs: ProviderDef[] = [
 /** the two quality slots route chats cross-provider — “Thông minh”/“Nhanh”
  * are routing choices, not provider choices */
 export const defaultSlots: Record<SlotId, ModelRef> = {
-  smart: { providerId: 'claude', modelId: 'claude-opus-4' },
-  fast: { providerId: 'claude', modelId: 'claude-haiku-4' },
+  smart: { providerId: 'claude', modelId: 'claude-opus-4-8' },
+  fast: { providerId: 'claude', modelId: 'claude-haiku-4-5' },
 }
 
 export function findProvider(id: ProviderId): ProviderDef {

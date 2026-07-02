@@ -33,6 +33,8 @@ export interface SeedProfileDef {
   kind: ProfileKind
   credential: string
   status: 'active' | 'limited' | 'error' | 'untested'
+  /** seeded showcase credential — never routed to a real provider */
+  demo?: boolean
 }
 
 export interface SeedData {

@@ -21,6 +21,24 @@ export interface AuthProfile {
   status: ProfileStatus
   /** epoch ms when a 'limited' profile becomes usable again */
   limitedUntil?: number
+  /** seeded showcase credential — never routed to a real provider */
+  demo?: boolean
+}
+
+/** one turn of a chat request as the provider proxy consumes it */
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/** request body of POST /v1/chat — the provider proxy contract */
+export interface ChatProxyRequest {
+  providerId: ProviderId
+  model: string
+  system?: string
+  messages: ChatTurn[]
+  maxTokens?: number
+  profile: { kind: ProfileKind; credential: string }
 }
 
 /** the two quality slots chats route through — cross-provider */

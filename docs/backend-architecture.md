@@ -120,9 +120,22 @@ single reload on `vite:preloadError`) · update-available toast
   stays thin (auth/user lookup); `POST /v1/import` (persist v5) replays a
   localStorage user into ops; web store becomes the optimistic cache over
   the same endpoints.
-- **BE3 — provider proxy + real streaming**: BYOK encrypted profiles, SSE
-  chat with the rotation engine + real usage events; slots route to real
-  models (Claude first, then OpenAI/Gemini/Ollama-remote).
+- **BE3 — provider proxy + real streaming** (FIRST SLICE SHIPPED, pulled
+  forward for credential testing): `POST /v1/chat` proxies Anthropic with SSE
+  transformed to the Nova contract; both credential kinds work —
+  「Khóa API」 via `x-api-key` (official) and 「Tài khoản」 setup-token via the
+  Claude Code transport (Bearer + oauth beta flags + CLI identity block —
+  EXPERIMENTAL, gray-zone vs provider terms, user's own subscription only).
+  No sampling params are sent (models ≥4.7 reject them). The web client
+  routes through the proxy whenever a NON-DEMO profile exists for the
+  routed provider (seeded demo credentials never leave the device); real
+  usage lands on the message, 429 puts the profile into its cool-down so
+  rotation moves on. The model catalog now carries the REAL Anthropic
+  lineup (claude-opus-4-8 · claude-sonnet-5 · claude-haiku-4-5, current
+  pricing). Still to come in BE3 proper: server-side encrypted BYOK storage
+  (credentials currently transit per-request from the client — acceptable
+  for local dev only), rotation server-side, usage events to Analytics
+  Engine, and the remaining providers.
 - **BE4 — files & share**: R2 presigned uploads for project files +
   attachments; real share links (`/share/:id` read-only page).
 - **BE5 — hardening**: rate limits, observability (structured logs +

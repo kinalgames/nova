@@ -56,7 +56,7 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
     expect(store().s.slots.fast).toEqual({ providerId: 'openai', modelId: 'gpt-5-mini' })
     // the previous fast model is unassigned now
     expect(
-      within(dialog).getByRole('button', { name: 'Nhanh — Claude Haiku 4' }),
+      within(dialog).getByRole('button', { name: 'Nhanh — Claude Haiku 4.5' }),
     ).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -88,8 +88,8 @@ describe('TopBar — model menu routes slots', () => {
     await renderApp()
     await user.click(screen.getByRole('button', { name: 'Chế độ trả lời: Thông minh' }))
     const menu = await screen.findByRole('menu')
-    expect(within(menu).getByText('Claude Opus 4')).toBeInTheDocument()
-    expect(within(menu).getByText('Claude Haiku 4')).toBeInTheDocument()
+    expect(within(menu).getByText('Claude Opus 4.8')).toBeInTheDocument()
+    expect(within(menu).getByText('Claude Haiku 4.5')).toBeInTheDocument()
     await user.click(within(menu).getByText('Nhanh'))
     expect(
       await screen.findByRole('button', { name: 'Chế độ trả lời: Nhanh' }),

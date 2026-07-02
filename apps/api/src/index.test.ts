@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { pickProfile } from '@nova/shared'
 import app from './index'
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('nova-api skeleton', () => {
   it('healthz reports the service is up', async () => {
@@ -14,6 +16,80 @@ describe('nova-api skeleton', () => {
   it('unknown routes 404', async () => {
     const res = await app.request('/nope')
     expect(res.status).toBe(404)
+  })
+
+  it('POST /v1/chat validates the request shape', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ providerId: 'claude', model: '', messages: [] }),
+    })
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { code: string }
+    expect(body.code).toBe('invalid_request')
+  })
+
+  it('POST /v1/chat proxies a stream and transforms it to the Nova contract', async () => {
+    const enc = new TextEncoder()
+    const upstream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(
+          enc.encode(
+            'data: {"type":"message_start","message":{"usage":{"input_tokens":3}}}\n' +
+              'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ok"}}\n' +
+              'data: {"type":"message_delta","usage":{"output_tokens":1}}\n' +
+              'data: {"type":"message_stop"}\n',
+          ),
+        )
+        c.close()
+      },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(upstream, { status: 200 })),
+    )
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'sk-x' },
+      }),
+    })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+    const text = await res.text()
+    expect(text).toContain('"type":"block_delta"')
+    expect(text).toContain('"outputTokens":1')
+  })
+
+  it('POST /v1/chat maps upstream 429 to rate_limited and keeps retry-after', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response('{"error":{"type":"rate_limit_error"}}', {
+            status: 429,
+            headers: { 'retry-after': '30' },
+          }),
+      ),
+    )
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'account', credential: 'sk-ant-oat01-x' },
+      }),
+    })
+    expect(res.status).toBe(429)
+    expect(res.headers.get('retry-after')).toBe('30')
+    const body = (await res.json()) as { code: string }
+    expect(body.code).toBe('rate_limited')
   })
 
   it('the shared domain engine resolves from the api workspace', () => {

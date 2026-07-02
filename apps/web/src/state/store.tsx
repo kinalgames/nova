@@ -47,6 +47,7 @@ import {
 } from './organize'
 import { loadPersisted, PERSIST_KEY } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
+import { API_BASE, streamChat } from '../services/llm'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
   addSibling,
@@ -239,6 +240,8 @@ export function StoreProvider({
   const t1 = useRef<ReturnType<typeof setTimeout>>(undefined)
   const t2 = useRef<ReturnType<typeof setTimeout>>(undefined)
   const tc = useRef<ReturnType<typeof setTimeout>>(undefined)
+  /** in-flight REAL provider stream (nova-api) — aborted by stop() */
+  const llmAbort = useRef<AbortController | null>(null)
   const delTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const set = useCallback((u: Updater) => {
@@ -455,6 +458,122 @@ export function StoreProvider({
       )
       if (profile && prev.stickyProfile[ref.providerId] !== profile.id)
         set((x) => ({ stickyProfile: { ...x.stickyProfile, [ref.providerId]: profile.id } }))
+
+      // REAL provider path: a user-added (non-demo) profile + a reachable API
+      // routes the chat through nova-api instead of the fake layer. Rotation
+      // over the real profiles only — seeded showcase credentials never leave
+      // the device.
+      const liveProfile =
+        API_BASE && ref.providerId === 'claude'
+          ? pickProfile(
+              (prev.profiles[ref.providerId] ?? []).filter((f) => !f.demo),
+              prev.stickyProfile[ref.providerId],
+              prev.autoRotate,
+            )
+          : null
+      if (liveProfile) {
+        const replyId = uid()
+        const instructions = proj?.isDefault ? '' : (proj?.description ?? '')
+        // history: the visible path up to (and incl.) the prompt message.
+        // When send() calls straight in, the freshly-appended user message has
+        // not rendered into sRef yet — append the prompt turn explicitly then.
+        const path = visiblePath(prev.threads[conv] ?? emptyThread())
+        const upto = path.findIndex((m) => m.id === parentId)
+        const turns = (upto >= 0 ? path.slice(0, upto + 1) : path)
+          .map((m) => ({
+            role: m.role,
+            content: m.blocks
+              .filter((b) => b.type === 'text')
+              .map((b) => (b.type === 'text' ? b.text : ''))
+              .join('\n\n')
+              .trim(),
+          }))
+          .filter((t) => t.content)
+        if (upto < 0) turns.push({ role: 'user', content: prompt })
+        const abort = new AbortController()
+        llmAbort.current = abort
+        let acc = ''
+        const writeText = (text: string, extra: Partial<Message> = {}) =>
+          set((x) => ({
+            threads: {
+              ...x.threads,
+              [conv]: updateMessage(x.threads[conv], replyId, {
+                blocks: [{ type: 'text', size: 'lead', text }],
+                ...extra,
+              }),
+            },
+          }))
+        set((x) => ({
+          typing: true,
+          typingLabel: i18n.t('chat.thinkingLabel'),
+          conversations: x.conversations.map((c) =>
+            c.id === conv ? { ...c, updatedAt: Date.now() } : c,
+          ),
+          threads: {
+            ...x.threads,
+            [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
+              id: replyId,
+              role: 'assistant',
+              who: (prev.assistantName.trim() || 'Nova').toUpperCase(),
+              blocks: [{ type: 'text', size: 'lead', text: '' }],
+            }),
+          },
+        }))
+        void streamChat(
+          {
+            providerId: 'claude',
+            model: ref.modelId,
+            system: instructions || undefined,
+            messages: turns,
+            profile: { kind: liveProfile.kind, credential: liveProfile.credential },
+          },
+          {
+            onDelta: (text) => {
+              acc += text
+              set({ typingLabel: i18n.t('chat.writingLabel') })
+              writeText(acc)
+            },
+            onDone: (u) => {
+              set({ typing: false })
+              writeText(acc, {
+                usage: {
+                  inputTokens: u.inputTokens,
+                  outputTokens: u.outputTokens,
+                  modelId: ref.modelId,
+                  profileId: liveProfile.id,
+                  at: Date.now(),
+                },
+              })
+            },
+            onError: (code, message, status, retryAfterSec) => {
+              // a rate-limited profile enters its cool-down window — the
+              // rotation engine will route the NEXT send to the next profile
+              if (status === 429)
+                set((x) => ({
+                  profiles: {
+                    ...x.profiles,
+                    [ref.providerId]: (x.profiles[ref.providerId] ?? []).map((f) =>
+                      f.id === liveProfile.id
+                        ? {
+                            ...f,
+                            status: 'limited' as const,
+                            limitedUntil: Date.now() + (retryAfterSec ?? 60) * 1000,
+                          }
+                        : f,
+                    ),
+                  },
+                }))
+              set({ typing: false })
+              // surface the raw provider error in the bubble — exactly what a
+              // credential test session needs to see
+              writeText(acc ? `${acc}\n\n⚠ ${code}: ${message}` : `⚠ ${code}: ${message}`)
+            },
+          },
+          abort.signal,
+        )
+        return
+      }
+
       const reply = composeReply(prompt, {
         slot: prev.activeSlot,
         thinking: prev.thinkingLevel,
@@ -700,6 +819,8 @@ export function StoreProvider({
     clearTimeout(t1.current)
     clearTimeout(t2.current)
     clearInterval(tc.current)
+    llmAbort.current?.abort()
+    llmAbort.current = null
     set({ typing: false })
   }, [set])
 
