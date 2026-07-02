@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { loadPersisted, PERSIST_KEY, PERSIST_PREFIX } from './persist'
+import { lastOpenConvId, loadPersisted, PERSIST_KEY, PERSIST_PREFIX } from './persist'
 
 beforeEach(() => localStorage.clear())
 
@@ -63,5 +63,38 @@ describe('persist — stepwise migrations', () => {
 
   it('nothing stored → fresh install', () => {
     expect(loadPersisted()).toEqual({})
+  })
+})
+
+describe('lastOpenConvId — the entry redirect source', () => {
+  it('prefers a valid activeConv, falls back to the first conversation', () => {
+    localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({ activeConv: 'c3', conversations: [{ id: 'c1' }, { id: 'c3' }] }),
+    )
+    expect(lastOpenConvId(PERSIST_KEY)).toBe('c3')
+    localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({ activeConv: 'ghost', conversations: [{ id: 'c1' }] }),
+    )
+    expect(lastOpenConvId(PERSIST_KEY)).toBe('c1')
+    // an activeConv without a conversations list is trusted as-is
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ activeConv: 'x' }))
+    expect(lastOpenConvId(PERSIST_KEY)).toBe('x')
+  })
+
+  it('returns null when nothing usable is persisted', () => {
+    expect(lastOpenConvId(PERSIST_KEY)).toBeNull()
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ conversations: [] }))
+    expect(lastOpenConvId(PERSIST_KEY)).toBeNull()
+    localStorage.setItem(PERSIST_KEY, '{bad')
+    expect(lastOpenConvId(PERSIST_KEY)).toBeNull()
+  })
+})
+
+describe('v4 → v5 — the smart slot side', () => {
+  it("a v4 'opus' model maps to the smart slot", () => {
+    localStorage.setItem(`${PERSIST_PREFIX}.v4`, JSON.stringify({ model: 'opus' }))
+    expect(loadPersisted().activeSlot).toBe('smart')
   })
 })

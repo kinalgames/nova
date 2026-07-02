@@ -24,15 +24,14 @@ export default defineConfig({
         'src/main.tsx',
         'src/vite-env.d.ts',
       ],
-      // Recalibrated after the router + projects + message-block features. Those
-      // add route-level code (beforeLoad redirects, route guards) exercised by
-      // the e2e suite, plus defensive optional-field fallbacks in the message
-      // renderer and project-membership logic that the seed data / unit tests
-      // don't exhaustively hit. Every meaningful path is covered (176 unit tests
-      // + e2e); these floors guard against regression at the new codebase size.
+      // Floors ratchet UP only (never down): the suite holds ≥90% on every
+      // metric — branch coverage was raised to 90 deliberately (defensive
+      // fallbacks, error paths and heal-on-corrupt branches all have targeted
+      // tests). The remaining uncovered branches are dead-defensive lines
+      // (post-filter ternaries) and render-only cosmetic forks.
       thresholds: {
         statements: 94,
-        branches: 87,
+        branches: 90,
         functions: 94,
         lines: 95,
       },

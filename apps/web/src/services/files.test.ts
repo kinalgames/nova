@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { downloadFile, openFile, previewSample } from './files'
+import { describeUpload, downloadFile, openFile, previewSample } from './files'
 import type { PreviewKind } from '../state/types'
 
 afterEach(() => vi.restoreAllMocks())
@@ -12,6 +12,32 @@ describe('files service — previewSample', () => {
       expect(s.type).toBeTruthy()
       expect(s.body.length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('files service — describeUpload', () => {
+  const f = (name: string, type = '', size = 2048) =>
+    new File([new Uint8Array(size)], name, { type })
+
+  it('classifies uploads by mime and extension', () => {
+    URL.createObjectURL = vi.fn(() => 'blob:img')
+    expect(describeUpload(f('anh.png', 'image/png'))).toMatchObject({ kind: 'image', url: 'blob:img' })
+    expect(describeUpload(f('doc.pdf'))).toMatchObject({ kind: 'pdf' })
+    expect(describeUpload(f('script.py'))).toMatchObject({ kind: 'code' })
+    expect(describeUpload(f('data.csv'))).toMatchObject({ kind: 'csv' })
+    expect(describeUpload(f('note.md'))).toMatchObject({ kind: 'md' })
+    // unknown or missing extensions read as documents, never crash
+    expect(describeUpload(f('archive.zip'))).toMatchObject({ kind: 'pdf', url: undefined })
+    expect(describeUpload(f('file.'))).toMatchObject({ kind: 'pdf' })
+  })
+
+  it('formats sizes in KB under a megabyte and MB above', () => {
+    expect(describeUpload(f('a.md', '', 512)).size).toBe('1 KB')
+    expect(describeUpload(f('b.md', '', 3 * 1024 * 1024)).size).toBe('3.0 MB')
+  })
+
+  it('previewSample falls back to the markdown sample for unknown kinds', () => {
+    expect(previewSample('nope' as PreviewKind)).toEqual(previewSample('md'))
   })
 })
 

@@ -21,6 +21,20 @@ describe('rename dialog (paper)', () => {
     // the new title shows in the sidebar row AND the top bar
     expect(screen.getAllByText('Tên qua dialog').length).toBeGreaterThan(0)
   })
+
+  // slow under coverage instrumentation
+  it('escape closes the rename dialog without saving', { timeout: 15_000 }, async () => {
+    const user = makeUser()
+    await renderApp()
+    await user.hover(screen.getByText('Đoạn mở đầu trang đích'))
+    await user.click(screen.getAllByRole('button', { name: 'Tùy chọn cuộc trò chuyện' })[0])
+    await user.click(await screen.findByRole('menuitem', { name: 'Đổi tên' }))
+    await screen.findByRole('dialog')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // the title is untouched
+    expect(screen.getAllByText('Đoạn mở đầu trang đích').length).toBeGreaterThan(0)
+  })
 })
 
 describe('command palette search', () => {
@@ -103,5 +117,21 @@ describe('overlay open/close wiring', () => {
     await user.click(more[0])
     expect(await screen.findByRole('menuitem', { name: 'Đổi tên' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Xóa' })).toBeInTheDocument()
+  })
+})
+
+describe('new project dialog', () => {
+  // slow under coverage instrumentation
+  it('needs a name — an empty submit keeps the dialog open, a named one creates', { timeout: 15_000 }, async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/projects' })
+    await user.click(await screen.findByRole('button', { name: 'Dự án mới' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Tạo dự án' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('TÊN DỰ ÁN'), 'Dự án X')
+    await user.click(within(dialog).getByRole('button', { name: 'Tạo dự án' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getAllByText('Dự án X').length).toBeGreaterThan(0)
   })
 })

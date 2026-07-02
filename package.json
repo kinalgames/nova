@@ -13,7 +13,10 @@
     "dev:api": "npm run dev -w @nova/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "vitest run",
+    "test:serial": "npm run test --workspaces --if-present",
+    "test:quick": "vitest run --changed",
+    "test:shuffle": "vitest run --sequence.shuffle",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:e2e": "npm run test:e2e -w @nova/web",
     "build": "npm run build --workspaces --if-present"

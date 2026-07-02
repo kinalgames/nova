@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { exportFilename, exportJson, exportMarkdown, groupConvs } from './organize'
 import { fromLinear } from './thread'
@@ -77,6 +78,10 @@ describe('export serializers', () => {
     const parsed = JSON.parse(exportJson(c, thread))
     expect(parsed.conversation.id).toBe('x')
     expect(Object.keys(parsed.thread.byId)).toEqual(['u1', 'a1'])
+  })
+
+  it('json of a conversation without a thread carries an explicit null', () => {
+    expect(JSON.parse(exportJson(c, undefined)).thread).toBeNull()
   })
 
   it('filenames strip unsafe characters and cap length', () => {

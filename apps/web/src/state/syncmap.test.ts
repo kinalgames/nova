@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { diffRecords, fromRecords, toRecords } from './syncmap'
 import type { Persisted } from './persist'
@@ -48,5 +49,15 @@ describe('syncmap — slice ↔ records', () => {
 
   it('an unchanged slice diffs to zero ops', () => {
     expect(diffRecords(toRecords(slice), toRecords({ ...slice }))).toHaveLength(0)
+  })
+
+  it('an empty slice maps to just the settings record and back', () => {
+    const records = toRecords({})
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({ table: 'settings', id: 'settings' })
+    const back = fromRecords(records)
+    expect(back.projects).toBeUndefined()
+    expect(back.conversations).toBeUndefined()
+    expect(back.threads).toBeUndefined()
   })
 })

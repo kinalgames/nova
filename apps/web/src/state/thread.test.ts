@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
   addSibling,
@@ -8,6 +9,7 @@ import {
   updateMessage,
   visibleLeaf,
   visiblePath,
+  type Thread,
 } from './thread'
 import type { Message } from './types'
 
@@ -72,6 +74,25 @@ describe('thread — versions (siblings)', () => {
     const t = addSibling(fromLinear([m('a'), m('r', 'assistant')]), 'a', m('a2'))
     expect(ids(t)).toEqual(['a2'])
     expect(siblingInfo(t, 'a2')).toEqual({ index: 2, count: 2 })
+  })
+})
+
+describe('thread — defensive shapes', () => {
+  it('addSibling of an unknown id is a no-op', () => {
+    const t0 = fromLinear([m('a')])
+    expect(addSibling(t0, 'ghost', m('x'))).toBe(t0)
+  })
+
+  it('a stale selection falls back to the newest child', () => {
+    const t0 = addSibling(fromLinear([m('a')]), 'a', m('a2'))
+    const t1: Thread = { ...t0, selected: { '': 'ghost' } }
+    expect(ids(t1)).toEqual(['a2'])
+  })
+
+  it('a message missing from the children index is handled everywhere', () => {
+    const t: Thread = { byId: { lone: m('lone') }, children: {}, selected: {} }
+    expect(selectSibling(t, 'lone', 1)).toBe(t)
+    expect(siblingInfo(t, 'lone')).toEqual({ index: 1, count: 1 })
   })
 })
 

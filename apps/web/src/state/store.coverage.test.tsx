@@ -728,3 +728,29 @@ describe('store — projects (CRUD + membership)', () => {
     expect(result.current.s.projects.find((p) => p.id === 'chung')?.presets.code).toBe(false)
   })
 })
+
+describe('store — vocabulary fallbacks & theme segments', () => {
+  it('an orphaned conversation (deleted project) heals to the default project', async () => {
+    const { result } = await renderStore({
+      path: '/chat/c9',
+      storeInit: {
+        conversations: [{ id: 'c9', title: 'Mồ côi', projectId: 'ghost', updatedAt: 1 }],
+        threads: {},
+        activeConv: 'c9',
+      },
+    })
+    // the palette labels the orphan with the default project name
+    expect(result.current.v.paletteConvs[0].projectName).toBe('Chung')
+    // the active project itself heals to the first (default) project
+    expect(result.current.v.activeProjectName).toBe('Chung')
+    expect(result.current.v.chatProject).toBe('Chung')
+  })
+
+  it('the auto theme segment lights up like the fixed ones', async () => {
+    const { result } = await renderStore()
+    await act(async () => result.current.v.setAuto())
+    expect(result.current.s.theme).toBe('auto')
+    expect(result.current.v.themeAutoBg).toBe('var(--accent-soft)')
+    expect(result.current.v.themeAutoBd).not.toBe('var(--border)')
+  })
+})

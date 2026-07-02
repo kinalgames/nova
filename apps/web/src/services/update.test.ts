@@ -67,3 +67,11 @@ describe('installChunkRecovery', () => {
     expect(reload).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('installChunkRecovery — default wiring', () => {
+  it('installs against the real window/sessionStorage and uninstalls cleanly', () => {
+    const uninstall = installChunkRecovery()
+    expect(typeof uninstall).toBe('function')
+    uninstall()
+  })
+})

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { streamChat, type StreamHandlers } from './llm'
 
@@ -163,6 +164,27 @@ describe('llm service — SSE client', () => {
     await streamChat(req, s.h)
     expect(s.errors).toHaveLength(0)
     expect(s.usage).toBeNull()
+  })
+
+  it('an error event without code/message falls back to the defaults', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(['data: {"type":"error"}\n\n'])))
+    const s = make()
+    const seen: unknown[] = []
+    s.h.onError = (...args) => seen.push(args)
+    await streamChat(req, s.h)
+    expect(seen[0]).toEqual(['stream_error', 'Stream lỗi'])
+  })
+
+  it('a non-abort read failure surfaces stream_read', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      pull() {
+        throw new Error('boom')
+      },
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(stream, { status: 200 })))
+    const s = make()
+    await streamChat(req, s.h)
+    expect(s.errors).toEqual(['stream_read'])
   })
 
   it('a stream that ends without message_stop still resolves as done', async () => {
