@@ -9,15 +9,16 @@
 | Area | Decision |
 |---|---|
 | Runtime | Cloudflare Workers + **Hono** (`@hono/zod-openapi` → OpenAPI 3.1) |
-| Database | **Postgres (Neon) via Hyperdrive**, Drizzle ORM (NOT D1 — messages volume outgrows SQLite's 10GB/no-interactive-transaction limits) |
+| Database | **Cloudflare-native two-tier** (revised per owner directive — no third-party SaaS): **D1** for cross-entity metadata (users, sessions, settings, projects, conversation list, provider profiles; Drizzle D1 adapter) + **Durable Objects with SQLite storage, one DO per user**, for message content (version trees, blocks). Per-user DOs shard naturally (10GB *per user*, unbounded aggregate) and the DO's single-threaded transactional storage gives BETTER per-conversation consistency than Postgres-over-HTTP — the original reason for rejecting D1 (message volume + transactions) is solved by the DO tier, not by an external PG. Usage metering → **Workers Analytics Engine** (append-only) with roll-ups in D1. Trade-off accepted: global search/export fan out across DOs; D1 metadata covers the common queries. |
 | Auth | **Better Auth** (≥1.5) — email+password + Google/GitHub OAuth, session cookies. Workers pitfalls: per-request instance on Hono context; always pass `ctx.waitUntil` |
 | Files | R2 (presigned upload, metadata in PG) |
 | Repo | **npm workspaces** monorepo: `apps/web` · `apps/api` · `packages/shared` (pnpm was blocked by a corepack EPERM on the dev machine; npm→pnpm later is a cheap lockfile swap) |
-| Cost principle | **Free tier · Cloudflare-native · open source first** (user directive): Workers/R2/KV/Hyperdrive within CF free tiers, Neon free tier for PG, Hono/Better Auth/Drizzle all OSS — no paid third-party services without explicit sign-off |
+| Dependency principle | **Cloudflare-only infrastructure + self-written/OSS code** (owner directive, tightened): NO third-party SaaS at all — storage/queues/analytics all Cloudflare (free tiers), libraries only OSS (Hono, Better Auth, Drizzle). The single unavoidable external dependency is the LLM providers themselves — BYOK, user-owned. |
 | API | REST `/v1`, cursor pagination, RFC 7807 errors + `code` + `request_id`, per-user rate limits (KV) |
 | Chat streaming | `POST /v1/conversations/:id/messages` → SSE: `message_start · block_delta · block_stop · message_stop · error` — maps 1:1 onto the client Message/Block model |
 | BYOK | provider keys write-only, AES-GCM envelope encryption at rest (master key = Worker secret), decrypt only in-Worker at proxy time, never logged, never returned |
 | Migration | `POST /v1/import` accepts the client persist-slice (**current shape: v5** — `state/persist.ts` is the contract) to lift localStorage users onto the server |
+| Hyperdrive/Neon | **Dropped** (third-party SaaS). If Postgres is ever genuinely needed, the OSS-compliant path is self-hosted PG behind Hyperdrive — a contained swap at the Drizzle layer. |
 
 ## Data model — lifted from the shipped client
 
@@ -78,12 +79,15 @@ single reload on `vite:preloadError`) · update-available toast
   consumed by BOTH web and api). GitHub Actions CI runs
   typecheck/lint/coverage/build + e2e. Message/Block move to shared at BE2
   (they still carry a web-only IconName dependency to untangle).
-- **BE1 — auth**: Better Auth, sessions, the existing /login /signup
-  /onboarding screens go live; profile (userName/assistantName) on `users`.
-- **BE2 — sync & import**: settings/projects/conversations/messages CRUD,
-  cursor pagination, `POST /v1/import` (persist v5), client store becomes the
-  optimistic cache; date groups/archive/export/share keep working from
-  server data.
+- **BE1 — auth**: Better Auth on **D1** (Drizzle adapter), sessions, the
+  existing /login /signup /onboarding screens go live; profile
+  (userName/assistantName) on `users`. Local dev is fully offline
+  (`wrangler dev` with local D1) — no cloud account or secrets needed until
+  deploy; OAuth credentials arrive later (email/password first).
+- **BE2 — sync & import**: metadata CRUD on D1 (settings/projects/
+  conversation list), message trees in the per-user DO, cursor pagination,
+  `POST /v1/import` (persist v5), client store becomes the optimistic cache;
+  date groups/archive/export/share keep working from server data.
 - **BE3 — provider proxy + real streaming**: BYOK encrypted profiles, SSE
   chat with the rotation engine + real usage events; slots route to real
   models (Claude first, then OpenAI/Gemini/Ollama-remote).
