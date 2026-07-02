@@ -104,6 +104,7 @@
     "toolFiles": "Tài liệu của bạn",
     "toolBash": "Chạy lệnh",
     "replyPlaceholder": "Trả lời Nova…",
+    "needProvider": "Thêm nhà cung cấp trong Cài đặt để bắt đầu trò chuyện.",
     "chatInProject": "CHAT TRONG DỰ ÁN",
     "projectAria": "Dự án: {{name}}",
     "thinkAria": "Mức suy nghĩ: {{label}}",
@@ -180,6 +181,10 @@
     "send": "Gửi tin nhắn",
     "newline": "Xuống dòng trong tin nhắn",
     "close": "Đóng overlay đang mở"
+  },
+  "demo": {
+    "badge": "DEMO",
+    "exit": "Thoát"
   },
   "errors": {
     "network": "Không kết nối được máy chủ",

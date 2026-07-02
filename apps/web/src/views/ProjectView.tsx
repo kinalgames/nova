@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { WorldLink as Link } from '../components/WorldLink'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'

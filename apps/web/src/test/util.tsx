@@ -23,7 +23,17 @@ interface AppOpts {
   path?: string
   /** seed ephemeral UI state that has no URL (sidebarCollapsed, quiet, advanced…) */
   storeInit?: Partial<NovaState>
+  /** 'real' opts out of the demo-tree default (for sync/auth/product-boot tests) */
+  world?: 'demo' | 'real'
 }
+
+/** auth/onboarding screens live in the real world; everything else the unit
+ * suite exercises is the seeded showcase — the demo tree */
+const REAL_WORLD = ['/login', '/signup', '/onboarding']
+const demoPath = (path: string) =>
+  path.startsWith('/demo') || REAL_WORLD.some((p) => path === p || path.startsWith(`${p}?`))
+    ? path
+    : `/demo${path === '/' ? '' : path}`
 
 /**
  * Render the full routed app at a URL. Awaits the router's initial load so the
@@ -35,7 +45,11 @@ export async function renderApp(drive?: (store: Store) => void, opts: AppOpts = 
   let captured: Store | null = null
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: [opts.path ?? '/chat/c1'] }),
+    history: createMemoryHistory({
+      initialEntries: [
+        opts.world === 'real' ? (opts.path ?? '/chat/c1') : demoPath(opts.path ?? '/chat/c1'),
+      ],
+    }),
     context: {
       storeInit: opts.storeInit,
       onStore: (s: Store) => {
@@ -71,6 +85,7 @@ export async function renderWithStore(ui: ReactNode, drive?: (store: Store) => v
   const rootRoute = createRootRoute({
     component: () => (
       <StoreProvider
+        demo
         onStore={(s) => {
           captured = s
         }}

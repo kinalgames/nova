@@ -42,6 +42,18 @@ export function TopBar() {
       </div>
 
       <div className="flex flex-shrink-0 items-center gap-2">
+        {v.isDemo && (
+          <span className="flex items-center gap-2 whitespace-nowrap rounded-xs bg-warn-bg px-2 py-1 font-mono text-eyebrow text-warn-text">
+            {t('demo.badge')}
+            <button
+              type="button"
+              onClick={v.exitDemo}
+              className="cursor-pointer border-none bg-transparent p-0 font-mono text-eyebrow text-warn-text underline underline-offset-2"
+            >
+              {t('demo.exit')}
+            </button>
+          </span>
+        )}
         {v.showMeter && (
           <>
             <HoverCard.Root openDelay={120} closeDelay={80}>

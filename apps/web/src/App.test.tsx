@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { makeUser, renderApp } from './test/util'
 import { screen, within } from '@testing-library/react'
-import { PERSIST_KEY } from './state/store'
+import { DEMO_PERSIST_KEY } from './state/persist'
 
 beforeEach(() => localStorage.clear())
 
@@ -50,7 +50,7 @@ describe('App — root redirect', () => {
 
   it('redirects the root to the persisted last conversation', async () => {
     localStorage.setItem(
-      PERSIST_KEY,
+      DEMO_PERSIST_KEY,
       JSON.stringify({
         activeConv: 'c3',
         conversations: [

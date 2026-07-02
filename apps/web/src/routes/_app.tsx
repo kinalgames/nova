@@ -8,7 +8,8 @@ export const Route = createFileRoute('/_app')({
   component: AppLayout,
 })
 
-function AppLayout() {
+/** the app shell — shared verbatim by the real tree (/_app) and /demo */
+export function AppLayout() {
   const { v } = useStore()
   const { t } = useTranslation()
   return (

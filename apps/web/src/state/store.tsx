@@ -45,7 +45,7 @@ import {
   exportMarkdown,
   groupConvs,
 } from './organize'
-import { loadPersisted, PERSIST_KEY } from './persist'
+import { loadPersisted, PERSIST_KEY, persistKeyFor } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { API_BASE, streamChat } from '../services/llm'
 import { fetchMe, getToken, signIn, signOut, signUp } from '../services/auth'
@@ -97,7 +97,9 @@ export interface NavState {
 
 type Navigate = ReturnType<typeof useNavigate>
 
-function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
+function pathToView(rawPathname: string): { view: ViewName; authView: AuthView } {
+  // the demo tree mirrors the app routes under /demo — same views
+  const pathname = rawPathname.replace(/^\/demo(?=\/|$)/, '') || '/'
   if (pathname.startsWith('/chat/')) return { view: 'conversation', authView: null }
   if (pathname.startsWith('/projects/') && pathname.endsWith('/config'))
     return { view: 'projectcfg', authView: null }
@@ -174,10 +176,11 @@ function sanitizeSlots(slots: Record<SlotId, ModelRef> | undefined): Record<Slot
   return { smart: fix('smart'), fast: fix('fast') }
 }
 
-function initialState(): NovaState {
-  const p = loadPersisted()
+function initialState(demo: boolean): NovaState {
+  const p = loadPersisted(persistKeyFor(demo))
   // the language detected at first boot decides which seed bundle persists
   const seed = getSeed()
+  const noPresets = { code: false, design: false, research: false, writing: false, data: false }
   return {
     advanced: p.advanced ?? true,
     palette: false,
@@ -190,27 +193,43 @@ function initialState(): NovaState {
     respState: 'done',
     projects:
       p.projects ??
-      seed.projects.map((d) => ({
-        ...d,
-        presets:
-          d.id === 'aurora'
-            ? { code: false, design: true, research: true, writing: true, data: false }
-            : { code: false, design: false, research: false, writing: false, data: false },
-        files: d.id === 'aurora' ? seed.projectFiles : [],
-      })),
+      (demo
+        ? seed.projects.map((d) => ({
+            ...d,
+            presets:
+              d.id === 'aurora'
+                ? { code: false, design: true, research: true, writing: true, data: false }
+                : noPresets,
+            files: d.id === 'aurora' ? seed.projectFiles : [],
+          }))
+        : [
+            {
+              id: 'chung',
+              name: i18n.t('projects.defaultName'),
+              description: '',
+              accent: 'var(--faint)',
+              isDefault: true,
+              presets: noPresets,
+              files: [],
+            },
+          ]),
     // seeds get staggered activity times so the date groups have content:
     // c1 today · c2 yesterday · c3 this week · c4 older
     conversations:
       p.conversations ??
-      seed.convs.map((c, i) => ({
-        ...c,
-        updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000,
-      })),
+      (demo
+        ? seed.convs.map((c, i) => ({
+            ...c,
+            updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000,
+          }))
+        : []),
     deleting: [],
-    activeConv: p.activeConv ?? 'c1',
+    activeConv: p.activeConv ?? (demo ? 'c1' : ''),
     threads:
       p.threads ??
-      Object.fromEntries(Object.entries(seed.threads).map(([id, ms]) => [id, fromLinear(ms)])),
+      (demo
+        ? Object.fromEntries(Object.entries(seed.threads).map(([id, ms]) => [id, fromLinear(ms)]))
+        : {}),
     editingMsg: null,
     copiedMsg: null,
     toast: null,
@@ -233,7 +252,11 @@ function initialState(): NovaState {
     barOn: p.barOn ?? true,
     copied: false,
     tokenPct: '42%',
-    profiles: p.profiles ?? structuredClone(seed.profiles),
+    profiles:
+      p.profiles ??
+      (demo
+        ? structuredClone(seed.profiles)
+        : { claude: [], gemini: [], openai: [], ollama: [] }),
     autoRotate: p.autoRotate ?? true,
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
@@ -245,13 +268,15 @@ function initialState(): NovaState {
       writing: true,
       data: false,
     },
-    staged: {
-      // the demo conversation's tray showcases the staged-attachment UI
-      c1: [
-        { id: 'demo-img', kind: 'image', name: 'moodboard.png', size: '820 KB', demo: true },
-        { id: 'demo-pdf', kind: 'pdf', name: 'Brief-Aurora.pdf', size: '1.2 MB', demo: true },
-      ],
-    },
+    staged: demo
+      ? {
+          // the demo conversation's tray showcases the staged-attachment UI
+          c1: [
+            { id: 'demo-img', kind: 'image', name: 'moodboard.png', size: '820 KB', demo: true },
+            { id: 'demo-pdf', kind: 'pdf', name: 'Brief-Aurora.pdf', size: '1.2 MB', demo: true },
+          ],
+        }
+      : {},
     accent: p.accent ?? ACCENT_DEFAULT,
     showShortcutsBar: true,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -281,12 +306,15 @@ export function StoreProvider({
   children,
   initial,
   onStore,
+  demo = false,
 }: {
   children: ReactNode
   initial?: Partial<NovaState>
   onStore?: (store: Store) => void
+  /** demo world (/demo routes): seeded showcase data, its own namespace */
+  demo?: boolean
 }) {
-  const [s, setS] = useState<NovaState>(() => ({ ...initialState(), ...initial }))
+  const [s, setS] = useState<NovaState>(() => ({ ...initialState(demo), ...initial }))
   const sRef = useRef(s)
   sRef.current = s
   const [prefersDark, setPrefersDark] = useState(
@@ -311,13 +339,14 @@ export function StoreProvider({
     // sRef (not s) so the dependency list stays the explicit persisted fields
     const p = persistSliceOf(sRef.current)
     try {
-      localStorage.setItem(PERSIST_KEY, JSON.stringify(p))
+      localStorage.setItem(persistKeyFor(demo), JSON.stringify(p))
     } catch {
       /* ignore */
     }
     // BE2: mirror the change to the per-user op-log (debounced diff push).
     // Only after the boot pull primed `syncedRecords` — never race hydration.
-    if (syncReady() && syncedRecords !== null) {
+    // The demo world never syncs.
+    if (!demo && syncReady() && syncedRecords !== null) {
       clearTimeout(syncPushTimer)
       const snapshot = p
       syncPushTimer = setTimeout(() => {
@@ -330,10 +359,12 @@ export function StoreProvider({
       }, 800)
     }
   }, [
+    demo,
     s.theme,
     s.advanced,
     s.accent,
     s.userName,
+    s.userEmail,
     s.assistantName,
     s.focusDur,
     s.barOn,
@@ -363,7 +394,7 @@ export function StoreProvider({
   // wins for records it has; a fresh server gets the local data pushed up
   // (that IS the localStorage import path).
   const hydrateSync = useCallback(() => {
-    if (!syncReady()) return () => {}
+    if (demo || !syncReady()) return () => {}
     let stop = false
     void pullOps(0).then((res) => {
       if (stop || !res) return
@@ -481,6 +512,13 @@ export function StoreProvider({
 
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (st) => st.location.pathname })
+  /** world-aware navigate — the demo tree mirrors the app routes under /demo */
+  const goTo = useCallback(
+    (to: string, params?: Record<string, string>) => {
+      void navigate({ to: demo ? `/demo${to}` : to, params } as Parameters<typeof navigate>[0])
+    },
+    [navigate, demo],
+  )
   const settingsTabSearch = useRouterState({
     select: (st) => (st.location.search as { settings?: SettingsTab }).settings,
   })
@@ -511,26 +549,26 @@ export function StoreProvider({
       set({ palette: false, drawerOpen: false })
       switch (view) {
         case 'home':
-          navigate({ to: '/new' })
+          goTo('/new')
           break
         case 'conversation':
-          navigate({ to: '/chat/$convId', params: { convId: navRef.current.activeConv } })
+          goTo('/chat/$convId', { convId: navRef.current.activeConv })
           break
         case 'projects':
-          navigate({ to: '/projects' })
+          goTo('/projects')
           break
         case 'project': {
           const pid =
             sRef.current.conversations.find((c) => c.id === navRef.current.activeConv)
               ?.projectId ?? 'chung'
-          navigate({ to: '/projects/$projectId', params: { projectId: pid } })
+          goTo('/projects/$projectId', { projectId: pid })
           break
         }
         case 'projectcfg': {
           const pid =
             sRef.current.conversations.find((c) => c.id === navRef.current.activeConv)
               ?.projectId ?? 'chung'
-          navigate({ to: '/projects/$projectId/config', params: { projectId: pid } })
+          goTo('/projects/$projectId/config', { projectId: pid })
           break
         }
       }
@@ -680,6 +718,15 @@ export function StoreProvider({
         return
       }
 
+      // REAL product: no fake replies — nudge the user to provider setup
+      if (!demo) {
+        clearTimeout(toastTimer)
+        set({ toast: i18n.t('composer.needProvider'), typing: false })
+        toastTimer = setTimeout(() => set({ toast: null }), 2400)
+        void navigate({ to: '.', search: (prevS) => ({ ...prevS, settings: 'providers' }) })
+        return
+      }
+
       const reply = composeReply(prompt, {
         slot: prev.activeSlot,
         thinking: prev.thinkingLevel,
@@ -746,7 +793,7 @@ export function StoreProvider({
         }, step)
       }, thinkingDelay(prev.thinkingLevel))
     },
-    [set],
+    [set, demo, navigate],
   )
 
   const send = useCallback(() => {
@@ -806,7 +853,7 @@ export function StoreProvider({
       },
     }))
     streamReply(convId, userId, text)
-    navigate({ to: '/chat/$convId', params: { convId } })
+    goTo('/chat/$convId', { convId })
     // sending always snaps to the bottom (after the append renders)
     setTimeout(() => {
       const el = scrollRef.current
@@ -964,11 +1011,12 @@ export function StoreProvider({
         })
         // if the deleted conversation is the one in the URL, leave it
         if (navRef.current.activeConv === id) {
-          navigate(next ? { to: '/chat/$convId', params: { convId: next } } : { to: '/' })
+          if (next) goTo('/chat/$convId', { convId: next })
+          else goTo('/new')
         }
       }, 5000)
     },
-    [set, navigate],
+    [set, goTo],
   )
 
   const undoDelete = useCallback(
@@ -999,6 +1047,8 @@ export function StoreProvider({
     () =>
       deriveValues(s, set, {
         go,
+        goTo,
+        demo,
         send,
         stop,
         copyCode,
@@ -1015,7 +1065,7 @@ export function StoreProvider({
         copyMessage,
         setFeedback,
       }),
-    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback],
+    [s, set, go, goTo, demo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback],
   )
 
   const store: Store = useMemo(
@@ -1039,6 +1089,9 @@ function deriveValues(
   set: (u: Updater) => void,
   extra: {
     go: (v: ViewName) => void
+    /** world-aware path navigate (prefixes /demo inside the demo tree) */
+    goTo: (to: string, params?: Record<string, string>) => void
+    demo: boolean
     send: () => void
     stop: () => void
     copyCode: () => void
@@ -1058,6 +1111,8 @@ function deriveValues(
 ) {
   const {
     go,
+    goTo,
+    demo,
     send,
     stop,
     copyCode,
@@ -1103,7 +1158,7 @@ function deriveValues(
         },
       ],
     }))
-    navigate({ to: '/projects/$projectId', params: { projectId: id } })
+    goTo('/projects/$projectId', { projectId: id })
   }
   const editProject = (id: string, patch: { name?: string; description?: string; accent?: string }) =>
     set((x) => ({ projects: x.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
@@ -1132,7 +1187,7 @@ function deriveValues(
         c.projectId === id ? { ...c, projectId: 'chung' } : c,
       ),
     }))
-    navigate({ to: '/projects' })
+    goTo('/projects')
   }
   const moveConv = (convId: string, projectId: string) =>
     set((x) => ({
@@ -1157,7 +1212,7 @@ function deriveValues(
       palette: false,
       drawerOpen: false,
     }))
-    navigate({ to: '/chat/$convId', params: { convId: id } })
+    goTo('/chat/$convId', { convId: id })
   }
 
   const sortConvs = (list: NovaState['conversations']) =>
@@ -1206,7 +1261,7 @@ function deriveValues(
       onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),
       open: () => {
         set({ activeConv: c.id, palette: false, drawerOpen: false })
-        navigate({ to: '/chat/$convId', params: { convId: c.id } })
+        goTo('/chat/$convId', { convId: c.id })
       },
       rename: () => set({ renamingConv: c.id }),
       pin: () =>
@@ -1536,6 +1591,8 @@ function deriveValues(
     archivedOpen: s.archivedOpen,
     toggleArchived: () => set((x) => ({ archivedOpen: !x.archivedOpen })),
     toast: s.toast,
+    isDemo: demo,
+    exitDemo: () => navigate({ to: '/' }),
     pickProjects,
     setBg: nav.settingsOpen ? 'var(--accent-soft)' : 'transparent',
     setFg: nav.settingsOpen ? accentText : 'var(--text-2)',
@@ -1605,10 +1662,10 @@ function deriveValues(
     assistantName: s.assistantName,
     setAssistantName: (name: string) => set({ assistantName: name }),
     exportAllData: () =>
-      downloadFile('nova-data.json', localStorage.getItem(PERSIST_KEY) ?? '{}', 'application/json'),
+      downloadFile('nova-data.json', localStorage.getItem(persistKeyFor(demo)) ?? '{}', 'application/json'),
     /* v8 ignore next 4 — hard navigation, not reachable from the unit env */
     clearAllData: () => {
-      localStorage.removeItem(PERSIST_KEY)
+      localStorage.removeItem(persistKeyFor(demo))
       window.location.reload()
     },
     cheatsheet: s.cheatsheet,
@@ -1900,7 +1957,7 @@ function deriveValues(
       projectName: s.projects.find((p) => p.id === c.projectId)?.name ?? t('projects.defaultName'),
       open: () => {
         set({ activeConv: c.id, palette: false, q: '' })
-        navigate({ to: '/chat/$convId', params: { convId: c.id } })
+        goTo('/chat/$convId', { convId: c.id })
       },
     })),
     paletteProjects: s.projects.map((p) => ({
@@ -1909,7 +1966,7 @@ function deriveValues(
       dot: p.accent,
       open: () => {
         set({ palette: false, q: '' })
-        navigate({ to: '/projects/$projectId', params: { projectId: p.id } })
+        goTo('/projects/$projectId', { projectId: p.id })
       },
     })),
     // rename dialog (paper replacement for window.prompt)

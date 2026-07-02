@@ -8,6 +8,10 @@ import type { NovaState, Theme, ThinkLevel } from './types'
 export const PERSIST_PREFIX = 'nova.flow.settings'
 export const PERSIST_VERSION = 5
 export const PERSIST_KEY = `${PERSIST_PREFIX}.v${PERSIST_VERSION}`
+/** the demo world (/demo routes) persists in its own namespace */
+export const DEMO_PERSIST_KEY = `nova.flow.demo.v${PERSIST_VERSION}`
+
+export const persistKeyFor = (demo: boolean): string => (demo ? DEMO_PERSIST_KEY : PERSIST_KEY)
 /** oldest version a migration chain can start from */
 const OLDEST_MIGRATABLE = 4
 
@@ -81,14 +85,32 @@ const MIGRATIONS: Record<number, (old: never) => unknown> = {
 }
 
 /**
- * Load persisted settings. Prefers the current version's key; otherwise walks
- * older keys (newest first), upgrades the data through every migration step,
- * saves it under the current key and removes the old one.
+ * Load persisted settings for a namespace key. Prefers the current version's
+ * key; for the real namespace it also walks older keys (newest first),
+ * upgrades the data through every migration step, saves it under the current
+ * key and removes the old one.
  */
-export function loadPersisted(): Persisted {
+
+/** the conversation the app should reopen, straight from a persisted slice */
+export function lastOpenConvId(key: string): string | null {
   try {
-    const raw = localStorage.getItem(PERSIST_KEY)
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const p = JSON.parse(raw) as { conversations?: { id: string }[]; activeConv?: string }
+    const known = p.conversations
+    if (p.activeConv && (!known || known.some((c) => c.id === p.activeConv))) return p.activeConv
+    if (known && known[0]) return known[0].id
+    return null
+  } catch {
+    return null
+  }
+}
+export function loadPersisted(key: string = PERSIST_KEY): Persisted {
+  try {
+    const raw = localStorage.getItem(key)
     if (raw) return JSON.parse(raw) as Persisted
+    // legacy versioned keys only ever existed for the real namespace
+    if (key !== PERSIST_KEY) return {}
     for (let v = PERSIST_VERSION - 1; v >= OLDEST_MIGRATABLE; v--) {
       const oldKey = `${PERSIST_PREFIX}.v${v}`
       const oldRaw = localStorage.getItem(oldKey)

@@ -433,7 +433,7 @@ describe('store — streaming chat engine', () => {
     expect(conv.id).not.toBe('c1')
     expect(conv.title).toBe(`${LINE.slice(0, 48)}…`)
     expect(conv.projectId).toBe('aurora')
-    expect(router.state.location.pathname).toBe(`/chat/${conv.id}`)
+    expect(router.state.location.pathname).toBe(`/demo/chat/${conv.id}`)
     // the full message landed in the new thread with no inherited attachments;
     // the demo showcase and its tray are untouched
     const first = result.current.v.sent.at(0)

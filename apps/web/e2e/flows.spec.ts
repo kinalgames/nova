@@ -4,34 +4,34 @@ import { test, expect } from '@playwright/test'
 // project lifecycle, data-driven message replay, palette search.
 // Each test gets a fresh browser context (clean localStorage).
 
-test('root redirects to the seeded conversation; refresh keeps the URL', async ({ page }) => {
-  await page.goto('/')
-  await expect(page).toHaveURL(/\/chat\/c1$/)
+test('the demo root redirects to the seeded conversation; refresh keeps the URL', async ({ page }) => {
+  await page.goto('/demo')
+  await expect(page).toHaveURL(/\/demo\/chat\/c1$/)
   await page.reload()
-  await expect(page).toHaveURL(/\/chat\/c1$/)
+  await expect(page).toHaveURL(/\/demo\/chat\/c1$/)
 })
 
 test('deep link renders the right thread; back/forward work', async ({ page }) => {
-  await page.goto('/chat/c2')
+  await page.goto('/demo/chat/c2')
   await expect(
     page.getByText('Viết giúp mình đoạn mở đầu cho trang đích Aurora.'),
   ).toBeVisible()
   await page.locator('aside').getByRole('link', { name: 'Lịch nội dung 6 tuần' }).click()
-  await expect(page).toHaveURL(/\/chat\/c3$/)
+  await expect(page).toHaveURL(/\/demo\/chat\/c3$/)
   await page.goBack()
-  await expect(page).toHaveURL(/\/chat\/c2$/)
+  await expect(page).toHaveURL(/\/demo\/chat\/c2$/)
   await page.goForward()
-  await expect(page).toHaveURL(/\/chat\/c3$/)
+  await expect(page).toHaveURL(/\/demo\/chat\/c3$/)
 })
 
 test('a dead conversation link bounces to the greeting', async ({ page }) => {
-  await page.goto('/chat/does-not-exist')
-  await expect(page).toHaveURL(/\/new$/)
+  await page.goto('/demo/chat/does-not-exist')
+  await expect(page).toHaveURL(/\/demo\/new$/)
   await expect(page.getByText(/Mình là Nova/)).toBeVisible()
 })
 
 test('project lifecycle: create → view → config → delete', async ({ page }) => {
-  await page.goto('/projects')
+  await page.goto('/demo/projects')
   await page.getByRole('button', { name: 'Dự án mới' }).click()
   await page.getByLabel('TÊN DỰ ÁN').fill('Phong Thần')
   await page.getByLabel('MÔ TẢ').fill('Game ra mắt Q4')
@@ -50,7 +50,7 @@ test('project lifecycle: create → view → config → delete', async ({ page }
 })
 
 test('the demo conversation replays rich blocks and all switcher states', async ({ page }) => {
-  await page.goto('/chat/c1')
+  await page.goto('/demo/chat/c1')
   // done state: table + trace summary from data
   await expect(page.getByText('Kích hoạt 72h')).toBeVisible()
   await expect(page.getByText('Nova đã tra cứu web và cập nhật tài liệu của bạn')).toBeVisible()
@@ -71,7 +71,7 @@ test('the demo conversation replays rich blocks and all switcher states', async 
 test('palette search finds a conversation across projects, diacritic-insensitive', async ({
   page,
 }) => {
-  await page.goto('/chat/c1')
+  await page.goto('/demo/chat/c1')
   // wait until the app is interactive before firing the global shortcut
   await expect(page.getByRole('textbox', { name: 'Nhắn cho Nova' })).toBeVisible()
   await page.keyboard.press('ControlOrMeta+k')
@@ -81,7 +81,7 @@ test('palette search finds a conversation across projects, diacritic-insensitive
 })
 
 test('sending a message appends it and streams a reply', async ({ page }) => {
-  await page.goto('/chat/c3')
+  await page.goto('/demo/chat/c3')
   await page.getByRole('textbox', { name: 'Nhắn cho Nova' }).fill('Xin chào Nova')
   await page.keyboard.press('Enter')
   await expect(page.getByText('Xin chào Nova')).toBeVisible()
@@ -90,7 +90,7 @@ test('sending a message appends it and streams a reply', async ({ page }) => {
 })
 
 test('profile rename flows into the sidebar; the cheatsheet opens from the bar', async ({ page }) => {
-  await page.goto('/chat/c1?settings=general')
+  await page.goto('/demo/chat/c1?settings=general')
   await page.getByLabel('TÊN CỦA BẠN').fill('Lan Phương')
   await page.keyboard.press('Escape')
   await expect(page.getByText('Lan Phương').first()).toBeVisible()
@@ -103,7 +103,7 @@ test('a code fence renders highlighted WITHOUT the wasm engine', async ({ page }
   page.on('request', (r) => {
     if (/onig|\.wasm/i.test(r.url())) wasmReqs.push(r.url())
   })
-  await page.goto('/chat/c3')
+  await page.goto('/demo/chat/c3')
   await page
     .getByRole('textbox', { name: 'Nhắn cho Nova' })
     .fill('Xem code:\n\n```ts\nconst a = 1\n```')
@@ -115,7 +115,7 @@ test('a code fence renders highlighted WITHOUT the wasm engine', async ({ page }
 test.describe('english first boot', () => {
   test.use({ locale: 'en-US' })
   test('an english browser seeds english demo content', async ({ page }) => {
-    await page.goto('/chat/c1')
+    await page.goto('/demo/chat/c1')
     await expect(page.getByText('Competitor benchmark comparison').first()).toBeVisible()
     await expect(page.getByText('General').first()).toBeVisible()
   })
@@ -123,7 +123,7 @@ test.describe('english first boot', () => {
 
 test('project instructions visibly steer a project reply', async ({ page }) => {
   // c2 belongs to Aurora, whose description acts as project instructions
-  await page.goto('/chat/c2')
+  await page.goto('/demo/chat/c2')
   await page.getByRole('textbox', { name: 'Nhắn cho Nova' }).fill('Viết đoạn mở đầu thật ngắn')
   await page.keyboard.press('Enter')
   await expect(page.getByText(/Bám theo chỉ dẫn của dự án Aurora/)).toBeVisible({

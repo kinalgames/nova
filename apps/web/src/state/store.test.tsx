@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
-import { PERSIST_KEY } from './store'
+import { DEMO_PERSIST_KEY } from './persist'
 import { msgText, renderStore } from '../test/util'
 
 function setup() {
@@ -91,12 +91,12 @@ describe('store — theme persistence', () => {
     act(() => result.current.v.setDark())
     expect(result.current.s.theme).toBe('dark')
     expect(result.current.v.dark).toBe(true)
-    const saved = JSON.parse(localStorage.getItem(PERSIST_KEY) || '{}')
+    const saved = JSON.parse(localStorage.getItem(DEMO_PERSIST_KEY) || '{}')
     expect(saved.theme).toBe('dark')
   })
 
   it('restores persisted settings on a fresh mount', async () => {
-    localStorage.setItem(PERSIST_KEY, JSON.stringify({ activeSlot: 'fast', advanced: true }))
+    localStorage.setItem(DEMO_PERSIST_KEY, JSON.stringify({ activeSlot: 'fast', advanced: true }))
     const { result } = await setup()
     expect(result.current.s.activeSlot).toBe('fast')
     expect(result.current.s.advanced).toBe(true)
@@ -104,7 +104,7 @@ describe('store — theme persistence', () => {
 
   it('heals persisted slots whose model was retired from the catalog', async () => {
     localStorage.setItem(
-      PERSIST_KEY,
+      DEMO_PERSIST_KEY,
       JSON.stringify({
         slots: {
           // claude-opus-4 was retired upstream — must fall back to the default

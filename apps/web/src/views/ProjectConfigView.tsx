@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { WorldLink as Link } from '../components/WorldLink'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'

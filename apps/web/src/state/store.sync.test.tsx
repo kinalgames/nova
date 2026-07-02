@@ -3,6 +3,7 @@ import { act, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
 import { pullOps, pushOps } from '../services/sync'
 import { __resetSync } from './store'
+import { PERSIST_KEY } from './persist'
 import type { SyncOp } from '@nova/shared'
 
 vi.mock('../services/sync', () => ({
@@ -22,6 +23,16 @@ vi.mock('../services/auth', () => ({
 beforeEach(() => {
   localStorage.clear()
   localStorage.setItem('nova.auth.token', 'tok') // syncReady() = true
+  // sync belongs to the REAL world — give it prior local data to import/merge
+  localStorage.setItem(
+    PERSIST_KEY,
+    JSON.stringify({
+      userName: 'Minh Trần',
+      activeConv: 'c1',
+      conversations: [{ id: 'c1', title: 'Cục bộ', projectId: 'chung', updatedAt: 1 }],
+      threads: { c1: { byId: {}, children: {}, selected: {} } },
+    }),
+  )
   __resetSync()
   vi.mocked(pullOps).mockClear()
   vi.mocked(pushOps).mockClear()
@@ -37,7 +48,7 @@ describe('store — op-log sync wiring (BE2)', () => {
         { kind: 'put', table: 'conversation', id: 'c1', value: { id: 'c1', title: 'Đồng bộ về', projectId: 'chung' }, at: 2 },
       ],
     })
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(result.current.s.theme).toBe('dark'))
     expect(result.current.s.userName).toBe('Từ Server')
     expect(result.current.s.conversations.find((c) => c.id === 'c1')?.title).toBe('Đồng bộ về')
@@ -56,7 +67,7 @@ describe('store — op-log sync wiring (BE2)', () => {
         },
       ],
     })
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(result.current.s.threads.c9).toBeDefined())
     // no settings record → local defaults untouched, seeded data intact
     expect(result.current.s.theme).toBe('light')
@@ -65,7 +76,7 @@ describe('store — op-log sync wiring (BE2)', () => {
   })
 
   it('an empty server receives the full local import push', async () => {
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(pushOps).toHaveBeenCalled())
     const ops = vi.mocked(pushOps).mock.calls[0][0]
     const keys = ops.map((o) => `${o.table}:${o.id}`)
@@ -88,7 +99,7 @@ describe('store — op-log sync wiring (BE2)', () => {
   })
 
   it('later changes push only the debounced diff', { timeout: 15_000 }, async () => {
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(pushOps).toHaveBeenCalled()) // initial import
     vi.mocked(pushOps).mockClear()
 

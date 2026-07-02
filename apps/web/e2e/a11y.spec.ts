@@ -7,7 +7,7 @@ import AxeBuilder from '@axe-core/playwright'
 const CONTRAST_BASELINE = 6
 
 test('app shell: no structural a11y violations; contrast within baseline', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/demo')
   await page.waitForSelector('#root > div')
 
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()

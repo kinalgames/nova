@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
+import { createRootRouteWithContext, Outlet, useRouterState } from '@tanstack/react-router'
 import type { RouterContext } from '../router'
 import type { SettingsTab } from '../state/types'
 import { StoreProvider, useStore } from '../state/store'
@@ -31,8 +31,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootLayout() {
   const { storeInit, onStore } = Route.useRouteContext()
+  const pathname = useRouterState({ select: (st) => st.location.pathname })
+  const demo = pathname === '/demo' || pathname.startsWith('/demo/')
+  // key remounts the store when crossing the real/demo boundary — the two
+  // worlds never share in-memory state (they already have separate storage)
   return (
-    <StoreProvider initial={storeInit} onStore={onStore}>
+    <StoreProvider key={demo ? 'demo' : 'real'} demo={demo} initial={storeInit} onStore={onStore}>
       <Shell />
     </StoreProvider>
   )
