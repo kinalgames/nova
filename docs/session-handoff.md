@@ -6,9 +6,9 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## Trạng thái repo
 
 - **CI XANH** (gates + e2e). Push thẳng main, mỗi commit kèm "Verified:".
-- Web: 342 unit web + 56 api + 9 shared = **407 unit** (47 file, projects
+- Web: 347 unit web + 64 api + 9 shared = **420 unit** (50 file, projects
   song song `npm run test`) + 18 e2e · coverage floors web **94/90/94/95**
-  (hiện 95.52/90.21/94.86/97.09 — branches sát floor, ĐỪNG hạ).
+  (branches sát floor, ĐỪNG hạ). CI xanh: 48723de (T6) + 7d90981 (T8).
 - Dev local: web `npm run dev` (:5173); api `cd apps/api && npx wrangler
   dev --port 8787` (session bash `dev`; **restart wrangler sau khi đổi
   `.dev.vars`**). D1 local đã migrate tới `0001` (provider_credential).
@@ -118,8 +118,8 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## Số liệu gate hiện hành
 
 - typecheck 0 · lint 0 (5 warnings pre-existing trong store.tsx) ·
-  unit 407/407 (`npm run test`, ~25s) · e2e 18/18 (~8s) · coverage web
-  95.52/90.21/94.86/97.09 · build sạch.
+  unit 420/420 (`npm run test`, ~25s) · e2e 18/18 (~9s) · coverage web
+  trên floors · build sạch.
 - Lệnh chuẩn trước commit:
   `npm run typecheck && npm run lint && npm run test && npm run build && git commit …`
   (e2e + coverage thêm khi chạm UI/logic tương ứng).
