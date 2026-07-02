@@ -66,9 +66,13 @@ npm run test:coverage  # coverage, gated at 94/87/94/95 (stmts/branches/funcs/li
 npm run test:e2e       # Playwright + @axe-core (structural a11y hard-gated to 0)
 ```
 
-The unit suite (~176 tests) covers the store logic, real Radix interaction, and
-full-view render, and runs in a few seconds. The e2e suite hard-gates zero
-structural WCAG 2 A/AA violations and tracks contrast against a ratchet baseline.
+The unit suite (~182 tests) covers the store logic, real Radix interaction, and
+full-view render, and runs in a few seconds. The e2e suite guards the core
+flows in a real browser — root redirect + refresh stability, deep links +
+back/forward, dead-link bounce, the full project lifecycle, message-block
+replay across all four states, palette search, and send/stream — and
+hard-gates zero structural WCAG 2 A/AA violations with contrast on a ratchet
+baseline.
 
 ## What's implemented
 
