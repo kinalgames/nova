@@ -235,6 +235,15 @@ export function Sidebar() {
                 ))}
               </Fragment>
             ))}
+            {v.sidebarEmpty && (
+              <Link
+                to="/new"
+                className="mt-1 flex flex-col gap-1 rounded-sm border border-dashed border-border px-3 py-3 no-underline"
+              >
+                <span className="text-ui text-muted">{t('sidebar.emptyHint')}</span>
+                <span className="text-ui text-accent-text">{t('sidebar.emptyCta')}</span>
+              </Link>
+            )}
             {v.archivedConvs.length > 0 && (
               <>
                 <button

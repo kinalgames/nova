@@ -21,6 +21,7 @@ export interface Persisted {
   accent?: string
   userName?: string
   userEmail?: string
+  accountId?: string
   assistantName?: string
   focusDur?: '15' | '25' | '50'
   barOn?: boolean

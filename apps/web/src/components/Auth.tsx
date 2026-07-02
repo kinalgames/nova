@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 
@@ -167,20 +168,26 @@ export function Auth() {
           <>
             <div className="text-center font-display text-h1 leading-tight">{v.authTitle}</div>
             <div className="mb-6 mt-2 text-center text-body text-muted">{v.authSub}</div>
+            {/* social sign-in ships with BE3 (Better Auth OAuth) — until then the
+                buttons are honestly disabled, never a fake login */}
             <div className="mb-4 flex flex-col gap-2">
               <button
                 type="button"
-                onClick={v.doLogin}
-                className="flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body hover:bg-white"
+                disabled
+                title={t('authForm.soon')}
+                className="flex cursor-default items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body opacity-60"
               >
                 <GoogleMark />{t('authForm.google')}
+                <span className="rounded-xs bg-fill px-1.5 py-0.5 font-mono text-micro text-faint">{t('authForm.soon')}</span>
               </button>
               <button
                 type="button"
-                onClick={v.doLogin}
-                className="flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body hover:bg-white"
+                disabled
+                title={t('authForm.soon')}
+                className="flex cursor-default items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body opacity-60"
               >
                 <GithubMark />{t('authForm.github')}
+                <span className="rounded-xs bg-fill px-1.5 py-0.5 font-mono text-micro text-faint">{t('authForm.soon')}</span>
               </button>
             </div>
             <div className="mb-4 flex items-center gap-3 text-meta text-faint">
@@ -198,6 +205,14 @@ export function Auth() {
               >
                 {v.authToggleLink}
               </button>
+            </div>
+            <div className="mt-3 text-center">
+              <Link
+                to="/demo"
+                className="text-ui text-faint underline underline-offset-2 hover:text-muted"
+              >
+                {t('authForm.tryDemo')}
+              </Link>
             </div>
           </>
         )}

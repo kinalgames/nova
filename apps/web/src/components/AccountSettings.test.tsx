@@ -61,6 +61,7 @@ describe('Cheatsheet — shortcuts dialog', () => {
 describe('Onboarding — choices persist for real', () => {
   it('style chips, slot card and assistant name land in the store', async () => {
     const user = makeUser()
+    localStorage.setItem('nova.auth.token', 'tok') // onboarding follows a fresh signup
     const { store } = await renderApp(undefined, { path: '/onboarding' })
 
     const nameBox = await screen.findByLabelText('TÊN TRỢ LÝ')

@@ -2,13 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 
-// unit tests never hit the real auth server — success by default
+// unit tests never hit the real auth server — success by default; like the
+// real service, a successful sign-in/up stores the bearer token
 vi.mock('../services/auth', () => ({
-  signIn: vi.fn(async () => null),
-  signUp: vi.fn(async () => null),
+  signIn: vi.fn(async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    return null
+  }),
+  signUp: vi.fn(async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    return null
+  }),
   fetchMe: vi.fn(async () => null),
   signOut: vi.fn(async () => {}),
-  getToken: () => null,
+  getToken: () => localStorage.getItem('nova.auth.token'),
 }))
 
 beforeEach(() => localStorage.clear())
@@ -52,6 +59,7 @@ describe('<Auth>', () => {
   })
 
   it('onboarding asks for assistant name + default model', async () => {
+    localStorage.setItem('nova.auth.token', 'tok') // onboarding follows a fresh signup
     await renderApp(undefined, { path: '/onboarding' })
     expect(await screen.findByText('Chào mừng đến Nova')).toBeInTheDocument()
     expect(screen.getByText('TÊN TRỢ LÝ')).toBeInTheDocument()

@@ -138,6 +138,8 @@
     "projects": "PROJECTS",
     "recent": "RECENT · {{project}}",
     "archived": "ARCHIVED",
+    "emptyHint": "No conversations yet.",
+    "emptyCta": "Start your first chat →",
     "group": {
       "pinned": "PINNED",
       "today": "TODAY",
@@ -307,6 +309,8 @@
     "google": "Continue with Google",
     "github": "Continue with GitHub",
     "or": "or",
+    "tryDemo": "Explore the demo →",
+    "soon": "Soon",
     "welcome": "Welcome to Nova",
     "welcomeSub": "A few quick choices so Nova fits you.",
     "assistantName": "ASSISTANT NAME",

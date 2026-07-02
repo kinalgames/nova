@@ -137,6 +137,8 @@
     "projects": "DỰ ÁN",
     "recent": "GẦN ĐÂY · {{project}}",
     "archived": "LƯU TRỮ",
+    "emptyHint": "Chưa có cuộc trò chuyện nào.",
+    "emptyCta": "Bắt đầu trò chuyện đầu tiên →",
     "group": {
       "pinned": "GHIM",
       "today": "HÔM NAY",
@@ -306,6 +308,8 @@
     "google": "Tiếp tục với Google",
     "github": "Tiếp tục với GitHub",
     "or": "hoặc",
+    "tryDemo": "Khám phá bản demo →",
+    "soon": "Sắp có",
     "welcome": "Chào mừng đến Nova",
     "welcomeSub": "Vài lựa chọn nhanh để Nova hợp với bạn.",
     "assistantName": "TÊN TRỢ LÝ",

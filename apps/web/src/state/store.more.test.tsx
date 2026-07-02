@@ -95,6 +95,7 @@ describe('store — account & settings (Track D)', () => {
   })
 
   it('completeOnboarding persists assistant name, styles and the default slot', async () => {
+    localStorage.setItem('nova.auth.token', 'tok') // onboarding follows a fresh signup
     const { result } = await renderStore({ path: '/onboarding' })
     await act(async () =>
       result.current.v.completeOnboarding({
@@ -281,12 +282,16 @@ describe('store — command palette navigation', () => {
 })
 
 describe('store — auth', () => {
-  it('logout shows the login form, login dismisses it', async () => {
-    const { result } = await setup()
+  it('logout shows the login form, a stored session leaves it', async () => {
+    const { result, router } = await setup()
     await act(async () => result.current.v.logout())
     expect(result.current.v.showAuth).toBe(true)
     expect(result.current.v.isLoginForm).toBe(true)
-    await act(async () => result.current.v.doLogin())
+    // signing back in stores a token — the app opens again
+    localStorage.setItem('nova.auth.token', 'tok')
+    await act(async () => {
+      await router.navigate({ to: '/new' })
+    })
     expect(result.current.v.showAuth).toBe(false)
   })
 })

@@ -219,6 +219,8 @@ export interface NovaState {
   userName: string
   /** signed-in account email — absent until a real session exists */
   userEmail?: string
+  /** id of the signed-in account — guards against mixing two users' local data */
+  accountId?: string
   /** what the assistant is called — drives the NOVA label */
   assistantName: string
   presetDefault: Record<PresetId, boolean>

@@ -44,7 +44,7 @@ export function TopBar() {
       <div className="flex flex-shrink-0 items-center gap-2">
         {v.isDemo && (
           <span className="flex items-center gap-2 whitespace-nowrap rounded-xs bg-warn-bg px-2 py-1 font-mono text-eyebrow text-warn-text">
-            {t('demo.badge')}
+            <span>{t('demo.badge')}</span>
             <button
               type="button"
               onClick={v.exitDemo}

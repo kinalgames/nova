@@ -10,15 +10,19 @@ beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
 
 describe('store — auth flows', () => {
-  it('toggles between login and signup, and signup login lands on onboarding', async () => {
-    const { result } = await setup()
+  it('toggles between login and signup, and onboarding completes into the app', async () => {
+    const { result, router } = await setup()
     await act(async () => result.current.v.openLogin())
     expect(result.current.v.isLoginForm).toBe(true)
     expect(result.current.v.authTitle).toBe('Đăng nhập')
     await act(async () => result.current.v.authToggleAct())
     expect(result.current.v.authTitle).toBe('Tạo tài khoản')
     expect(result.current.v.authCta).toBe('Tạo tài khoản')
-    await act(async () => result.current.v.doLogin())
+    // a fresh signup stores the session token, then lands on onboarding
+    localStorage.setItem('nova.auth.token', 'tok')
+    await act(async () => {
+      await router.navigate({ to: '/onboarding' })
+    })
     expect(result.current.v.isOnboarding).toBe(true)
     await act(async () => result.current.v.finishOnboarding())
     expect(result.current.v.showAuth).toBe(false)

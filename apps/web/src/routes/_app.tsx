@@ -1,10 +1,16 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
+import { getToken } from '../services/auth'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
 
 export const Route = createFileRoute('/_app')({
+  // the real product requires a session — token-only so the app still opens
+  // offline; the showcase at /demo stays public
+  beforeLoad: () => {
+    if (!getToken()) throw redirect({ to: '/login' })
+  },
   component: AppLayout,
 })
 

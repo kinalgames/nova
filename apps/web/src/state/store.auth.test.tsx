@@ -4,8 +4,15 @@ import { renderStore } from '../test/util'
 import { fetchMe, signIn, signOut, signUp } from '../services/auth'
 
 vi.mock('../services/auth', () => ({
-  signIn: vi.fn(async () => null),
-  signUp: vi.fn(async () => null),
+  // like the real service, a successful sign-in/up stores the bearer token
+  signIn: vi.fn(async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    return null
+  }),
+  signUp: vi.fn(async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    return null
+  }),
   fetchMe: vi.fn(async () => ({
     id: 'u1',
     name: 'Minh Thật',
@@ -13,7 +20,7 @@ vi.mock('../services/auth', () => ({
     assistantName: 'Trợ lý',
   })),
   signOut: vi.fn(async () => {}),
-  getToken: () => null,
+  getToken: () => localStorage.getItem('nova.auth.token'),
 }))
 
 beforeEach(() => {

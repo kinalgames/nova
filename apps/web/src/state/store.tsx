@@ -142,6 +142,7 @@ function persistSliceOf(s: NovaState): import('./persist').Persisted {
     accent: s.accent,
     userName: s.userName,
     userEmail: s.userEmail,
+    accountId: s.accountId,
     assistantName: s.assistantName,
     activeSlot: s.activeSlot,
     slots: s.slots,
@@ -237,6 +238,7 @@ function initialState(demo: boolean): NovaState {
     cheatsheet: false,
     userName: p.userName ?? i18n.t('user.name'),
     userEmail: p.userEmail,
+    accountId: p.accountId,
     assistantName: p.assistantName ?? 'Nova',
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
@@ -365,6 +367,7 @@ export function StoreProvider({
     s.accent,
     s.userName,
     s.userEmail,
+    s.accountId,
     s.assistantName,
     s.focusDur,
     s.barOn,
@@ -407,6 +410,7 @@ export function StoreProvider({
           ...('theme' in slice ? { theme: slice.theme } : {}),
           userName: slice.userName ?? x.userName,
           userEmail: slice.userEmail ?? x.userEmail,
+          accountId: slice.accountId ?? x.accountId,
           assistantName: slice.assistantName ?? x.assistantName,
           activeSlot: slice.activeSlot ?? x.activeSlot,
           slots: slice.slots ?? x.slots,
@@ -1523,6 +1527,8 @@ function deriveValues(
     s.conversations.filter((c) => c.projectId === currentProjectId && !c.archived),
   )
   const sideConvs = sideList.map(mapConv)
+  // a real-product fresh boot has no conversations yet — the sidebar invites
+  const sidebarEmpty = !demo && s.conversations.filter((c) => !c.archived).length === 0
   // date-grouped recents: pinned · hôm nay · hôm qua · tuần này · cũ hơn
   const sideGroups = groupConvs(sideList).map((g) => ({
     id: g.id,
@@ -1591,6 +1597,7 @@ function deriveValues(
     archivedOpen: s.archivedOpen,
     toggleArchived: () => set((x) => ({ archivedOpen: !x.archivedOpen })),
     toast: s.toast,
+    sidebarEmpty,
     isDemo: demo,
     exitDemo: () => navigate({ to: '/' }),
     pickProjects,
@@ -1780,28 +1787,44 @@ function deriveValues(
       __resetSync() // the next login re-hydrates/imports from scratch
       navigate({ to: '/login' })
     },
-    doLogin: () =>
-      navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' }),
-    // real credential submit (BE1). Returns an error message for the form,
-    // or null on success (then navigates like the demo path). Without an
-    // API_BASE the fake doLogin path remains the demo-mode behaviour.
+    // real credential submit (BE1) — returns an error message for the form,
+    // or null on success (stores the bearer token, then navigates in).
     submitAuth: async (email: string, password: string): Promise<string | null> => {
-      if (!API_BASE) {
-        navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
-        return null
-      }
+      // a real product cannot sign in without its API — surface it honestly
+      if (!API_BASE) return i18n.t('errors.apiNetwork')
       const err =
         nav.authView === 'signup'
           ? await signUp(email.split('@')[0] || email, email, password)
           : await signIn(email, password)
       if (err) return err
       const me = await fetchMe()
-      if (me)
-        set({
-          userName: me.name,
-          userEmail: me.email,
-          ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-        })
+      if (me) {
+        const persisted = loadPersisted()
+        if (persisted.accountId && persisted.accountId !== me.id) {
+          // a DIFFERENT account used this device — never mix two users' local
+          // data: reset to clean defaults, then let the op-log hydrate
+          try {
+            localStorage.removeItem(PERSIST_KEY)
+          } catch {
+            /* ignore */
+          }
+          __resetSync()
+          set(() => ({
+            ...initialState(false),
+            accountId: me.id,
+            userName: me.name,
+            userEmail: me.email,
+            ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+          }))
+        } else {
+          set({
+            accountId: me.id,
+            userName: me.name,
+            userEmail: me.email,
+            ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+          })
+        }
+      }
       // start syncing this user's op-log immediately — no reload needed
       triggerSyncHydrate?.()
       navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
