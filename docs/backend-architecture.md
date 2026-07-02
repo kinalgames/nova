@@ -142,6 +142,15 @@ single reload on `vite:preloadError`) · update-available toast
   request_id end-to-end), backup/restore drill, load test, security review
   (BYOK path especially).
 
+## Known accepted risks
+
+- Dependabot moderate GHSA-67mh-4wv8-2f99 (old esbuild inside
+  `@esbuild-kit/esm-loader`, a transitive dep of **drizzle-kit**): dev-only
+  CLI run manually for migration generation — it never opens the vulnerable
+  dev server and ships nothing to production. No fix without downgrading
+  drizzle-kit (breaking); revisit when drizzle-kit drops @esbuild-kit (their
+  migration to tsx is in progress). Safe to dismiss in the GitHub alert.
+
 ## Open items to confirm before BE0
 
 1. Cloudflare + Neon accounts/billing owner; domain for staging/prod.
