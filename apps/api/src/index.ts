@@ -10,11 +10,12 @@ import {
 } from './providers'
 import { createAuth } from './auth'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
+import { tapNovaUsage, usage, type UsageEnv } from './usage'
 import type { SyncOp } from '@nova/shared'
 
 export { UserStore } from './do/userStore'
 
-interface Env extends CredentialsEnv, ProviderEnv {
+interface Env extends CredentialsEnv, ProviderEnv, UsageEnv {
   USER_STORE: DurableObjectNamespace
 }
 
@@ -66,6 +67,9 @@ app.get('/v1/me', async (c) => {
 
 // BE3: sealed BYOK CRUD (session-gated; secrets never round-trip)
 app.route('/v1/credentials', credentials)
+
+// T8: month usage roll-up read-back (session-gated; AE SQL API)
+app.route('/v1/usage', usage)
 
 app.get('/healthz', (c) =>
   c.json({
@@ -163,9 +167,11 @@ app.post('/v1/chat', async (c) => {
       'Expected {providerId, model, messages[], credentialId | profile{kind, credential}} with a kind the provider supports',
     )
 
+  // one session probe serves both credential resolution and usage metering
+  const uid = await userIdOf(c)
+
   // BE3: resolve a stored credential — session-gated, unsealed in memory only
   if (req.credentialId) {
-    const uid = await userIdOf(c)
     if (!uid) return problem(401, 'unauthenticated', 'A stored credential needs a session')
     const stored = await openCredential(c.env, uid, req.credentialId)
     if (!stored) return problem(404, 'credential_not_found', 'No such stored credential')
@@ -207,7 +213,22 @@ app.post('/v1/chat', async (c) => {
 
   if (!upstream.body) return problem(502, 'upstream_empty', 'Provider returned no stream')
 
-  return new Response(adapter.stream(upstream.body), {
+  // T8: meter the reply — one AE datapoint per message_stop, attributed to
+  // the session user (unattributable anonymous chats are not metered)
+  let novaStream = adapter.stream(upstream.body)
+  // optional chain: hono's c.env is undefined under app.request without env
+  const dataset = (c.env as Env | undefined)?.USAGE
+  if (uid && dataset) {
+    novaStream = tapNovaUsage(novaStream, (u) =>
+      dataset.writeDataPoint({
+        blobs: [req.providerId, req.model, profile.kind],
+        doubles: [u.inputTokens, u.outputTokens],
+        indexes: [uid],
+      }),
+    )
+  }
+
+  return new Response(novaStream, {
     headers: {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-store',

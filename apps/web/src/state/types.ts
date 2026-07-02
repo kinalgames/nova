@@ -209,6 +209,8 @@ export interface NovaState {
   testingProfile: string | null
   /** a newer deploy exists — show the update toast (ephemeral) */
   updateReady: boolean
+  /** T8: server-side month usage rows (real mode; ephemeral, null until hydrated) */
+  serverUsage: import('@nova/shared').UsageRow[] | null
   /** transient notice toast text (share-link copied, …), or null */
   toast: string | null
   /** the archived section in the sidebar is expanded (ephemeral) */

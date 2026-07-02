@@ -22,8 +22,10 @@
   "durable_objects": {
     "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserStore"] }]
-  // Later phases: BE2 Durable Objects (per-user store) · BE3 BYOK master-key
-  // secret + Analytics Engine · BE4 R2 bucket. Secrets via `wrangler secret
-  // put` / .dev.vars only. After ANY binding change: `npm run cf-typegen`.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserStore"] }],
+  // T8 — usage metering: one datapoint per completed proxy chat. Reads go
+  // through the AE SQL REST API (CF_ACCOUNT_ID + AE_SQL_TOKEN secrets).
+  "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage" }]
+  // Later phases: BE4 R2 bucket · BE5 rate-limit KV. Secrets via `wrangler
+  // secret put` / .dev.vars only. After ANY binding change: `npm run cf-typegen`.
 }

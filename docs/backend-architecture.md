@@ -170,8 +170,17 @@ single reload on `vite:preloadError`) · update-available toast
     endpoint is only reachable while the api runs on the same machine
     (wrangler dev); the deployed Worker cannot see a user's localhost —
     a client-direct path is the follow-up.
-  Still to come in BE3 proper: rotation server-side and usage events to
-  Analytics Engine (T8).
+  **T8 shipped — usage metering**: every completed proxy chat writes one
+  Analytics Engine datapoint (`nova_usage`): blobs [providerId, modelId,
+  kind], doubles [inTok, outTok], index [userId] — tapped off the Nova SSE
+  stream (`src/usage.ts`), attributed to the session user, anonymous chats
+  unmetered. AE bindings are write-only in Workers, so `GET /v1/usage`
+  reads the current calendar month back via the AE SQL REST API
+  (sampling-correct `SUM(_sample_interval * double)`); it needs
+  CF_ACCOUNT_ID + AE_SQL_TOKEN and returns 501 when unconfigured. The
+  client hydrates the roll-up on boot/login and Settings shows the
+  cross-device totals, falling back to the local thread roll-up.
+  Still to come in BE3 proper: rotation server-side.
 - **BE4 — files & share**: R2 presigned uploads for project files +
   attachments; real share links (`/share/:id` read-only page).
 - **BE5 — hardening**: rate limits, observability (structured logs +

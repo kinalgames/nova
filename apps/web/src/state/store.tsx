@@ -57,6 +57,7 @@ import {
   pingCredential,
   type ServerCredential,
 } from '../services/credentials'
+import { fetchMonthUsage } from '../services/usage'
 import { pullOps, pushOps } from '../services/sync'
 import { diffRecords, fromRecords, toRecords, type SyncRecord } from './syncmap'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
@@ -273,6 +274,7 @@ function initialState(demo: boolean): NovaState {
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
     updateReady: false,
+    serverUsage: null,
     presetDefault: p.presetDefault ?? {
       code: false,
       design: false,
@@ -498,15 +500,29 @@ export function StoreProvider({
     set({ profiles })
   }, [demo, set])
 
+  // T8: real mode also pulls the server-side month usage roll-up — the
+  // Settings meter then reflects EVERY device, not just this one's threads
+  const hydrateUsage = useCallback(async () => {
+    if (demo || !API_BASE || !getToken()) return
+    const rows = await fetchMonthUsage()
+    if (rows) set({ serverUsage: rows })
+  }, [demo, set])
+
   useEffect(() => {
-    triggerCredHydrate = () => void hydrateCredentials()
+    triggerCredHydrate = () => {
+      void hydrateCredentials()
+      void hydrateUsage()
+    }
     // microtask: runs right after this commit (deterministic, unlike a
     // setTimeout macrotask) so the async hydrate never sets state mid-render
-    queueMicrotask(() => void hydrateCredentials())
+    queueMicrotask(() => {
+      void hydrateCredentials()
+      void hydrateUsage()
+    })
     return () => {
       triggerCredHydrate = null
     }
-  }, [hydrateCredentials])
+  }, [hydrateCredentials, hydrateUsage])
 
   // E1: poll /version.json for a newer deploy — on mount, on focus, and every
   // minute. Skipped under vitest (the check itself is unit-tested in isolation).
@@ -1404,6 +1420,23 @@ function deriveValues(
       agg.outTok += u.outputTokens
       agg.cost += costOf(u)
     }
+  // T8: the server roll-up (all devices) beats the local one when present
+  const serverMonth = (() => {
+    if (!s.serverUsage || s.serverUsage.length === 0) return null
+    let inTok = 0
+    let outTok = 0
+    let cost = 0
+    for (const r of s.serverUsage) {
+      inTok += r.inTok
+      outTok += r.outTok
+      if (r.kind !== 'account') {
+        const md = findModelById(r.modelId)
+        if (md) cost += (r.inTok * md.inPrice + r.outTok * md.outPrice) / 1e6
+      }
+    }
+    return { inTok, outTok, cost }
+  })()
+
   const activeIsDemo = !!activeConvObj?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
@@ -1772,9 +1805,13 @@ function deriveValues(
     modelMenuLabel: t('model.menuLabel'),
     autoRotate: s.autoRotate,
     toggleAutoRotate: () => set((x) => ({ autoRotate: !x.autoRotate })),
-    // current-month usage roll-up for Settings → Providers
-    monthUsage:
-      monthIn + monthOut > 0
+    // current-month usage roll-up for Settings → Providers — server-side
+    // totals (cross-device) when hydrated, the local roll-up otherwise
+    monthUsage: serverMonth
+      ? `${fmtTokens(serverMonth.inTok)}↑ ${fmtTokens(serverMonth.outTok)}↓ · ${
+          serverMonth.cost === 0 ? t('meter.costFree') : fmtCost(serverMonth.cost)
+        }`
+      : monthIn + monthOut > 0
         ? `${fmtTokens(monthIn)}↑ ${fmtTokens(monthOut)}↓ · ${
             monthCost === 0 ? t('meter.costFree') : fmtCost(monthCost)
           }`

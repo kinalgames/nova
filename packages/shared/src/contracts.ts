@@ -101,6 +101,15 @@ export interface ModelDef {
   pace: number
 }
 
+/** one row of the month roll-up returned by GET /v1/usage (T8) */
+export interface UsageRow {
+  providerId: ProviderId
+  modelId: string
+  kind: ProfileKind
+  inTok: number
+  outTok: number
+}
+
 /** token usage recorded on an assistant reply */
 export interface MsgUsage {
   inputTokens: number

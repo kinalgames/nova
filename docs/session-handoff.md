@@ -21,6 +21,14 @@ TODO theo thứ tự, và bẫy đã cắn.
 
 ## Đã ship phiên này
 
+- **T8 — usage → Analytics Engine**: proxy tap mỗi message_stop →
+  datapoint `nova_usage` {blobs: provider/model/kind, doubles: in/out,
+  index: userId} (`apps/api/src/usage.ts`); chỉ meter khi có session.
+  `GET /v1/usage` đọc tháng hiện tại qua AE SQL REST (cần
+  `CF_ACCOUNT_ID` + `AE_SQL_TOKEN` — chưa cấu hình → 501, client tự
+  fallback roll-up local). Client hydrate cùng nhịp credentials;
+  Settings→Providers ưu tiên tổng server (cross-device). LƯU Ý: local
+  dev AE binding là no-op — đọc-back chỉ test được trên prod thật.
 - **T6 — multi-provider adapters**: `/v1/chat` dispatch registry
   (`apps/api/src/providers/index.ts`) cho cả 4 provider; client hết
   điều-kiện-chỉ-claude (store.tsx dùng `ref.providerId`). Chi tiết wire
@@ -67,19 +75,17 @@ TODO theo thứ tự, và bẫy đã cắn.
 
 ## TODO — thứ tự đề xuất session kế
 
-1. **T8 — usage events → Analytics Engine**: binding wrangler + ghi
-   {userId, providerId, modelId, inTok, outTok} mỗi message_stop trong
-   proxy; client đọc tổng qua endpoint mới thay vì chỉ localStorage.
-2. **OAuth social (Google/GitHub) cho login app**: Better Auth có sẵn —
+1. **OAuth social (Google/GitHub) cho login app**: Better Auth có sẵn —
    cần user cấp OAuth app credentials (hỏi khi bắt đầu).
-3. BE4 (R2 files/share) → BE5 (rate-limit KV, observability, deploy:
-   `wrangler d1 create nova` thật + secrets prod).
-4. Ollama client-direct path (endpoint localhost không reach được từ
+2. BE4 (R2 files/share) → BE5 (rate-limit KV, observability, deploy:
+   `wrangler d1 create nova` thật + secrets prod gồm CREDENTIALS_KEY,
+   GEMINI_OAUTH_*, CF_ACCOUNT_ID + AE_SQL_TOKEN cho /v1/usage).
+3. Ollama client-direct path (endpoint localhost không reach được từ
    Worker prod — cân nhắc fetch thẳng từ browser khi provider=ollama).
-5. Còn mở từ audit: R4 (iOS keyboard — cần thiết bị thật), F3
+4. Còn mở từ audit: R4 (iOS keyboard — cần thiết bị thật), F3
    (lazy-chunk flash), P1/P3/P4 (profiling trước khi tối ưu store/
    Markdown/grain).
-6. Nhắc user: rotate R2/CF-Images token khi ổn định; dismiss Dependabot
+5. Nhắc user: rotate R2/CF-Images token khi ổn định; dismiss Dependabot
    esbuild (accepted-risk đã ghi doc); nâng actions lên Node 24 runner
    (annotation deprecation trong CI).
 
