@@ -174,6 +174,107 @@
     "descPlaceholder": "What is this project about? Nova remembers it in every conversation here.",
     "submit": "Create project"
   },
+  "settings": {
+    "title": "Settings",
+    "tabsAria": "Settings sections",
+    "railLabel": "SETTINGS",
+    "tabGeneral": "General",
+    "tabProviders": "Providers",
+    "tabAssistant": "Assistant",
+    "advanced": "Advanced mode",
+    "advancedSub": "For power users. Turn on to see extra technical detail in every step.",
+    "appearance": "APPEARANCE",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "Auto",
+    "language": "LANGUAGE",
+    "shortcutsTitle": "Bottom shortcuts bar",
+    "shortcutsSub": "Show shortcut hints (desktop only)",
+    "focusSection": "FOCUS MODE",
+    "sessionLength": "Session length",
+    "account": "ACCOUNT",
+    "providersModels": "NOVA USES MODELS FROM",
+    "useProvider": "Use {{name}}",
+    "modelsAvailable": "AVAILABLE MODELS",
+    "addCustom": "Add a custom provider (OpenAI‑compatible)",
+    "apiKey": "API KEY",
+    "endpoint": "SERVER ADDRESS",
+    "testing": "Testing…",
+    "saveTest": "Save & test",
+    "test": "Test",
+    "styleSection": "REPLY STYLE",
+    "skillsSection": "NOVA'S SKILLS",
+    "skillsScope": "On/off for every project",
+    "skillsHelp": "Each skill teaches Nova how to do one kind of work. You can also enable them per project.",
+    "systemSection": "SYSTEM INSTRUCTIONS",
+    "systemHelp": "How Nova replies in every conversation. Edit freely at any time.",
+    "systemSample": "Reply concisely and get to the point. Prefer bullet points. Confident but never showy. Ask back when a request is ambiguous instead of guessing."
+  },
+  "quiet": {
+    "header": "FOCUS · {{clock}}",
+    "placeholder": "Continue in silence…",
+    "exit": "Exit"
+  },
+  "preview": {
+    "download": "Download",
+    "open": "Open"
+  },
+  "authForm": {
+    "email": "Email",
+    "password": "Password",
+    "emailInvalid": "That email doesn't look right.",
+    "pwShort": "Password needs at least 6 characters.",
+    "google": "Continue with Google",
+    "github": "Continue with GitHub",
+    "or": "or",
+    "welcome": "Welcome to Nova",
+    "welcomeSub": "A few quick choices so Nova fits you.",
+    "assistantName": "ASSISTANT NAME",
+    "styleLabel": "STYLE",
+    "defaultModel": "DEFAULT MODEL",
+    "start": "Start using Nova"
+  },
+  "vocab": {
+    "recommended": "· recommended",
+    "status": {
+      "connected": "Connected",
+      "add": "Add key",
+      "local": "Local",
+      "testing": "Testing…",
+      "error": "Invalid key"
+    },
+    "providers": {
+      "claude": { "sub": "Anthropic · balanced" },
+      "gemini": { "sub": "Google · large context" },
+      "openai": { "sub": "GPT · versatile" },
+      "ollama": { "name": "On your machine", "sub": "Ollama · private, offline" }
+    },
+    "styles": {
+      "concise": "Concise",
+      "warm": "Warm",
+      "formal": "Formal",
+      "humor": "Humorous"
+    },
+    "presets": {
+      "code": { "name": "Coding", "help": "Write and fix code, explain it clearly." },
+      "design": { "name": "Design", "help": "Feedback on layout, color, interfaces." },
+      "research": { "name": "Research", "help": "Find information with clear sources." },
+      "writing": { "name": "Writing", "help": "Coherent emails, posts, documents." },
+      "data": { "name": "Data analysis", "help": "Read tables of numbers, draw conclusions." }
+    },
+    "toolChips": {
+      "bash": "Run commands",
+      "files": "Files",
+      "fetch": "Read web",
+      "web": "Web search"
+    },
+    "suggestions": {
+      "write": { "title": "Write for me", "sub": "Emails, posts, messages — clear and on-voice." },
+      "plan": { "title": "Plan something", "sub": "Break a big task into doable steps." },
+      "learn": { "title": "Learn a topic", "sub": "Explain any topic simply." },
+      "docs": { "title": "Work with documents", "sub": "Summarize, extract, cross-reference your documents." }
+    }
+  },
   "projects": {
     "title": "Projects",
     "subtitle": "Each project has its own instructions and skills for Nova.",

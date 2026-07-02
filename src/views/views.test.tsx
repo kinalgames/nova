@@ -143,6 +143,21 @@ describe('project interactions', () => {
   })
 })
 
+describe('settings — language picker', () => {
+  it('switches the UI to English and back to Vietnamese', async () => {
+    const user = makeUser()
+    await renderApp(undefined, { path: '/chat/c1?settings=general' })
+    expect(await screen.findByText('GIAO DIỆN')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'English' }))
+    // chrome flips to English
+    expect(await screen.findByText('APPEARANCE')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Assistant' })).toBeInTheDocument()
+    // and back — restores the pinned test locale for the rest of the suite
+    await user.click(screen.getByRole('button', { name: 'Tiếng Việt' }))
+    expect(await screen.findByText('GIAO DIỆN')).toBeInTheDocument()
+  })
+})
+
 describe('sidebar states', () => {
   it('renders the collapsed rail (icon-only) and can be expanded', async () => {
     await renderApp((s) => s.set({ sidebarCollapsed: true }))

@@ -9,6 +9,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    // the suite asserts Vietnamese copy; pin the browser locale so i18n
+    // first-run detection resolves to vi
+    locale: 'vi-VN',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

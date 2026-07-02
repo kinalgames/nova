@@ -1,15 +1,17 @@
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
 export function QuietMode() {
   const { v } = useStore()
+  const { t } = useTranslation()
   if (!v.quiet) return null
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg animate-[dim_.35s_ease]">
       <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_200px_var(--accent-soft)]" />
       <div className="flex h-16 items-center justify-center gap-2.5">
         <span className="size-1.5 rounded-full bg-accent animate-[breathe_3s_ease-in-out_infinite]" />
-        <span className="font-mono text-eyebrow tracking-[.14em] text-muted">TẬP TRUNG · {v.quietClock}</span>
+        <span className="font-mono text-eyebrow tracking-[.14em] text-muted">{t('quiet.header', { clock: v.quietClock })}</span>
       </div>
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto">
         <div className="w-[620px] max-w-full px-5 py-8">
@@ -41,7 +43,7 @@ export function QuietMode() {
       <div className="flex min-h-20 items-center justify-center px-5 py-3">
         <div className="flex w-[620px] max-w-full items-center gap-3 opacity-[.85]">
           <input
-            placeholder="Tiếp tục trong im lặng…"
+            placeholder={t('quiet.placeholder')}
             className="min-w-0 flex-1 border-b border-border pb-2 text-lead text-text"
           />
           <button
@@ -49,7 +51,7 @@ export function QuietMode() {
             onClick={v.exitQuiet}
             className="shrink-0 cursor-pointer rounded-sm border border-border bg-transparent px-3 py-2 text-left text-small text-muted"
           >
-            Thoát
+            {t('quiet.exit')}
           </button>
         </div>
       </div>

@@ -4,8 +4,21 @@
 > layer; derive backend requirements from the finished UI. Backend direction
 > is parked in `docs/backend-architecture.md`.
 
-Build order: **A → P → E → B → C → D** (A/P both touch the Message schema —
-A's `versions` lands first, P's `usage` layers on top).
+Build order: **A1/A4 → I18N → A2/A3 → P → E → B → C → D** (A/P both touch the
+Message schema — A's `versions` lands first, P's `usage` layers on top; i18n
+lands before the string-heavy groups so they are built localized).
+
+## I18N (approved: react-i18next + typed keys · vi default + en · chrome first)
+
+Done (M1+M2+M3): infrastructure, typed catalogs, the ENTIRE chrome (all
+components/views incl. Settings/Auth/Quiet/Preview), store VM strings,
+data/defs vocabulary (presets/providers/status/suggestions translated at
+consumption — defs carry ids only), language picker in Settings → General
+(NGÔN NGỮ), e2e pinned to `locale: 'vi-VN'`, unit tests pinned to vi.
+**Rule: every new user-facing string goes through `t()` — no hardcoded copy
+in components or the VM.**
+Remaining (phase 2): locale-aware demo seed content (seedThreads, project
+seeds, preview documents, QuietMode sample conversation).
 
 ## A — Conversation core (approved decisions)
 

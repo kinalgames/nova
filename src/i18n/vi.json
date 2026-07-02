@@ -173,6 +173,107 @@
     "descPlaceholder": "Dự án này về điều gì? Nova nhớ trong mọi cuộc trò chuyện ở đây.",
     "submit": "Tạo dự án"
   },
+  "settings": {
+    "title": "Cài đặt",
+    "tabsAria": "Mục cài đặt",
+    "railLabel": "CÀI ĐẶT",
+    "tabGeneral": "Chung",
+    "tabProviders": "Nhà cung cấp",
+    "tabAssistant": "Trợ lý",
+    "advanced": "Chế độ nâng cao",
+    "advancedSub": "Chế độ dành cho người dùng chuyên nghiệp. Bật để xem thêm chi tiết kỹ thuật trong từng bước.",
+    "appearance": "GIAO DIỆN",
+    "themeLight": "Sáng",
+    "themeDark": "Tối",
+    "themeAuto": "Tự động",
+    "language": "NGÔN NGỮ",
+    "shortcutsTitle": "Thanh phím tắt dưới cùng",
+    "shortcutsSub": "Hiện gợi ý phím tắt (chỉ desktop)",
+    "focusSection": "CHẾ ĐỘ TẬP TRUNG",
+    "sessionLength": "Thời lượng phiên",
+    "account": "TÀI KHOẢN",
+    "providersModels": "NOVA DÙNG MÔ HÌNH",
+    "useProvider": "Dùng {{name}}",
+    "modelsAvailable": "MÔ HÌNH KHẢ DỤNG",
+    "addCustom": "Thêm nhà cung cấp tùy chỉnh (OpenAI‑compatible)",
+    "apiKey": "API KEY",
+    "endpoint": "ĐỊA CHỈ MÁY CHỦ",
+    "testing": "Đang kiểm tra…",
+    "saveTest": "Lưu & kiểm tra",
+    "test": "Kiểm tra",
+    "styleSection": "PHONG CÁCH TRẢ LỜI",
+    "skillsSection": "KỸ NĂNG CỦA NOVA",
+    "skillsScope": "Bật/tắt cho mọi dự án",
+    "skillsHelp": "Mỗi kỹ năng dạy Nova cách làm một loại việc. Bạn cũng có thể bật riêng cho từng dự án.",
+    "systemSection": "HƯỚNG DẪN HỆ THỐNG",
+    "systemHelp": "Cách Nova trả lời trong mọi cuộc trò chuyện. Bạn có thể chỉnh tự do bất cứ lúc nào.",
+    "systemSample": "Trả lời ngắn gọn, đi thẳng vấn đề. Ưu tiên gạch đầu dòng. Giọng tự tin nhưng không phô trương. Hỏi lại khi yêu cầu mơ hồ thay vì đoán."
+  },
+  "quiet": {
+    "header": "TẬP TRUNG · {{clock}}",
+    "placeholder": "Tiếp tục trong im lặng…",
+    "exit": "Thoát"
+  },
+  "preview": {
+    "download": "Tải",
+    "open": "Mở"
+  },
+  "authForm": {
+    "email": "Email",
+    "password": "Mật khẩu",
+    "emailInvalid": "Email chưa hợp lệ.",
+    "pwShort": "Mật khẩu cần ít nhất 6 ký tự.",
+    "google": "Tiếp tục với Google",
+    "github": "Tiếp tục với GitHub",
+    "or": "hoặc",
+    "welcome": "Chào mừng đến Nova",
+    "welcomeSub": "Vài lựa chọn nhanh để Nova hợp với bạn.",
+    "assistantName": "TÊN TRỢ LÝ",
+    "styleLabel": "PHONG CÁCH",
+    "defaultModel": "MÔ HÌNH MẶC ĐỊNH",
+    "start": "Bắt đầu dùng Nova"
+  },
+  "vocab": {
+    "recommended": "· khuyên dùng",
+    "status": {
+      "connected": "Đã kết nối",
+      "add": "Thêm khóa",
+      "local": "Cục bộ",
+      "testing": "Đang kiểm tra…",
+      "error": "Khóa không hợp lệ"
+    },
+    "providers": {
+      "claude": { "sub": "Anthropic · cân bằng" },
+      "gemini": { "sub": "Google · ngữ cảnh lớn" },
+      "openai": { "sub": "GPT · đa năng" },
+      "ollama": { "name": "Trên máy của bạn", "sub": "Ollama · riêng tư, ngoại tuyến" }
+    },
+    "styles": {
+      "concise": "Ngắn gọn",
+      "warm": "Ấm áp",
+      "formal": "Trang trọng",
+      "humor": "Hài hước"
+    },
+    "presets": {
+      "code": { "name": "Lập trình", "help": "Viết và sửa mã, giải thích code dễ hiểu." },
+      "design": { "name": "Thiết kế", "help": "Góp ý bố cục, màu sắc, giao diện." },
+      "research": { "name": "Nghiên cứu", "help": "Tìm thông tin và dẫn nguồn rõ ràng." },
+      "writing": { "name": "Viết lách", "help": "Viết email, bài đăng, tài liệu mạch lạc." },
+      "data": { "name": "Phân tích dữ liệu", "help": "Đọc bảng số, rút ra kết luận." }
+    },
+    "toolChips": {
+      "bash": "Chạy lệnh",
+      "files": "Tệp",
+      "fetch": "Đọc web",
+      "web": "Tra web"
+    },
+    "suggestions": {
+      "write": { "title": "Viết giúp tôi", "sub": "Email, bài đăng, tin nhắn — rõ ràng và đúng giọng." },
+      "plan": { "title": "Lên kế hoạch", "sub": "Chia một việc lớn thành các bước làm được." },
+      "learn": { "title": "Tìm hiểu", "sub": "Giải thích một chủ đề thật dễ hiểu." },
+      "docs": { "title": "Xử lý tài liệu", "sub": "Tóm tắt, trích xuất, đối chiếu tài liệu của bạn." }
+    }
+  },
   "projects": {
     "title": "Dự án",
     "subtitle": "Mỗi dự án có hướng dẫn và kỹ năng riêng cho Nova.",

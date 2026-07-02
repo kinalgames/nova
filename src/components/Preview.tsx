@@ -1,4 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 
@@ -7,6 +8,7 @@ const CSV_CELL = 'border-t border-border px-3 py-3'
 
 export function Preview() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <Dialog.Root
       open={v.hasPreview}
@@ -30,17 +32,17 @@ export function Preview() {
                 onClick={v.downloadPreview}
                 className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent text-inherit"
               >
-                <Icon n="download" size={14} /> Tải
+                <Icon n="download" size={14} /> {t('preview.download')}
               </button>
               <button
                 type="button"
                 onClick={v.openPreviewExternal}
                 className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent text-inherit"
               >
-                <Icon n="open" size={14} /> Mở
+                <Icon n="open" size={14} /> {t('preview.open')}
               </button>
               <Dialog.Close asChild>
-                <button type="button" aria-label="Đóng" className="flex cursor-pointer border-none bg-transparent text-inherit outline-none">
+                <button type="button" aria-label={t('common.close')} className="flex cursor-pointer border-none bg-transparent text-inherit outline-none">
                   <Icon n="close" size={16} />
                 </button>
               </Dialog.Close>

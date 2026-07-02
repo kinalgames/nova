@@ -1,16 +1,18 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 
 const INPUT = 'field w-full rounded-md border border-border bg-panel px-3 py-3 text-body'
 
 function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [error, setError] = useState<string | null>(null)
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Email chưa hợp lệ.')
-    if (pw.length < 6) return setError('Mật khẩu cần ít nhất 6 ký tự.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError(t('authForm.emailInvalid'))
+    if (pw.length < 6) return setError(t('authForm.pwShort'))
     setError(null)
     onSubmit()
   }
@@ -22,8 +24,8 @@ function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
           setEmail(e.target.value)
           setError(null)
         }}
-        placeholder="Email"
-        aria-label="Email"
+        placeholder={t('authForm.email')}
+        aria-label={t('authForm.email')}
         autoComplete="email"
         className={INPUT}
       />
@@ -31,8 +33,8 @@ function EmailForm({ cta, onSubmit }: { cta: string; onSubmit: () => void }) {
         value={pw}
         onChange={(e) => setPw(e.target.value)}
         type="password"
-        placeholder="Mật khẩu"
-        aria-label="Mật khẩu"
+        placeholder={t('authForm.password')}
+        aria-label={t('authForm.password')}
         autoComplete="current-password"
         className={INPUT}
       />
@@ -72,6 +74,7 @@ function GithubMark() {
 
 export function Auth() {
   const { v } = useStore()
+  const { t } = useTranslation()
   if (!v.showAuth) return null
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-bg p-6 animate-[dim_.2s_ease]">
@@ -91,19 +94,19 @@ export function Auth() {
                 onClick={v.doLogin}
                 className="flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body hover:bg-white"
               >
-                <GoogleMark />Tiếp tục với Google
+                <GoogleMark />{t('authForm.google')}
               </button>
               <button
                 type="button"
                 onClick={v.doLogin}
                 className="flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body hover:bg-white"
               >
-                <GithubMark />Tiếp tục với GitHub
+                <GithubMark />{t('authForm.github')}
               </button>
             </div>
             <div className="mb-4 flex items-center gap-3 text-meta text-faint">
               <div className="h-px flex-1 bg-border" />
-              hoặc
+              {t('authForm.or')}
               <div className="h-px flex-1 bg-border" />
             </div>
             <EmailForm cta={v.authCta} onSubmit={v.doLogin} />
@@ -122,24 +125,24 @@ export function Auth() {
 
         {v.isOnboarding && (
           <>
-            <div className="text-center font-display text-h2 leading-tight">Chào mừng đến Nova</div>
-            <div className="mb-6 mt-2 text-center text-body text-muted">Vài lựa chọn nhanh để Nova hợp với bạn.</div>
-            <div className="mb-2 font-mono text-micro tracking-[.14em] text-faint">TÊN TRỢ LÝ</div>
+            <div className="text-center font-display text-h2 leading-tight">{t('authForm.welcome')}</div>
+            <div className="mb-6 mt-2 text-center text-body text-muted">{t('authForm.welcomeSub')}</div>
+            <div className="mb-2 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.assistantName')}</div>
             <input defaultValue="Nova" className="field mb-5 w-full rounded-md border border-border bg-panel px-3 py-3 text-body" />
-            <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">PHONG CÁCH</div>
+            <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.styleLabel')}</div>
             <div className="mb-5 flex flex-wrap gap-2">
-              <span className="rounded-sm border border-accent bg-accent-soft px-3 py-1.5 text-ui text-accent-text">Ngắn gọn</span>
-              <span className="rounded-sm border border-border px-3 py-1.5 text-ui text-muted">Ấm áp</span>
-              <span className="rounded-sm border border-border px-3 py-1.5 text-ui text-muted">Trang trọng</span>
+              <span className="rounded-sm border border-accent bg-accent-soft px-3 py-1.5 text-ui text-accent-text">{t('vocab.styles.concise')}</span>
+              <span className="rounded-sm border border-border px-3 py-1.5 text-ui text-muted">{t('vocab.styles.warm')}</span>
+              <span className="rounded-sm border border-border px-3 py-1.5 text-ui text-muted">{t('vocab.styles.formal')}</span>
             </div>
-            <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">MÔ HÌNH MẶC ĐỊNH</div>
+            <div className="mb-2.5 font-mono text-micro tracking-[.14em] text-faint">{t('authForm.defaultModel')}</div>
             <div className="mb-6 flex gap-2">
               <div className="flex-1 rounded-md border border-accent bg-accent-soft px-3 py-3">
-                <div className="text-ui">Thông minh</div>
+                <div className="text-ui">{t('model.smart')}</div>
                 <div className="text-meta text-muted">Opus 4.8</div>
               </div>
               <div className="flex-1 rounded-md border border-border px-3 py-3">
-                <div className="text-ui">Nhanh</div>
+                <div className="text-ui">{t('model.fast')}</div>
                 <div className="text-meta text-muted">Haiku 4.8</div>
               </div>
             </div>
@@ -148,7 +151,7 @@ export function Auth() {
               onClick={v.finishOnboarding}
               className="cursor-pointer rounded-md border-none bg-ink p-3 text-center text-body font-medium text-bg"
             >
-              Bắt đầu dùng Nova
+              {t('authForm.start')}
             </button>
           </>
         )}

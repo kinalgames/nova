@@ -733,12 +733,12 @@ function deriveValues(
       const on = !!map[p.id]
       return {
         id: p.id,
-        name: p.name,
+        name: t(`vocab.presets.${p.id}.name`),
         glyph: p.glyph,
         color: p.color,
         badgeBg: p.badgeBg,
-        help: p.help,
-        tools: p.tools.map((t) => ({ t })),
+        help: t(`vocab.presets.${p.id}.help`),
+        tools: p.tools.map((k) => ({ t: t(`vocab.toolChips.${k}`) })),
         showTools: p.tools.length > 0,
         on,
         toggle: () => tog(p.id),
@@ -755,13 +755,15 @@ function deriveValues(
   const projActiveNames =
     presetDefs
       .filter((p) => viewProject.presets[p.id])
-      .map((p) => p.name)
+      .map((p) => t(`vocab.presets.${p.id}.name`))
       .join(' · ') || t('projects.config.skillsBasic')
 
   const liveStatusMap: Record<LiveProviderStatus, { badge: string; fg: string; bg: string }> = {
-    ...statusMap,
-    testing: { badge: 'Đang kiểm tra…', fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
-    error: { badge: 'Khóa không hợp lệ', fg: 'var(--danger-text)', bg: 'var(--danger-bg)' },
+    connected: { ...statusMap.connected, badge: t('vocab.status.connected') },
+    add: { ...statusMap.add, badge: t('vocab.status.add') },
+    local: { ...statusMap.local, badge: t('vocab.status.local') },
+    testing: { badge: t('vocab.status.testing'), fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
+    error: { badge: t('vocab.status.error'), fg: 'var(--danger-text)', bg: 'var(--danger-bg)' },
   }
   const setProviderKey = (id: ProviderId, value: string) =>
     set((x) => ({ providerKeys: { ...x.providerKeys, [id]: value } }))
@@ -783,27 +785,27 @@ function deriveValues(
       id: p.id,
       active,
       select: () => set({ activeProvider: p.id }),
-      name: p.name,
-      sub: p.sub,
+      name: p.id === 'ollama' ? t('vocab.providers.ollama.name') : p.name,
+      sub: t(`vocab.providers.${p.id}.sub`),
       glyph: p.glyph,
       badgeBg: p.badgeBg,
       badgeFg: p.badgeFg,
       badge: st.badge,
       statusFg: st.fg,
       statusBg: st.bg,
-      rec: p.rec ? '· khuyên dùng' : '',
+      rec: p.rec ? t('vocab.recommended') : '',
       border: active ? accent : 'var(--border)',
       bg: 'var(--panel)',
       radioBd: active ? accent : 'var(--border)',
       radioBg: active ? accent : 'transparent',
       radioDot: active ? 'var(--panel)' : 'transparent',
       showKey: active,
-      fieldLabel: p.field === 'key' ? 'API KEY' : 'ĐỊA CHỈ MÁY CHỦ',
+      fieldLabel: p.field === 'key' ? t('settings.apiKey') : t('settings.endpoint'),
       fieldValue: s.providerKeys[p.id],
       setKey: (value: string) => setProviderKey(p.id, value),
       test: () => testProvider(p.id),
       testing: status === 'testing',
-      fieldAction: p.field === 'key' ? 'Lưu & kiểm tra' : 'Kiểm tra',
+      fieldAction: p.field === 'key' ? t('settings.saveTest') : t('settings.test'),
       models: p.models.map((m, i) => ({
         name: m,
         fg: i === 0 ? accentText : 'var(--muted)',
@@ -836,6 +838,8 @@ function deriveValues(
 
   const suggestions = suggestionDefs.map((g) => ({
     ...g,
+    title: t(`vocab.suggestions.${g.id}.title`),
+    sub: t(`vocab.suggestions.${g.id}.sub`),
     go: () => go('conversation'),
   }))
 

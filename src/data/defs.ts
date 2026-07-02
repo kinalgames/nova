@@ -5,61 +5,52 @@ import type { Block, Message } from '../state/types'
 
 export type PresetId = 'code' | 'design' | 'research' | 'writing' | 'data'
 
+export type ToolChipId = 'bash' | 'files' | 'fetch' | 'web'
+
 export interface PresetDef {
   id: PresetId
-  name: string
   glyph: IconName
   color: string
   badgeBg: string
-  help: string
-  tools: string[]
+  /** tool chips shown on the card — translated via vocab.toolChips.* */
+  tools: ToolChipId[]
 }
 
 export const presetDefs: PresetDef[] = [
   {
     id: 'code',
-    name: 'Lập trình',
     glyph: 'command',
     color: 'var(--info)',
     badgeBg: 'rgba(59,91,169,.12)',
-    help: 'Viết và sửa mã, giải thích code dễ hiểu.',
-    tools: ['Chạy lệnh', 'Tệp', 'Đọc web'],
+    tools: ['bash', 'files', 'fetch'],
   },
   {
     id: 'design',
-    name: 'Thiết kế',
     glyph: 'design',
     color: 'var(--plum)',
     badgeBg: 'rgba(154,91,138,.12)',
-    help: 'Góp ý bố cục, màu sắc, giao diện.',
-    tools: ['Đọc web', 'Tệp'],
+    tools: ['fetch', 'files'],
   },
   {
     id: 'research',
-    name: 'Nghiên cứu',
     glyph: 'search',
     color: 'var(--success)',
     badgeBg: 'rgba(62,138,94,.12)',
-    help: 'Tìm thông tin và dẫn nguồn rõ ràng.',
-    tools: ['Tra web', 'Đọc web'],
+    tools: ['web', 'fetch'],
   },
   {
     id: 'writing',
-    name: 'Viết lách',
     glyph: 'write',
     color: 'var(--accent)',
     badgeBg: 'var(--accent-soft)',
-    help: 'Viết email, bài đăng, tài liệu mạch lạc.',
     tools: [],
   },
   {
     id: 'data',
-    name: 'Phân tích dữ liệu',
     glyph: 'data',
     color: 'var(--warn)',
     badgeBg: 'rgba(181,133,63,.14)',
-    help: 'Đọc bảng số, rút ra kết luận.',
-    tools: ['Chạy lệnh', 'Tệp'],
+    tools: ['bash', 'files'],
   },
 ]
 
@@ -69,7 +60,6 @@ export type ProviderStatus = 'connected' | 'add' | 'local'
 export interface ProviderDef {
   id: ProviderId
   name: string
-  sub: string
   glyph: string
   badgeBg: string
   badgeFg: string
@@ -84,7 +74,6 @@ export const provDefs: ProviderDef[] = [
   {
     id: 'claude',
     name: 'Claude',
-    sub: 'Anthropic · cân bằng',
     glyph: 'C',
     badgeBg: 'var(--accent-soft)',
     badgeFg: 'var(--accent)',
@@ -97,7 +86,6 @@ export const provDefs: ProviderDef[] = [
   {
     id: 'gemini',
     name: 'Gemini',
-    sub: 'Google · ngữ cảnh lớn',
     glyph: 'G',
     badgeBg: 'rgba(59,91,169,.14)',
     badgeFg: 'var(--info)',
@@ -110,7 +98,6 @@ export const provDefs: ProviderDef[] = [
   {
     id: 'openai',
     name: 'OpenAI',
-    sub: 'GPT · đa năng',
     glyph: 'O',
     badgeBg: 'var(--border)',
     badgeFg: 'var(--text)',
@@ -123,7 +110,6 @@ export const provDefs: ProviderDef[] = [
   {
     id: 'ollama',
     name: 'Trên máy của bạn',
-    sub: 'Ollama · riêng tư, ngoại tuyến',
     glyph: '◍',
     badgeBg: 'var(--success-bg)',
     badgeFg: 'var(--success)',
@@ -135,52 +121,27 @@ export const provDefs: ProviderDef[] = [
   },
 ]
 
-export const statusMap: Record<
-  ProviderStatus,
-  { badge: string; fg: string; bg: string }
-> = {
-  connected: { badge: 'Đã kết nối', fg: 'var(--success-text)', bg: 'var(--success-bg)' },
-  add: { badge: 'Thêm khóa', fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
-  local: { badge: 'Cục bộ', fg: 'var(--success-text)', bg: 'var(--success-bg)' },
+// badge text is translated at consumption (vocab.status.*)
+export const statusMap: Record<ProviderStatus, { fg: string; bg: string }> = {
+  connected: { fg: 'var(--success-text)', bg: 'var(--success-bg)' },
+  add: { fg: 'var(--warn-text)', bg: 'var(--warn-bg)' },
+  local: { fg: 'var(--success-text)', bg: 'var(--success-bg)' },
 }
 
+export type SuggestionId = 'write' | 'plan' | 'learn' | 'docs'
+
 export interface SuggestionDef {
-  title: string
-  sub: string
+  id: SuggestionId
   glyph: IconName
   bg: string
   fg: string
 }
 
 export const suggestionDefs: SuggestionDef[] = [
-  {
-    title: 'Viết giúp tôi',
-    sub: 'Email, bài đăng, tin nhắn — rõ ràng và đúng giọng.',
-    glyph: 'write',
-    bg: 'var(--accent-soft)',
-    fg: 'var(--accent)',
-  },
-  {
-    title: 'Lên kế hoạch',
-    sub: 'Chia một việc lớn thành các bước làm được.',
-    glyph: 'plan',
-    bg: 'rgba(59,91,169,.12)',
-    fg: 'var(--info)',
-  },
-  {
-    title: 'Tìm hiểu',
-    sub: 'Giải thích một chủ đề thật dễ hiểu.',
-    glyph: 'search',
-    bg: 'rgba(62,138,94,.12)',
-    fg: 'var(--success)',
-  },
-  {
-    title: 'Xử lý tài liệu',
-    sub: 'Tóm tắt, trích xuất, đối chiếu tài liệu của bạn.',
-    glyph: 'file',
-    bg: 'rgba(154,91,138,.12)',
-    fg: 'var(--plum)',
-  },
+  { id: 'write', glyph: 'write', bg: 'var(--accent-soft)', fg: 'var(--accent)' },
+  { id: 'plan', glyph: 'plan', bg: 'rgba(59,91,169,.12)', fg: 'var(--info)' },
+  { id: 'learn', glyph: 'search', bg: 'rgba(62,138,94,.12)', fg: 'var(--success)' },
+  { id: 'docs', glyph: 'file', bg: 'rgba(154,91,138,.12)', fg: 'var(--plum)' },
 ]
 
 export interface ProjectDef {

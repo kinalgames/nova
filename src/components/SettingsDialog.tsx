@@ -1,20 +1,23 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Switch from '@radix-ui/react-switch'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
+import { setLanguage, type Language } from '../i18n'
 import { Icon } from './Icon'
 import { ToggleRow } from './ToggleRow'
 import { PresetCard } from './PresetCard'
 
 const TABS = [
-  { id: 'general', label: 'Chung', icon: 'settings' },
-  { id: 'providers', label: 'Nhà cung cấp', icon: 'command' },
-  { id: 'assistant', label: 'Trợ lý', icon: 'nova' },
+  { id: 'general', labelKey: 'settings.tabGeneral', icon: 'settings' },
+  { id: 'providers', labelKey: 'settings.tabProviders', icon: 'command' },
+  { id: 'assistant', labelKey: 'settings.tabAssistant', icon: 'nova' },
 ] as const
 
 const LABEL = 'font-mono text-eyebrow tracking-[0.14em] text-faint'
 
 export function SettingsDialog() {
   const { v } = useStore()
+  const { t } = useTranslation()
   const mobile = v.isMobile
   return (
     <Dialog.Root open={v.settingsOpen} onOpenChange={(o) => !o && v.closeSettings()}>
@@ -29,28 +32,28 @@ export function SettingsDialog() {
           }
           style={mobile ? undefined : { flexDirection: 'row' }}
         >
-          <Dialog.Title className="sr-only">Cài đặt</Dialog.Title>
+          <Dialog.Title className="sr-only">{t('settings.title')}</Dialog.Title>
 
           {/* rail / tabs */}
           <div
             role="tablist"
-            aria-label="Mục cài đặt"
+            aria-label={t('settings.tabsAria')}
             className={
               mobile
                 ? 'flex flex-shrink-0 items-center gap-1 border-b border-border px-3 py-2'
                 : 'flex w-[184px] flex-shrink-0 flex-col gap-0.5 border-r border-border bg-side p-3'
             }
           >
-            {!mobile && <div className={`${LABEL} px-2 pb-2 pt-1`}>CÀI ĐẶT</div>}
-            {TABS.map((t) => {
-              const active = v.settingsTab === t.id
+            {!mobile && <div className={`${LABEL} px-2 pb-2 pt-1`}>{t('settings.railLabel')}</div>}
+            {TABS.map((tab) => {
+              const active = v.settingsTab === tab.id
               return (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  onClick={() => v.setSettingsTab(t.id)}
+                  onClick={() => v.setSettingsTab(tab.id)}
                   className={
                     'flex items-center gap-2.5 cursor-pointer rounded-lg border-none text-left text-ui outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
                     (mobile ? 'px-3 py-1.5 ' : 'px-3 py-2 ') +
@@ -59,8 +62,8 @@ export function SettingsDialog() {
                       : 'bg-transparent text-text-2 hover:bg-black/[0.04]')
                   }
                 >
-                  <Icon n={t.icon} size={16} className={'flex-shrink-0 ' + (active ? 'text-accent' : 'opacity-50')} />
-                  {t.label}
+                  <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? 'text-accent' : 'opacity-50')} />
+                  {t(tab.labelKey)}
                 </button>
               )
             })}
@@ -70,12 +73,12 @@ export function SettingsDialog() {
           <div role="tabpanel" className="min-w-0 flex-1 overflow-y-auto">
             <div className="flex items-center justify-between px-6 pb-2 pt-5">
               <div className="font-display text-h3">
-                {TABS.find((t) => t.id === v.settingsTab)?.label}
+                {t(TABS.find((tab) => tab.id === v.settingsTab)?.labelKey ?? 'settings.tabGeneral')}
               </div>
               <Dialog.Close asChild>
                 <button
                   type="button"
-                  aria-label="Đóng"
+                  aria-label={t('common.close')}
                   className="flex cursor-pointer rounded-md border-none bg-transparent p-1 text-muted outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <Icon n="close" size={18} />
@@ -96,6 +99,22 @@ export function SettingsDialog() {
 
 function General() {
   const { v } = useStore()
+  const { t, i18n } = useTranslation()
+  const langBtn = (lng: Language, label: string) => (
+    <button
+      type="button"
+      aria-pressed={i18n.language === lng}
+      onClick={() => setLanguage(lng)}
+      className="cursor-pointer rounded-sm border px-3 py-1 text-small"
+      style={{
+        borderColor: i18n.language === lng ? v.accent : 'var(--border)',
+        background: i18n.language === lng ? 'var(--accent-soft)' : 'transparent',
+        color: i18n.language === lng ? 'var(--accent-text)' : 'var(--muted)',
+      }}
+    >
+      {label}
+    </button>
+  )
   return (
     <>
       {/* advanced mode */}
@@ -108,13 +127,13 @@ function General() {
             <Icon n="command" size={17} />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="text-body font-medium">Chế độ nâng cao</div>
-            <div className="mt-0.5 text-small leading-normal text-muted">Chế độ dành cho người dùng chuyên nghiệp. Bật để xem thêm chi tiết kỹ thuật trong từng bước.</div>
+            <div className="text-body font-medium">{t('settings.advanced')}</div>
+            <div className="mt-0.5 text-small leading-normal text-muted">{t('settings.advancedSub')}</div>
           </div>
           <Switch.Root
             checked={v.advanced}
             onCheckedChange={v.toggleAdvanced}
-            aria-label="Chế độ nâng cao"
+            aria-label={t('settings.advanced')}
             className="relative h-[25px] w-11 shrink-0 cursor-pointer rounded-md bg-border p-0.5 outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent data-[state=checked]:bg-accent"
           >
             <Switch.Thumb className="block size-[21px] rounded-full bg-[var(--knob)] shadow-[var(--knob-shadow)] transition-transform data-[state=checked]:translate-x-[19px]" />
@@ -122,22 +141,29 @@ function General() {
         </div>
       </div>
 
-      <div className={`${LABEL} mb-3`}>GIAO DIỆN</div>
+      <div className={`${LABEL} mb-3`}>{t('settings.appearance')}</div>
       <div className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
-        <button type="button" aria-pressed={v.themeVal === 'light'} onClick={v.setLight} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeLightBd, background: v.themeLightBg, color: v.themeLightFg }}>Sáng</button>
-        <button type="button" aria-pressed={v.themeVal === 'dark'} onClick={v.setDark} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeDarkBd, background: v.themeDarkBg, color: v.themeDarkFg }}>Tối</button>
-        <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeAutoBd, background: v.themeAutoBg, color: v.themeAutoFg }}>Tự động</button>
+        <button type="button" aria-pressed={v.themeVal === 'light'} onClick={v.setLight} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeLightBd, background: v.themeLightBg, color: v.themeLightFg }}>{t('settings.themeLight')}</button>
+        <button type="button" aria-pressed={v.themeVal === 'dark'} onClick={v.setDark} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeDarkBd, background: v.themeDarkBg, color: v.themeDarkFg }}>{t('settings.themeDark')}</button>
+        <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeAutoBd, background: v.themeAutoBg, color: v.themeAutoFg }}>{t('settings.themeAuto')}</button>
       </div>
+
+      <div className={`${LABEL} mb-3 mt-4`}>{t('settings.language')}</div>
+      <div className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
+        {langBtn('vi', 'Tiếng Việt')}
+        {langBtn('en', 'English')}
+      </div>
+
       <ToggleRow
-        title="Thanh phím tắt dưới cùng"
-        sub="Hiện gợi ý phím tắt (chỉ desktop)"
+        title={t('settings.shortcutsTitle')}
+        sub={t('settings.shortcutsSub')}
         on={v.barOn}
         onToggle={v.toggleBar}
       />
 
-      <div className={`${LABEL} mb-1.5 mt-6`}>CHẾ ĐỘ TẬP TRUNG</div>
+      <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.focusSection')}</div>
       <div className="flex items-center justify-between gap-3 border-b border-border px-0.5 py-3">
-        <span className="text-body">Thời lượng phiên</span>
+        <span className="text-body">{t('settings.sessionLength')}</span>
         <div className="flex shrink-0 gap-1.5">
           <button type="button" aria-pressed={v.focusVal === '15'} onClick={v.setF15} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f15Bd, background: v.f15Bg, color: v.f15Fg }}>15′</button>
           <button type="button" aria-pressed={v.focusVal === '25'} onClick={v.setF25} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f25Bd, background: v.f25Bg, color: v.f25Fg }}>25′</button>
@@ -145,14 +171,14 @@ function General() {
         </div>
       </div>
 
-      <div className={`${LABEL} mb-1.5 mt-6`}>TÀI KHOẢN</div>
+      <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.account')}</div>
       <div className="flex items-center gap-3 px-0.5 py-3">
         <div className="size-[38px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
         <div className="min-w-0 flex-1">
-          <div className="text-body">Minh Trần</div>
-          <div className="text-small text-muted">minh@aurora.studio · Gói Pro</div>
+          <div className="text-body">{t('user.name')}</div>
+          <div className="text-small text-muted">minh@aurora.studio · {t('user.plan')}</div>
         </div>
-        <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint">Đăng xuất</button>
+        <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint">{t('nav.logout')}</button>
       </div>
     </>
   )
@@ -160,13 +186,14 @@ function General() {
 
 function Providers() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <>
-      <div className={`${LABEL} mb-3`}>NOVA DÙNG MÔ HÌNH</div>
+      <div className={`${LABEL} mb-3`}>{t('settings.providersModels')}</div>
       <div className="mb-3 flex flex-col gap-2.5">
         {v.providers.map((pr) => (
           <div key={pr.id} className="rounded-md border px-4 py-3" style={{ borderColor: pr.border, background: pr.bg }}>
-            <button type="button" onClick={pr.select} aria-pressed={pr.active} aria-label={`Dùng ${pr.name}`} className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent text-left">
+            <button type="button" onClick={pr.select} aria-pressed={pr.active} aria-label={t('settings.useProvider', { name: pr.name })} className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent text-left">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-sm font-mono text-body" style={{ background: pr.badgeBg, color: pr.badgeFg }}>
                 {pr.glyph}
               </div>
@@ -194,12 +221,12 @@ function Providers() {
                       className="min-w-0 flex-1 bg-transparent font-mono text-small text-text"
                     />
                     <button type="button" onClick={pr.test} disabled={pr.testing} className="cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2 py-1 font-mono text-eyebrow text-accent-text">
-                      {pr.testing ? 'Đang kiểm tra…' : pr.fieldAction}
+                      {pr.testing ? t('settings.testing') : pr.fieldAction}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">MÔ HÌNH KHẢ DỤNG</div>
+                  <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.modelsAvailable')}</div>
                   <div className="flex flex-wrap gap-1.5">
                     {pr.models.map((md, i) => (
                       <span key={i} className="rounded-sm border px-2.5 py-1 font-mono text-meta" style={{ color: md.fg, background: md.bg, borderColor: md.bd }}>
@@ -214,7 +241,7 @@ function Providers() {
         ))}
       </div>
       {v.advanced && (
-        <button type="button" className="flex cursor-pointer items-center gap-1.5 border-none bg-transparent py-1 text-small text-faint"><Icon n="plus" size={13} /> Thêm nhà cung cấp tùy chỉnh (OpenAI‑compatible)</button>
+        <button type="button" className="flex cursor-pointer items-center gap-1.5 border-none bg-transparent py-1 text-small text-faint"><Icon n="plus" size={13} /> {t('settings.addCustom')}</button>
       )}
     </>
   )
@@ -222,31 +249,32 @@ function Providers() {
 
 function Assistant() {
   const { v } = useStore()
+  const { t } = useTranslation()
   return (
     <>
-      <div className={`${LABEL} mb-3`}>PHONG CÁCH TRẢ LỜI</div>
+      <div className={`${LABEL} mb-3`}>{t('settings.styleSection')}</div>
       <div className="mb-7 flex flex-wrap gap-2">
-        <button type="button" aria-pressed={v.styleConcise} onClick={v.toggleConcise} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stConciseBd, background: v.stConciseBg, color: v.stConciseFg }}>Ngắn gọn</button>
-        <button type="button" aria-pressed={v.styleWarm} onClick={v.toggleWarm} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stWarmBd, background: v.stWarmBg, color: v.stWarmFg }}>Ấm áp</button>
-        <button type="button" aria-pressed={v.styleFormal} onClick={v.toggleFormal} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stFormalBd, background: v.stFormalBg, color: v.stFormalFg }}>Trang trọng</button>
-        <button type="button" aria-pressed={v.styleHumor} onClick={v.toggleHumor} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stHumorBd, background: v.stHumorBg, color: v.stHumorFg }}>Hài hước</button>
+        <button type="button" aria-pressed={v.styleConcise} onClick={v.toggleConcise} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stConciseBd, background: v.stConciseBg, color: v.stConciseFg }}>{t('vocab.styles.concise')}</button>
+        <button type="button" aria-pressed={v.styleWarm} onClick={v.toggleWarm} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stWarmBd, background: v.stWarmBg, color: v.stWarmFg }}>{t('vocab.styles.warm')}</button>
+        <button type="button" aria-pressed={v.styleFormal} onClick={v.toggleFormal} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stFormalBd, background: v.stFormalBg, color: v.stFormalFg }}>{t('vocab.styles.formal')}</button>
+        <button type="button" aria-pressed={v.styleHumor} onClick={v.toggleHumor} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stHumorBd, background: v.stHumorBg, color: v.stHumorFg }}>{t('vocab.styles.humor')}</button>
       </div>
 
       <div className="mb-1.5 flex items-baseline justify-between">
-        <div className={LABEL}>KỸ NĂNG CỦA NOVA</div>
-        <span className="text-small text-muted">Bật/tắt cho mọi dự án</span>
+        <div className={LABEL}>{t('settings.skillsSection')}</div>
+        <span className="text-small text-muted">{t('settings.skillsScope')}</span>
       </div>
-      <div className="mb-3 text-ui leading-normal text-muted">Mỗi kỹ năng dạy Nova cách làm một loại việc. Bạn cũng có thể bật riêng cho từng dự án.</div>
+      <div className="mb-3 text-ui leading-normal text-muted">{t('settings.skillsHelp')}</div>
       <div className="mb-7 flex flex-col gap-2.5">
         {v.presetsLib.map((pr) => (
           <PresetCard key={pr.id} pr={pr} />
         ))}
       </div>
 
-      <div className={`${LABEL} mb-2`}>HƯỚNG DẪN HỆ THỐNG</div>
-      <div className="mb-3 text-ui leading-normal text-muted">Cách Nova trả lời trong mọi cuộc trò chuyện. Bạn có thể chỉnh tự do bất cứ lúc nào.</div>
+      <div className={`${LABEL} mb-2`}>{t('settings.systemSection')}</div>
+      <div className="mb-3 text-ui leading-normal text-muted">{t('settings.systemHelp')}</div>
       <div className="rounded-md border border-border bg-panel px-4 py-4 text-body leading-relaxed text-text">
-        Trả lời ngắn gọn, đi thẳng vấn đề. Ưu tiên gạch đầu dòng. Giọng tự tin nhưng không phô trương. Hỏi lại khi yêu cầu mơ hồ thay vì đoán.
+        {t('settings.systemSample')}
       </div>
     </>
   )
