@@ -34,7 +34,7 @@ describe('App — shell & navigation', () => {
     await user.click(screen.getByRole('button', { name: /Tìm/ }))
     const dialog = await screen.findByRole('dialog')
     expect(
-      within(dialog).getByPlaceholderText('Tìm trang, dự án, hành động…'),
+      within(dialog).getByPlaceholderText('Tìm cuộc trò chuyện, dự án, hành động…'),
     ).toBeInTheDocument()
   })
 })

@@ -4,6 +4,7 @@ import type { RouterContext } from '../router'
 import type { SettingsTab } from '../state/types'
 import { StoreProvider, useStore } from '../state/store'
 import { CommandPalette } from '../components/CommandPalette'
+import { RenameDialog } from '../components/RenameDialog'
 import { Preview } from '../components/Preview'
 import { SettingsDialog } from '../components/SettingsDialog'
 import { QuietMode } from '../components/QuietMode'
@@ -51,6 +52,7 @@ function Shell() {
 
       <MobileDrawer />
       <CommandPalette />
+      <RenameDialog />
       <Preview />
       <SettingsDialog />
       <QuietMode />

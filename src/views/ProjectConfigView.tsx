@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import * as Dialog from '@radix-ui/react-dialog'
 import { useStore } from '../state/store'
 import { PresetCard } from '../components/PresetCard'
 import { Icon } from '../components/Icon'
@@ -11,6 +13,7 @@ const SECTION_LABEL = 'font-mono text-eyebrow tracking-[.14em] text-label'
 
 export function ProjectConfigView() {
   const { v } = useStore()
+  const [confirming, setConfirming] = useState(false)
   const id = v.viewProjectId
   const readOnly = v.viewProjectIsDefault
 
@@ -104,15 +107,7 @@ export function ProjectConfigView() {
           <div className="mt-10 border-t border-border pt-6">
             <button
               type="button"
-              onClick={() => {
-                if (
-                  typeof window === 'undefined' ||
-                  !window.confirm ||
-                  window.confirm(`Xóa dự án "${v.viewProjectName}"? Cuộc trò chuyện sẽ chuyển về Chung.`)
-                ) {
-                  v.deleteProject(id)
-                }
-              }}
+              onClick={() => setConfirming(true)}
               className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-danger-line bg-transparent px-3 py-2 text-ui text-danger outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <Icon n="close" size={14} /> Xóa dự án
@@ -120,6 +115,38 @@ export function ProjectConfigView() {
             <div className="mt-2 text-meta text-muted">
               Cuộc trò chuyện trong dự án sẽ được chuyển về dự án Chung, không bị mất.
             </div>
+
+            <Dialog.Root open={confirming} onOpenChange={setConfirming}>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-[60] animate-[dim_120ms_ease] bg-[rgba(27,26,22,0.28)]" />
+                <Dialog.Content className="fixed left-1/2 top-[26%] z-[60] w-[420px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] rounded-lg border border-border bg-panel p-6 shadow-overlay outline-none">
+                  <Dialog.Title className="font-display text-h3">
+                    Xóa dự án “{v.viewProjectName}”?
+                  </Dialog.Title>
+                  <Dialog.Description className="mb-5 mt-1.5 text-ui leading-normal text-muted">
+                    {v.viewProjectCount} cuộc trò chuyện sẽ được chuyển về dự án Chung, không bị
+                    mất. Hướng dẫn và kỹ năng riêng của dự án sẽ bị xóa.
+                  </Dialog.Description>
+                  <div className="flex justify-end gap-2.5">
+                    <Dialog.Close asChild>
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-sm border border-border bg-transparent px-3.5 py-2 text-ui text-muted"
+                      >
+                        Hủy
+                      </button>
+                    </Dialog.Close>
+                    <button
+                      type="button"
+                      onClick={() => v.deleteProject(id)}
+                      className="cursor-pointer rounded-sm border-none bg-danger-strong px-3.5 py-2 text-ui text-on-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
           </div>
         )}
       </div>

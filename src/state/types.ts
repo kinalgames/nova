@@ -141,6 +141,8 @@ export interface NovaState {
   traceOpen: boolean
   drawerOpen: boolean
   sidebarCollapsed: boolean
+  /** conversation id being renamed (paper dialog), or null */
+  renamingConv: string | null
   preview: Preview | null
   respState: RespState
   projects: Project[]

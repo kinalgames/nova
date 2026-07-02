@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 
@@ -50,18 +50,27 @@ describe('views render on navigation', () => {
     expect(await screen.findByRole('textbox', { name: 'Nhắn cho Nova' })).toBeInTheDocument()
   })
 
-  it('Project config: edits the name, then deletes the project', async () => {
+  it('Project config: edits the name, then deletes via the confirm dialog', async () => {
     const user = makeUser()
     await renderApp(undefined, { path: '/projects/aurora/config' })
     const name = await screen.findByLabelText('Tên dự án')
     await user.clear(name)
     await user.type(name, 'Aurora X')
     expect(name).toHaveValue('Aurora X')
-    const orig = window.confirm
-    window.confirm = vi.fn(() => true)
     await user.click(screen.getByRole('button', { name: /Xóa dự án/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/chuyển về dự án Chung/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Xóa' }))
     expect(await screen.findByText(/Mỗi dự án có hướng dẫn/)).toBeInTheDocument()
-    window.confirm = orig
+  })
+
+  it('Project config: canceling the confirm keeps the project', async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, { path: '/projects/aurora/config' })
+    await user.click(await screen.findByRole('button', { name: /Xóa dự án/ }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Hủy' }))
+    expect(store().s.projects.find((p) => p.id === 'aurora')).toBeDefined()
   })
 
   it('Project config: the default project is read-only with no delete', async () => {

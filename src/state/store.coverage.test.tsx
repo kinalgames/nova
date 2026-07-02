@@ -194,14 +194,24 @@ describe('store — recent conversations (rename / pin / delete)', () => {
     expect(result.current.v.sideConvs[0].id).toBe(target.id)
     expect(result.current.v.sideConvs[0].pinned).toBe(true)
   })
-  it('renames via prompt and persists', async () => {
-    const orig = window.prompt
-    window.prompt = vi.fn(() => 'Tên mới')
+  it('renames via the paper dialog and persists', async () => {
     const { result } = await setup()
     const target = result.current.v.sideConvs[0]
     await act(async () => target.rename())
+    expect(result.current.v.renamingConv).toBe(target.id)
+    expect(result.current.v.renameTitle).toBe(target.title)
+    await act(async () => result.current.v.saveRename('Tên mới'))
+    expect(result.current.v.renamingConv).toBeNull()
     expect(result.current.v.sideConvs.find((c) => c.id === target.id)?.title).toBe('Tên mới')
-    window.prompt = orig
+  })
+
+  it('an empty rename keeps the old title', async () => {
+    const { result } = await setup()
+    const target = result.current.v.sideConvs[0]
+    const before = target.title
+    await act(async () => target.rename())
+    await act(async () => result.current.v.saveRename('   '))
+    expect(result.current.v.sideConvs.find((c) => c.id === target.id)?.title).toBe(before)
   })
 })
 

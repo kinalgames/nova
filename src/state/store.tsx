@@ -109,6 +109,7 @@ function initialState(): NovaState {
     traceOpen: false,
     drawerOpen: false,
     sidebarCollapsed: false,
+    renamingConv: null,
     preview: null,
     respState: 'done',
     projects:
@@ -674,18 +675,7 @@ function deriveValues(
         set({ activeConv: c.id, palette: false, drawerOpen: false })
         navigate({ to: '/chat/$convId', params: { convId: c.id } })
       },
-      rename: () => {
-        const next =
-          typeof window !== 'undefined' && window.prompt
-            ? window.prompt('Đổi tên cuộc trò chuyện', c.title)
-            : null
-        if (next && next.trim())
-          set((x) => ({
-            conversations: x.conversations.map((k) =>
-              k.id === c.id ? { ...k, title: next.trim() } : k,
-            ),
-          }))
-      },
+      rename: () => set({ renamingConv: c.id }),
       pin: () =>
         set((x) => ({
           conversations: x.conversations.map((k) =>
@@ -1121,6 +1111,36 @@ function deriveValues(
     editProject,
     deleteProject,
     newChatInProject: startChat,
+    // command-palette search space — conversations across ALL projects + projects
+    paletteConvs: sortConvs(s.conversations).map((c) => ({
+      id: c.id,
+      title: c.title,
+      projectName: s.projects.find((p) => p.id === c.projectId)?.name ?? 'Chung',
+      open: () => {
+        set({ activeConv: c.id, palette: false, q: '' })
+        navigate({ to: '/chat/$convId', params: { convId: c.id } })
+      },
+    })),
+    paletteProjects: s.projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      dot: p.accent,
+      open: () => {
+        set({ palette: false, q: '' })
+        navigate({ to: '/projects/$projectId', params: { projectId: p.id } })
+      },
+    })),
+    // rename dialog (paper replacement for window.prompt)
+    renamingConv: s.renamingConv,
+    renameTitle: s.conversations.find((c) => c.id === s.renamingConv)?.title ?? '',
+    closeRename: () => set({ renamingConv: null }),
+    saveRename: (title: string) =>
+      set((x) => ({
+        renamingConv: null,
+        conversations: x.conversations.map((k) =>
+          k.id === x.renamingConv && title.trim() ? { ...k, title: title.trim() } : k,
+        ),
+      })),
     // advanced toggle
     advTrackBg: adv ? accent : 'var(--border)',
     advKnobTx: adv ? 'translateX(19px)' : 'translateX(0)',
