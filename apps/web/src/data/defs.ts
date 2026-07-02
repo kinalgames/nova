@@ -56,6 +56,7 @@ export const presetDefs: PresetDef[] = [
 
 // provider/model contracts live in the shared domain package (the API uses
 // the same shapes); re-exported so existing client imports keep working
+import { providerAuth } from '@nova/shared'
 import type { ModelDef, ModelRef, ProfileKind, ProviderId, SlotId } from '@nova/shared'
 export type { ModelDef, ModelRef, ProfileKind, ProviderId, SlotId } from '@nova/shared'
 
@@ -66,7 +67,7 @@ export interface ProviderDef {
   badgeBg: string
   badgeFg: string
   /** credential kinds this provider supports, in the order the add-menu offers them */
-  auth: ProfileKind[]
+  auth: readonly ProfileKind[]
   /** what an api_key-kind credential means for this provider */
   field: 'key' | 'endpoint'
   /** placeholder for the credential input — translated at consumption when needed */
@@ -82,7 +83,7 @@ export const provDefs: ProviderDef[] = [
     glyph: 'C',
     badgeBg: 'var(--accent-soft)',
     badgeFg: 'var(--accent)',
-    auth: ['account', 'api_key'],
+    auth: providerAuth.claude,
     field: 'key',
     placeholder: 'sk-ant-…',
     // real Anthropic catalog (2026-07): dateless pinned ids, current pricing
@@ -99,7 +100,7 @@ export const provDefs: ProviderDef[] = [
     glyph: 'G',
     badgeBg: 'color-mix(in srgb, var(--info) 14%, transparent)',
     badgeFg: 'var(--info)',
-    auth: ['account', 'api_key'],
+    auth: providerAuth.gemini,
     field: 'key',
     placeholder: 'AIza…',
     models: [
@@ -115,7 +116,7 @@ export const provDefs: ProviderDef[] = [
     glyph: 'O',
     badgeBg: 'var(--border)',
     badgeFg: 'var(--text)',
-    auth: ['api_key'],
+    auth: providerAuth.openai,
     field: 'key',
     placeholder: 'sk-…',
     models: [
@@ -132,7 +133,7 @@ export const provDefs: ProviderDef[] = [
     glyph: '◍',
     badgeBg: 'var(--success-bg)',
     badgeFg: 'var(--success)',
-    auth: ['api_key'],
+    auth: providerAuth.ollama,
     field: 'endpoint',
     placeholder: 'http://localhost:11434',
     models: [

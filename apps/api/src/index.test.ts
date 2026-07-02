@@ -106,6 +106,106 @@ describe('nova-api skeleton', () => {
   })
 })
 
+describe('T6 — multi-provider dispatch', () => {
+  it('routes a gemini api_key chat to generativelanguage and transforms the stream', async () => {
+    const enc = new TextEncoder()
+    const upstream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(
+          enc.encode(
+            'data: {"candidates":[{"content":{"parts":[{"text":"ok"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":2,"candidatesTokenCount":1}}\n',
+          ),
+        )
+        c.close()
+      },
+    })
+    const fetchMock = vi.fn(async (_url: string) => new Response(upstream, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'gemini',
+        model: 'gemini-2.5-flash',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'AIza-x' },
+      }),
+    })
+    expect(res.status).toBe(200)
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      'generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent',
+    )
+    const text = await res.text()
+    expect(text).toContain('"type":"block_delta"')
+    expect(text).toContain('"inputTokens":2')
+  })
+
+  it('routes an openai chat with the Bearer key to chat completions', async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(new ReadableStream({ start: (c) => c.close() }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'openai',
+        model: 'gpt-5-mini',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'sk-o' },
+      }),
+    })
+    expect(res.status).toBe(200)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('https://api.openai.com/v1/chat/completions')
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer sk-o')
+  })
+
+  it('rejects an account credential for a provider that only takes api keys', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'openai',
+        model: 'gpt-5-mini',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'account', credential: 'whatever' },
+      }),
+    })
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { code: string }).code).toBe('invalid_request')
+  })
+
+  it('rejects an unknown providerId', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'grok',
+        model: 'x',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'k' },
+      }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('maps an unusable ollama endpoint to 400 invalid_credential, not a 502', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'ollama',
+        model: 'llama3.2',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'không-phải-url' },
+      }),
+    })
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { code: string }).code).toBe('invalid_credential')
+  })
+})
+
 describe('BE3 — sealed BYOK surface', () => {
   it('credentials CRUD requires a session', async () => {
     for (const [method, path] of [

@@ -668,11 +668,12 @@ export function StoreProvider({
         set((x) => ({ stickyProfile: { ...x.stickyProfile, [ref.providerId]: profile.id } }))
 
       // REAL provider path: a user-added (non-demo) profile + a reachable API
-      // routes the chat through nova-api instead of the fake layer. Rotation
-      // over the real profiles only — seeded showcase credentials never leave
+      // routes the chat through nova-api instead of the fake layer — for EVERY
+      // provider the proxy speaks (claude/gemini/openai/ollama). Rotation over
+      // the real profiles only — seeded showcase credentials never leave
       // the device.
       const liveProfile =
-        API_BASE && ref.providerId === 'claude'
+        API_BASE
           ? pickProfile(
               (prev.profiles[ref.providerId] ?? []).filter((f) => !f.demo),
               prev.stickyProfile[ref.providerId],
@@ -729,7 +730,7 @@ export function StoreProvider({
         }))
         void streamChat(
           {
-            providerId: 'claude',
+            providerId: ref.providerId,
             model: ref.modelId,
             system: instructions || undefined,
             messages: turns,

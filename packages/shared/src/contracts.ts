@@ -7,6 +7,16 @@ export type ProviderId = 'claude' | 'gemini' | 'openai' | 'ollama'
 /** credential kinds a provider accepts — 「Tài khoản」/「Khóa API」 */
 export type ProfileKind = 'account' | 'api_key'
 
+/** credential kinds each provider accepts, in the order the add-menu offers
+ *  them — the single source for both the client menu and the proxy's
+ *  validation. For ollama the api_key slot carries the endpoint URL. */
+export const providerAuth: Record<ProviderId, readonly ProfileKind[]> = {
+  claude: ['account', 'api_key'],
+  gemini: ['account', 'api_key'],
+  openai: ['api_key'],
+  ollama: ['api_key'],
+}
+
 /** lifecycle of an auth profile: usable → rate-limited → broken → unverified */
 export type ProfileStatus = 'active' | 'limited' | 'error' | 'untested'
 

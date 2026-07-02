@@ -1,5 +1,5 @@
-// Anthropic Messages API adapter — the first real provider (BE3 slice pulled
-// forward). Two credential kinds, matching the product's 「Tài khoản」/「Khóa API」:
+// Anthropic Messages API adapter — two credential kinds, matching the
+// product's 「Tài khoản」/「Khóa API」:
 //
 //  - api_key  → `x-api-key` (the officially supported path)
 //  - account  → a Claude subscription setup-token (sk-ant-oat01-…) sent the
@@ -9,6 +9,9 @@
 //    ever run against the user's OWN subscription.
 
 import type { ChatProxyRequest } from '@nova/shared'
+import { novaLineStream, sseData, type ResolvedChatRequest } from './shared'
+
+export type { NovaStreamEvent, ResolvedChatRequest } from './shared'
 
 const API_URL = 'https://api.anthropic.com/v1/messages'
 const VERSION = '2023-06-01'
@@ -48,13 +51,7 @@ export function anthropicBody(req: ResolvedChatRequest): string {
   })
 }
 
-/** the proxy resolves the credential BEFORE calling — profile is guaranteed */
-export type ResolvedChatRequest = ChatProxyRequest & {
-  profile: NonNullable<ChatProxyRequest['profile']>
-}
-
 /** call the upstream with streaming enabled; the caller owns the response body */
-
 export function callAnthropic(req: ResolvedChatRequest, signal?: AbortSignal): Promise<Response> {
   return fetch(API_URL, {
     method: 'POST',
@@ -64,12 +61,12 @@ export function callAnthropic(req: ResolvedChatRequest, signal?: AbortSignal): P
   })
 }
 
-export interface NovaStreamEvent {
-  type: 'message_start' | 'block_delta' | 'message_stop' | 'error'
-  text?: string
-  usage?: { inputTokens: number; outputTokens: number }
-  code?: string
-  message?: string
+interface AnthropicEvent {
+  type?: string
+  message?: { usage?: { input_tokens?: number; output_tokens?: number } }
+  usage?: { output_tokens?: number }
+  delta?: { type?: string; text?: string }
+  error?: { type?: string; message?: string }
 }
 
 /**
@@ -77,72 +74,42 @@ export interface NovaStreamEvent {
  * message_start · block_delta{text} · message_stop{usage} · error.
  */
 export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
-  const decoder = new TextDecoder()
-  const encoder = new TextEncoder()
-  let buffer = ''
   let inputTokens = 0
   let outputTokens = 0
 
-  const emit = (
-    controller: TransformStreamDefaultController<Uint8Array>,
-    event: NovaStreamEvent,
-  ) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-
-  const handleLine = (line: string, controller: TransformStreamDefaultController<Uint8Array>) => {
-    if (!line.startsWith('data:')) return
-    const raw = line.slice(5).trim()
-    if (!raw || raw === '[DONE]') return
-    let evt: {
-      type?: string
-      message?: { usage?: { input_tokens?: number; output_tokens?: number } }
-      usage?: { output_tokens?: number }
-      delta?: { type?: string; text?: string }
-      error?: { type?: string; message?: string }
-    }
-    try {
-      evt = JSON.parse(raw)
-    } catch {
-      return
-    }
-    switch (evt.type) {
-      case 'message_start':
-        inputTokens = evt.message?.usage?.input_tokens ?? 0
-        emit(controller, { type: 'message_start' })
-        break
-      case 'content_block_delta':
-        if (evt.delta?.type === 'text_delta' && evt.delta.text)
-          emit(controller, { type: 'block_delta', text: evt.delta.text })
-        break
-      case 'message_delta':
-        outputTokens = evt.usage?.output_tokens ?? outputTokens
-        break
-      case 'message_stop':
-        emit(controller, { type: 'message_stop', usage: { inputTokens, outputTokens } })
-        break
-      case 'error':
-        emit(controller, {
-          type: 'error',
-          code: evt.error?.type ?? 'upstream_error',
-          message: evt.error?.message ?? 'Provider stream error',
-        })
-        break
-    }
-  }
-
-  return upstream.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        buffer += decoder.decode(chunk, { stream: true })
-        let idx: number
-        while ((idx = buffer.indexOf('\n')) >= 0) {
-          const line = buffer.slice(0, idx).trimEnd()
-          buffer = buffer.slice(idx + 1)
-          handleLine(line, controller)
-        }
-      },
-      flush(controller) {
-        if (buffer) handleLine(buffer.trimEnd(), controller)
-      },
-    }),
-  )
+  return novaLineStream(upstream, {
+    line(line, emit) {
+      const raw = sseData(line)
+      if (!raw) return
+      let evt: AnthropicEvent
+      try {
+        evt = JSON.parse(raw) as AnthropicEvent
+      } catch {
+        return
+      }
+      switch (evt.type) {
+        case 'message_start':
+          inputTokens = evt.message?.usage?.input_tokens ?? 0
+          emit({ type: 'message_start' })
+          break
+        case 'content_block_delta':
+          if (evt.delta?.type === 'text_delta' && evt.delta.text)
+            emit({ type: 'block_delta', text: evt.delta.text })
+          break
+        case 'message_delta':
+          outputTokens = evt.usage?.output_tokens ?? outputTokens
+          break
+        case 'message_stop':
+          emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
+          break
+        case 'error':
+          emit({
+            type: 'error',
+            code: evt.error?.type ?? 'upstream_error',
+            message: evt.error?.message ?? 'Provider stream error',
+          })
+          break
+      }
+    },
+  })
 }

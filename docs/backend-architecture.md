@@ -140,10 +140,38 @@ single reload on `vite:preloadError`) · update-available toast
   usage lands on the message, 429 puts the profile into its cool-down so
   rotation moves on. The model catalog now carries the REAL Anthropic
   lineup (claude-opus-4-8 · claude-sonnet-5 · claude-haiku-4-5, current
-  pricing). Still to come in BE3 proper: server-side encrypted BYOK storage
-  (credentials currently transit per-request from the client — acceptable
-  for local dev only), rotation server-side, usage events to Analytics
-  Engine, and the remaining providers.
+  pricing). Server-side encrypted BYOK storage shipped (T2–T5): sealed
+  credentials in D1, chats reference a credentialId, the secret never
+  re-enters the client.
+  **T6 shipped — all four providers speak through the proxy** via a
+  registry (`src/providers/`): every adapter = `call` (upstream fetch,
+  streaming on) + `stream` (wire format → Nova events) over a shared
+  line-splitter (`shared.ts`). The auth matrix lives once in
+  `@nova/shared` (`providerAuth`) and feeds both the client add-menu and
+  the proxy validation.
+  - **gemini**: 「Khóa API」 → `x-goog-api-key` against
+    `generativelanguage.googleapis.com …:streamGenerateContent?alt=sse`
+    (official); 「Tài khoản」 → the gemini-cli Code Assist transport
+    (EXPERIMENTAL): credential = access token / refresh token /
+    `~/.gemini/oauth_creds.json` blob, refresh via gemini-cli's public
+    installed-app OAuth client (configured as
+    GEMINI_OAUTH_CLIENT_ID/SECRET — `.dev.vars` locally, wrangler
+    secrets in prod; kept out of source so secret scanning stays
+    meaningful), project via `v1internal:loadCodeAssist`,
+    stream via `cloudcode-pa.googleapis.com/v1internal:streamGenerateContent`
+    (chunks arrive wrapped in `{response:…}` — the transform unwraps
+    both shapes; thought tokens count as output).
+  - **openai**: `Authorization: Bearer` against Chat Completions;
+    `max_completion_tokens` (gpt-5/o-series reject `max_tokens`),
+    `stream_options.include_usage` for real usage on the final chunk.
+  - **ollama**: the credential IS the endpoint URL (validated http/https
+    → otherwise 400 `invalid_credential`); NDJSON from `/api/chat`,
+    usage from `prompt_eval_count`/`eval_count`. NOTE: a localhost
+    endpoint is only reachable while the api runs on the same machine
+    (wrangler dev); the deployed Worker cannot see a user's localhost —
+    a client-direct path is the follow-up.
+  Still to come in BE3 proper: rotation server-side and usage events to
+  Analytics Engine (T8).
 - **BE4 — files & share**: R2 presigned uploads for project files +
   attachments; real share links (`/share/:id` read-only page).
 - **BE5 — hardening**: rate limits, observability (structured logs +

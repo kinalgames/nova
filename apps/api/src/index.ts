@@ -1,14 +1,20 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { ChatProxyRequest } from '@nova/shared'
-import { callAnthropic, toNovaStream } from './providers/anthropic'
+import type { ChatProxyRequest, ProfileKind } from '@nova/shared'
+import {
+  ProviderConfigError,
+  isProviderId,
+  providerAdapters,
+  providerKinds,
+  type ProviderEnv,
+} from './providers'
 import { createAuth } from './auth'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
 import type { SyncOp } from '@nova/shared'
 
 export { UserStore } from './do/userStore'
 
-interface Env extends CredentialsEnv {
+interface Env extends CredentialsEnv, ProviderEnv {
   USER_STORE: DurableObjectNamespace
 }
 
@@ -73,20 +79,21 @@ const problem = (status: number, code: string, detail: string) =>
   Response.json({ type: 'about:blank', status, code, detail }, { status })
 
 /** validate the proxy request shape without pulling a schema library yet.
- *  Exactly one credential source: a stored credentialId OR an inline profile. */
+ *  Exactly one credential source: a stored credentialId OR an inline profile,
+ *  and the credential kind must be one the provider actually supports. */
 function parseChatRequest(body: unknown): ChatProxyRequest | null {
   if (typeof body !== 'object' || body === null) return null
   const b = body as Record<string, unknown>
+  if (!isProviderId(b.providerId)) return null
   const profile = b.profile as Record<string, unknown> | undefined
   const messages = b.messages as unknown[] | undefined
   const hasStored = typeof b.credentialId === 'string' && b.credentialId.trim() !== ''
   const hasInline =
     !!profile &&
-    (profile.kind === 'api_key' || profile.kind === 'account') &&
+    (providerKinds[b.providerId] as readonly string[]).includes(profile.kind as string) &&
     typeof profile.credential === 'string' &&
     profile.credential.trim() !== ''
   if (
-    b.providerId !== 'claude' ||
     typeof b.model !== 'string' ||
     !b.model ||
     !Array.isArray(messages) ||
@@ -153,7 +160,7 @@ app.post('/v1/chat', async (c) => {
     return problem(
       400,
       'invalid_request',
-      'Expected {providerId:"claude", model, messages[], credentialId | profile{kind, credential}}',
+      'Expected {providerId, model, messages[], credentialId | profile{kind, credential}} with a kind the provider supports',
     )
 
   // BE3: resolve a stored credential — session-gated, unsealed in memory only
@@ -164,13 +171,22 @@ app.post('/v1/chat', async (c) => {
     if (!stored) return problem(404, 'credential_not_found', 'No such stored credential')
     if (stored.providerId !== req.providerId)
       return problem(400, 'credential_mismatch', 'Credential belongs to another provider')
-    req.profile = { kind: stored.kind as 'api_key' | 'account', credential: stored.credential }
+    if (!(providerKinds[req.providerId] as readonly string[]).includes(stored.kind))
+      return problem(400, 'credential_mismatch', 'Credential kind not supported by this provider')
+    req.profile = { kind: stored.kind as ProfileKind, credential: stored.credential }
   }
   const profile = req.profile
   if (!profile) return problem(400, 'invalid_request', 'Missing credential source')
 
-  const upstream = await callAnthropic({ ...req, profile }, c.req.raw.signal).catch(() => null)
-  if (!upstream) return problem(502, 'upstream_unreachable', 'Could not reach the provider')
+  const adapter = providerAdapters[req.providerId]
+  let upstream: Response
+  try {
+    upstream = await adapter.call({ ...req, profile }, c.req.raw.signal, c.env)
+  } catch (e) {
+    // a credential that cannot possibly work is the caller's error, not a 502
+    if (e instanceof ProviderConfigError) return problem(400, 'invalid_credential', e.message)
+    return problem(502, 'upstream_unreachable', 'Could not reach the provider')
+  }
 
   if (!upstream.ok) {
     const detail = await upstream.text().catch(() => '')
@@ -191,7 +207,7 @@ app.post('/v1/chat', async (c) => {
 
   if (!upstream.body) return problem(502, 'upstream_empty', 'Provider returned no stream')
 
-  return new Response(toNovaStream(upstream.body), {
+  return new Response(adapter.stream(upstream.body), {
     headers: {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-store',

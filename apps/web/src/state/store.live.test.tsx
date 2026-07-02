@@ -56,6 +56,31 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(calls[0].model).toBe('claude-opus-4-8')
   })
 
+  it('a non-claude provider routes live too — providerId follows the routed slot', async () => {
+    const { result } = await renderStore()
+    await act(async () =>
+      result.current.v.providers
+        .find((p) => p.id === 'gemini')!
+        .addProfile('api_key', 'Khóa Gemini', 'AIza-real-1'),
+    )
+    await act(async () =>
+      result.current.set({
+        slots: {
+          smart: { providerId: 'gemini', modelId: 'gemini-2.5-pro' },
+          fast: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+        },
+      }),
+    )
+    await act(async () => result.current.set({ draft: 'chào Gemini' }))
+    await act(async () => result.current.v.send())
+
+    expect(calls[0].providerId).toBe('gemini')
+    expect(calls[0].model).toBe('gemini-2.5-pro')
+    expect(calls[0].profile?.credential).toBe('AIza-real-1')
+    expect(msgText(result.current.v.sent.at(-1))).toBe('Xin chào!')
+    expect(result.current.v.sent.at(-1)?.usage).toMatchObject({ modelId: 'gemini-2.5-pro' })
+  })
+
   it('a 429 puts the profile into its cool-down window and surfaces the error', async () => {
     ;(streamChat as Mock).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
       h.onError('rate_limited', 'Too many requests', 429, 30)
