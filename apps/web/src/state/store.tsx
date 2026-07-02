@@ -386,11 +386,18 @@ export function StoreProvider({
     s.threads,
   ])
 
-  // resize tracking
+  // resize tracking — rAF-throttled so a drag-resize never storms re-renders
   useEffect(() => {
-    const onResize = () => set({ vw: window.innerWidth })
+    let raf = 0
+    const onResize = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => set({ vw: window.innerWidth }))
+    }
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', onResize)
+    }
   }, [set])
 
   // BE2: hydrate from the per-user op-log once a session exists. Server state

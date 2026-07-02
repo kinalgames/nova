@@ -83,6 +83,16 @@ tốt, giữ.
 | F3 | P2 | Lazy chunks (Settings/dialog) — kiểm tra fallback có gây nháy overlay khi mở lần đầu. | routes/dialogs lazy | verify động |
 | F4 | P3 | `viewIn` translateY(6px) mỗi lần đổi view — chủ ý (paper turn), giữ; đảm bảo không áp khi chỉ đổi params nhỏ. | `index.css` | review usage |
 
+## Trạng thái (2026-07-02, cuối ngày)
+
+- ✅ **Batch A** `bb848c2` — D1–D8 xong (token hover/scrim/badge/knob; social hover:bg-white xử lý ở e00b210).
+- ✅ **Batch B** `0260887` — I1–I8 xong (corpus/preview vào seed, errors.*, userEmail thật, html lang).
+- ✅ **Batch C** `00600b0` — R1, R2, R3, R5, R6, X4 xong. **R4 (dvh/keyboard iOS) còn mở** — cần verify trên thiết bị thật.
+- ✅ **Batch D** `a8c0102` — X1 (bỏ scroll-smooth), X2 (role=group), X3 (aria-current + e2e proof).
+- ✅ **Batch E** `a143b6f` — F1 (fonts self-host @fontsource + e2e zero-CDN proof), F2 (pre-paint theme script). **F3 (lazy-chunk flash) còn mở** — verify động.
+- **Batch F**: P2 (rAF-throttle resize) ✓ commit kế tiếp; P1/P3/P4 CẦN ĐO (React Profiler + máy yếu) trước khi tối ưu — chưa làm.
+- Ngoài audit: **RP1** `eeb9483` (demo quarantine /demo) + **RP2** `e00b210` (auth gate thật) đã ship — xem docs/real-product-plan.md.
+
 ## Kế hoạch xử lý (batch, mỗi batch qua gate + commit riêng)
 
 - **Batch A — Dark mode tokens (D1–D8)**: thêm `--hover-1/2`, `--scrim*`,
