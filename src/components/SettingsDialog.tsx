@@ -336,8 +336,16 @@ function Providers() {
           sub={t('settings.autoRotateDesc')}
           on={v.autoRotate}
           onToggle={v.toggleAutoRotate}
-          last
+          last={!v.monthUsage}
         />
+        {v.monthUsage && (
+          <div className="flex items-center justify-between gap-3 px-0.5 py-3">
+            <span className="font-mono text-eyebrow tracking-[.12em] text-faint">
+              {t('settings.monthUsage')}
+            </span>
+            <span className="font-mono text-eyebrow text-text-2">{v.monthUsage}</span>
+          </div>
+        )}
       </div>
       <div className="mb-3 flex flex-col gap-2.5">
         {v.providers.map((pr) => (

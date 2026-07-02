@@ -98,6 +98,29 @@ test('profile rename flows into the sidebar; the cheatsheet opens from the bar',
   await expect(page.getByText('Mở bảng lệnh')).toBeVisible()
 })
 
+test('a code fence renders highlighted WITHOUT the wasm engine', async ({ page }) => {
+  const wasmReqs: string[] = []
+  page.on('request', (r) => {
+    if (/onig|\.wasm/i.test(r.url())) wasmReqs.push(r.url())
+  })
+  await page.goto('/chat/c3')
+  await page
+    .getByRole('textbox', { name: 'Nhắn cho Nova' })
+    .fill('Xem code:\n\n```ts\nconst a = 1\n```')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('pre.shiki').first()).toBeVisible({ timeout: 15_000 })
+  expect(wasmReqs).toHaveLength(0)
+})
+
+test.describe('english first boot', () => {
+  test.use({ locale: 'en-US' })
+  test('an english browser seeds english demo content', async ({ page }) => {
+    await page.goto('/chat/c1')
+    await expect(page.getByText('Competitor benchmark comparison').first()).toBeVisible()
+    await expect(page.getByText('General').first()).toBeVisible()
+  })
+})
+
 test('project instructions visibly steer a project reply', async ({ page }) => {
   // c2 belongs to Aurora, whose description acts as project instructions
   await page.goto('/chat/c2')

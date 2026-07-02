@@ -5,7 +5,9 @@ import { makeUser, renderApp } from '../test/util'
 beforeEach(() => localStorage.clear())
 
 describe('Settings — profile & data controls (Track D)', () => {
-  it('edits the user and assistant names from Settings → Chung', async () => {
+  // generous timeout: per-keystroke typing through the full app re-render is
+  // slow under coverage instrumentation
+  it('edits the user and assistant names from Settings → Chung', { timeout: 15_000 }, async () => {
     const user = makeUser()
     const { store } = await renderApp(undefined, { path: '/chat/c1?settings=general' })
     const dialog = await screen.findByRole('dialog')

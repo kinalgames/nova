@@ -409,6 +409,9 @@ describe('store — streaming chat engine', () => {
     expect(nova.usage!.modelId).toBe('gpt-5')
     expect(nova.usage!.profileId).toBe('pf-openai-key')
     expect(result.current.v.tokenDetail).toMatch(/\$\d/)
+    // the reply is stamped and rolls up into the current month's total
+    expect(nova.usage!.at).toBeGreaterThan(0)
+    expect(result.current.v.monthUsage).toMatch(/↑ .*↓/)
   })
 
   it('a message composed on Home starts a fresh conversation instead of appending', async () => {

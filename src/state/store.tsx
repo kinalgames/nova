@@ -13,17 +13,13 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import i18n from '../i18n'
 import {
-  convDefs,
   defaultSlots,
   findModel,
   findModelById,
   findProvider,
   presetDefs,
   profileStatusMap,
-  projectDefs,
   provDefs,
-  seedProfiles,
-  seedThreads,
   suggestionDefs,
   type ModelRef,
   type PresetId,
@@ -31,6 +27,7 @@ import {
   type ProviderId,
   type SlotId,
 } from '../data/defs'
+import { getSeed } from '../data/seed'
 import type {
   AuthProfile,
   AuthView,
@@ -121,6 +118,8 @@ const whoLabel = (name: string) => (name.trim().split(/\s+/)[0] || 'BẠN').toUp
 
 function initialState(): NovaState {
   const p = loadPersisted()
+  // the language detected at first boot decides which seed bundle persists
+  const seed = getSeed()
   return {
     advanced: p.advanced ?? true,
     palette: false,
@@ -133,26 +132,19 @@ function initialState(): NovaState {
     respState: 'done',
     projects:
       p.projects ??
-      projectDefs.map((d) => ({
+      seed.projects.map((d) => ({
         ...d,
         presets:
           d.id === 'aurora'
             ? { code: false, design: true, research: true, writing: true, data: false }
             : { code: false, design: false, research: false, writing: false, data: false },
-        files:
-          d.id === 'aurora'
-            ? [
-                { id: 'pjf-plan', kind: 'md' as const, name: 'plan.md', meta: '2.1 KB · vừa cập nhật' },
-                { id: 'pjf-brief', kind: 'pdf' as const, name: 'Brief-Aurora.pdf', meta: '1.2 MB · 8 trang' },
-                { id: 'pjf-survey', kind: 'csv' as const, name: 'Khảo-sát.csv', meta: '18 KB · 412 dòng' },
-              ]
-            : [],
+        files: d.id === 'aurora' ? seed.projectFiles : [],
       })),
     // seeds get staggered activity times so the date groups have content:
     // c1 today · c2 yesterday · c3 this week · c4 older
     conversations:
       p.conversations ??
-      convDefs.map((c, i) => ({
+      seed.convs.map((c, i) => ({
         ...c,
         updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000,
       })),
@@ -160,7 +152,7 @@ function initialState(): NovaState {
     activeConv: p.activeConv ?? 'c1',
     threads:
       p.threads ??
-      Object.fromEntries(Object.entries(seedThreads).map(([id, ms]) => [id, fromLinear(ms)])),
+      Object.fromEntries(Object.entries(seed.threads).map(([id, ms]) => [id, fromLinear(ms)])),
     editingMsg: null,
     copiedMsg: null,
     toast: null,
@@ -182,7 +174,7 @@ function initialState(): NovaState {
     barOn: p.barOn ?? true,
     copied: false,
     tokenPct: '42%',
-    profiles: p.profiles ?? structuredClone(seedProfiles),
+    profiles: p.profiles ?? structuredClone(seed.profiles),
     autoRotate: p.autoRotate ?? true,
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
@@ -478,6 +470,7 @@ export function StoreProvider({
         outputTokens: estimateTokens(reply),
         modelId: model.id,
         profileId: profile?.id ?? '',
+        at: Date.now(),
       }
       const replyId = uid()
       set((x) => ({
@@ -1038,12 +1031,23 @@ function deriveValues(
   }
 
   // all-time totals per auth profile (every thread, every version) — shown in
-  // Settings so the user sees what each profile has consumed
+  // Settings so the user sees what each profile has consumed — plus a
+  // current-calendar-month roll-up across everything
   const profileTotals: Record<string, { inTok: number; outTok: number; cost: number }> = {}
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
+  let monthIn = 0
+  let monthOut = 0
+  let monthCost = 0
   for (const th of Object.values(s.threads))
     for (const m of Object.values(th.byId)) {
       const u = m.usage
-      if (!u || !u.profileId) continue
+      if (!u) continue
+      if ((u.at ?? 0) >= monthStart) {
+        monthIn += u.inputTokens
+        monthOut += u.outputTokens
+        monthCost += costOf(u)
+      }
+      if (!u.profileId) continue
       const agg = (profileTotals[u.profileId] ??= { inTok: 0, outTok: 0, cost: 0 })
       agg.inTok += u.inputTokens
       agg.outTok += u.outputTokens
@@ -1356,6 +1360,13 @@ function deriveValues(
     modelMenuLabel: t('model.menuLabel'),
     autoRotate: s.autoRotate,
     toggleAutoRotate: () => set((x) => ({ autoRotate: !x.autoRotate })),
+    // current-month usage roll-up for Settings → Providers
+    monthUsage:
+      monthIn + monthOut > 0
+        ? `${fmtTokens(monthIn)}↑ ${fmtTokens(monthOut)}↓ · ${
+            monthCost === 0 ? t('meter.costFree') : fmtCost(monthCost)
+          }`
+        : '',
     // D — profile, data controls, cheatsheet
     stylesState: s.styles,
     userName: s.userName,
@@ -1434,15 +1445,9 @@ function deriveValues(
     isPrevCsv: s.preview?.kind === 'csv',
     isPrevMd: s.preview?.kind === 'md',
     previewMeta:
-      (
-        {
-          image: '1440×960 · 820 KB',
-          pdf: '8 trang · 1.2 MB',
-          code: 'Python · 1.4 KB',
-          csv: '412 dòng · 18 KB',
-          md: 'Markdown · 2.1 KB',
-        } as Record<string, string>
-      )[s.preview?.kind || ''] || '',
+      s.preview?.kind === 'image'
+        ? '1440×960 · 820 KB'
+        : (getSeed().previewMeta as Record<string, string>)[s.preview?.kind || ''] || '',
     openPdf: () => set({ preview: { kind: 'pdf', name: 'Brief-Aurora.pdf' } }),
     openCode: () => set({ preview: { kind: 'code', name: 'analyze.py' } }),
     openCsv: () => set({ preview: { kind: 'csv', name: 'Khảo-sát.csv' } }),

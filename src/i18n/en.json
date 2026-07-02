@@ -254,6 +254,8 @@
     "moveDown": "Lower priority of {{name}}",
     "autoRotate": "Auto-rotate profiles",
     "autoRotateDesc": "When a profile hits its limit, switch to the next one in priority order.",
+    "monthUsage": "THIS MONTH",
+    "migratedProfile": "Migrated",
     "profileSection": "YOUR PROFILE",
     "yourName": "YOUR NAME",
     "assistantName": "ASSISTANT NAME",

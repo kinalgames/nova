@@ -19,13 +19,15 @@ function CodeCard({ code, lang }: { code: string; lang: string }) {
 
   useEffect(() => {
     let live = true
-    import('shiki')
-      .then(async ({ codeToHtml }) => {
-        const out = await codeToHtml(code, { lang: lang || 'text', theme: 'min-dark' })
-        if (live) setHtml(out)
+    // dynamic import keeps the highlighter (and each grammar) out of this
+    // chunk — it loads only when a code fence actually renders
+    import('../services/highlight')
+      .then(async ({ highlight }) => {
+        const out = await highlight(code, lang || 'text')
+        if (live && out) setHtml(out)
       })
       .catch(() => {
-        /* unknown language or loader failure — keep the plain <pre> fallback */
+        /* loader failure — keep the plain <pre> fallback */
       })
     return () => {
       live = false

@@ -1,6 +1,7 @@
 // Persisted-settings storage with STEPWISE MIGRATIONS: when the schema
 // changes, old data is upgraded version-by-version instead of discarded.
 
+import i18n from '../i18n'
 import type { ModelRef, PresetId, ProviderId, SlotId } from '../data/defs'
 import type { NovaState, Theme, ThinkLevel } from './types'
 
@@ -57,7 +58,13 @@ function migrateV4toV5(old: PersistedV4): Persisted {
     const status = providerStatus?.[pid]
     if (key && (status === 'connected' || status === 'local'))
       profiles[pid] = [
-        { id: `mig-${pid}`, name: 'Đã di chuyển', kind: 'api_key', credential: key, status: 'active' },
+        {
+          id: `mig-${pid}`,
+          name: i18n.t('settings.migratedProfile'),
+          kind: 'api_key',
+          credential: key,
+          status: 'active',
+        },
       ]
   }
   return {

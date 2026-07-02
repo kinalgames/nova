@@ -4,8 +4,8 @@ import { makeUser, renderApp } from '../test/util'
 import { fromLinear } from '../state/thread'
 import type { Message } from '../state/types'
 
-vi.mock('shiki', () => ({
-  codeToHtml: async (code: string) => `<pre data-testid="shiki"><code>${code}</code></pre>`,
+vi.mock('../services/highlight', () => ({
+  highlight: async (code: string) => `<pre data-testid="shiki"><code>${code}</code></pre>`,
 }))
 
 beforeEach(() => localStorage.clear())

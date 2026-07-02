@@ -253,6 +253,8 @@
     "moveDown": "Giảm ưu tiên {{name}}",
     "autoRotate": "Tự xoay vòng hồ sơ",
     "autoRotateDesc": "Chạm hạn mức thì chuyển sang hồ sơ kế tiếp theo thứ tự ưu tiên.",
+    "monthUsage": "SỬ DỤNG THÁNG NÀY",
+    "migratedProfile": "Đã di chuyển",
     "profileSection": "HỒ SƠ CỦA BẠN",
     "yourName": "TÊN CỦA BẠN",
     "assistantName": "TÊN TRỢ LÝ",

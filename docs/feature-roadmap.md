@@ -113,6 +113,23 @@ With D, every planned UI-first track (A · P · E · B · C · D) is COMPLETE �
 next phase: backend (`docs/backend-architecture.md`) + the deliberate debts
 below.
 
-Remaining deliberate debts: i18n phase 2 (locale-aware demo seed content) ·
-shiki bundle slimming (wasm engine ~230 kB gz) · monthly usage totals (needs
-real timestamps) · real OAuth/429 handling with the backend.
+Deliberate debts — ALL CLEARED (post-roadmap cleanup pass):
+
+- **i18n phase 2 ✓** — demo seed content is locale-aware: structured bundles
+  `src/data/seed.vi.ts` / `seed.en.ts` behind `getSeed()` (threads, projects,
+  conv titles, auth-profile names, preview documents, preview metas, quiet
+  sample). First-boot language decides what seeds the persisted store (seeds
+  behave like user content afterwards); live-rendered pieces (quiet sample,
+  preview bodies/metas) follow the current language. A structural-alignment
+  test keeps both bundles in lockstep.
+- **shiki slimming ✓** — `services/highlight.ts` uses `shiki/core` + the
+  JavaScript regex engine: the 622 kB (~230 kB gz) oniguruma wasm chunk is
+  gone from the runtime (e2e asserts zero wasm requests while a fence
+  renders); grammars stay lazy per-language chunks.
+- **monthly usage ✓** — `MsgUsage.at` timestamps every reply; Settings →
+  Providers shows the current-month roll-up (SỬ DỤNG THÁNG NÀY).
+- Real OAuth/429 handling intentionally remains with the backend phase.
+
+Remaining i18n caveat (accepted): seeds persisted before this change (and
+switching language mid-session) keep their original language — same rule as
+real user content.

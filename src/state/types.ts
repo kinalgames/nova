@@ -34,6 +34,8 @@ export interface MsgUsage {
   outputTokens: number
   modelId: string
   profileId: string
+  /** epoch ms when the reply completed — drives the monthly roll-up */
+  at?: number
 }
 
 export type PreviewKind = 'image' | 'pdf' | 'code' | 'csv' | 'md'
