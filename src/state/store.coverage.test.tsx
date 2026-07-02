@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
+import { visiblePath } from './thread'
 
 function setup() {
   return renderStore()
@@ -151,9 +152,9 @@ describe('store — per-conversation threads', () => {
     await act(async () => result.current.set({ draft: 'xin chào' }))
     await act(async () => result.current.v.send())
     await act(async () => vi.advanceTimersByTime(5000))
-    expect(result.current.s.threads[id].length).toBeGreaterThan(1)
+    expect(visiblePath(result.current.s.threads[id]).length).toBeGreaterThan(1)
     // the demo conversation's seeded thread (4 messages) is untouched
-    expect(result.current.s.threads.c1).toHaveLength(4)
+    expect(visiblePath(result.current.s.threads.c1)).toHaveLength(4)
   })
 
   it('deleting the active conversation switches to another (after the undo window)', async () => {
@@ -351,6 +352,35 @@ describe('store — streaming chat engine', () => {
     expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(0)
   })
 
+  it('a message composed on Home starts a fresh conversation instead of appending', async () => {
+    vi.useFakeTimers()
+    const LINE = 'Lên kế hoạch du lịch Đà Lạt cuối tuần này giúp mình nhé'
+    const DRAFT = `${LINE}\n\n- chỗ ở\n- lịch trình`
+    const { result, router } = await renderStore({ path: '/new' })
+    const before = result.current.s.conversations.length
+    const demoLen = visiblePath(result.current.s.threads.c1).length
+    // files staged in another conversation must NOT leak into the new chat
+    const c1Tray = result.current.s.staged.c1 ?? []
+    expect(result.current.v.hasStaged).toBe(false)
+    await act(async () => result.current.set({ draft: DRAFT }))
+    await act(async () => result.current.v.send())
+    // a new conversation exists — titled from the prompt's FIRST LINE, in the
+    // composer's visible project (c1 was cached → aurora) — and the URL moved there
+    const conv = result.current.s.conversations[0]
+    expect(result.current.s.conversations).toHaveLength(before + 1)
+    expect(conv.id).not.toBe('c1')
+    expect(conv.title).toBe(`${LINE.slice(0, 48)}…`)
+    expect(conv.projectId).toBe('aurora')
+    expect(router.state.location.pathname).toBe(`/chat/${conv.id}`)
+    // the full message landed in the new thread with no inherited attachments;
+    // the demo showcase and its tray are untouched
+    const first = result.current.v.sent.at(0)
+    expect(msgText(first)).toBe(DRAFT)
+    expect(first?.blocks.some((b) => b.type === 'files')).toBe(false)
+    expect(visiblePath(result.current.s.threads.c1)).toHaveLength(demoLen)
+    expect(result.current.s.staged.c1 ?? []).toEqual(c1Tray)
+  })
+
   it('a fresh chat hides the demo thread and shows the real exchange', async () => {
     vi.useFakeTimers()
     const { result } = await setup()
@@ -488,6 +518,70 @@ describe('store — projects + closeMenus', () => {
     expect(result.current.v.isHome).toBe(true)
     await act(async () => result.current.v.goConv())
     expect(result.current.v.isConv).toBe(true)
+  })
+})
+
+describe('store — message versions (edit / regenerate / navigate)', () => {
+  it('editing a user message creates version 2, drops the old tail, and re-runs', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    const before = result.current.v.sent.length // demo c1: 4 messages
+    const userMsg = result.current.v.sent[2] // c1-3 (user)
+    await act(async () => result.current.v.startEdit(userMsg.id))
+    expect(result.current.v.editingMsg).toBe(userMsg.id)
+    await act(async () => result.current.v.saveEdit('câu hỏi đã sửa'))
+    // version 2 selected, old reply gone until the stream lands
+    expect(msgText(result.current.v.sent.at(-1))).toBe('câu hỏi đã sửa')
+    expect(result.current.v.versions[result.current.v.sent.at(-1)!.id]).toEqual({
+      index: 2,
+      count: 2,
+    })
+    await act(async () => vi.advanceTimersByTime(6000))
+    // new reply streamed under the edited version
+    expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
+    expect(result.current.v.sent.length).toBe(4) // a,b, user-v2, new reply
+    // navigate back to version 1 — the ORIGINAL tail returns
+    const v2 = result.current.v.sent[2]
+    await act(async () => result.current.v.selectVersion(v2.id, -1))
+    expect(result.current.v.sent.length).toBe(before)
+    expect(result.current.v.sent[2].id).toBe(userMsg.id)
+  })
+
+  it('regenerate adds a sibling reply version under the same prompt', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    const reply = result.current.v.sent[1] // c1-2 assistant
+    await act(async () => result.current.v.regenerate(reply.id))
+    await act(async () => vi.advanceTimersByTime(6000))
+    const now = result.current.v.sent[1]
+    expect(now.role).toBe('assistant')
+    expect(now.id).not.toBe(reply.id)
+    expect(result.current.v.versions[now.id]).toEqual({ index: 2, count: 2 })
+    // back to the original reply (and its tail)
+    await act(async () => result.current.v.selectVersion(now.id, -1))
+    expect(result.current.v.sent[1].id).toBe(reply.id)
+    expect(result.current.v.sent.length).toBe(4)
+  })
+
+  it('copyMessage marks the message and clears after the delay', async () => {
+    vi.useFakeTimers()
+    const { result } = await setup()
+    const id = result.current.v.sent[0].id
+    await act(async () => result.current.v.copyMessage(id))
+    expect(result.current.s.copiedMsg).toBe(id)
+    await act(async () => vi.advanceTimersByTime(2000))
+    expect(result.current.s.copiedMsg).toBeNull()
+  })
+
+  it('feedback toggles up/down and off again', async () => {
+    const { result } = await setup()
+    const reply = result.current.v.sent[1]
+    await act(async () => result.current.v.setFeedback(reply.id, 'up'))
+    expect(result.current.v.sent[1].feedback).toBe('up')
+    await act(async () => result.current.v.setFeedback(reply.id, 'down'))
+    expect(result.current.v.sent[1].feedback).toBe('down')
+    await act(async () => result.current.v.setFeedback(reply.id, 'down'))
+    expect(result.current.v.sent[1].feedback).toBeUndefined()
   })
 })
 

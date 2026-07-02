@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import { renderApp } from '../test/util'
+import { fromLinear } from '../state/thread'
 
 beforeEach(() => localStorage.clear())
 
@@ -10,10 +11,10 @@ describe('conversation — appended messages & typing', () => {
       s.set({
         activeConv: 'c1',
         threads: {
-          c1: [
+          c1: fromLinear([
             { id: 'b1', role: 'user', who: 'MINH', blocks: [{ type: 'text', text: 'Câu hỏi của mình' }] },
             { id: 'b2', role: 'assistant', who: 'NOVA', blocks: [{ type: 'text', text: 'Nova trả lời đây' }] },
-          ],
+          ]),
         },
         typing: true,
         typingLabel: 'Đang chạy tính toán…',

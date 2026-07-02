@@ -2,12 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeUser, renderWithStore } from '../test/util'
 import { screen, waitFor, within } from '@testing-library/react'
 import { Composer } from './Composer'
-import { useStore } from '../state/store'
+import { HOME_TRAY, useStore } from '../state/store'
 
 beforeEach(() => localStorage.clear())
 
 function renderComposer() {
   return renderWithStore(<Composer />)
+}
+
+// the isolated harness mounts at '/', which is the Home view — its tray is the
+// HOME_TRAY bucket, so mirror the showcase files there for chip tests
+function renderComposerWithTray() {
+  return renderWithStore(<Composer />, (s) =>
+    s.set((x) => ({ staged: { ...x.staged, [HOME_TRAY]: x.staged.c1 } })),
+  )
 }
 
 describe('<Composer>', () => {
@@ -48,7 +56,7 @@ describe('<Composer>', () => {
 describe('<Composer> — cap-menu items', () => {
   it('opens a staged file from its chip', async () => {
     const user = makeUser()
-    await renderComposer()
+    await renderComposerWithTray()
     await user.click(screen.getByRole('button', { name: 'Mở Brief-Aurora.pdf' }))
     // openStaged ran without error; the chip is still present
     expect(screen.getByText('Brief-Aurora.pdf')).toBeInTheDocument()
@@ -56,7 +64,7 @@ describe('<Composer> — cap-menu items', () => {
 
   it('removes a staged file from its chip', async () => {
     const user = makeUser()
-    await renderComposer()
+    await renderComposerWithTray()
     await user.click(screen.getByRole('button', { name: /Bỏ Brief-Aurora\.pdf/ }))
     expect(screen.queryByText('Brief-Aurora.pdf')).not.toBeInTheDocument()
   })
@@ -72,7 +80,7 @@ describe('<Composer> — cap-menu items', () => {
 
   it('opens and removes the staged image via its chip buttons', async () => {
     const user = makeUser()
-    await renderComposer()
+    await renderComposerWithTray()
     await user.click(screen.getByRole('button', { name: 'Mở moodboard.png' }))
     await user.click(screen.getByRole('button', { name: 'Bỏ moodboard.png' }))
     expect(screen.queryByRole('button', { name: 'Bỏ moodboard.png' })).not.toBeInTheDocument()

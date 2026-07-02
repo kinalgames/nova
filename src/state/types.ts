@@ -1,5 +1,6 @@
 import type { PresetId, ProviderId, ProviderStatus } from '../data/defs'
 import type { IconName } from '../components/Icon'
+import type { Thread } from './thread'
 
 export type LiveProviderStatus = ProviderStatus | 'testing' | 'error'
 
@@ -91,9 +92,13 @@ export interface Message {
   role: 'user' | 'assistant'
   /** display label, e.g. MINH / NOVA */
   who: string
+  /** tree edge — undefined for a root message (managed by state/thread.ts) */
+  parentId?: string
   state?: MsgState
   /** approval-card payload, shown when state === 'approval' */
   approval?: { tool: string; command: string }
+  /** UI-only reader feedback on an assistant reply */
+  feedback?: 'up' | 'down'
   blocks: Block[]
 }
 
@@ -150,7 +155,11 @@ export interface NovaState {
   /** conversation ids in their optimistic-delete undo window */
   deleting: string[]
   activeConv: string
-  threads: Record<string, Message[]>
+  threads: Record<string, Thread>
+  /** message id currently being edited inline, or null */
+  editingMsg: string | null
+  /** message id whose copy action just fired (transient check icon) */
+  copiedMsg: string | null
   thinkingLevel: ThinkLevel
   theme: Theme
   focusDur: '15' | '25' | '50'

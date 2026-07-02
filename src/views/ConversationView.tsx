@@ -48,7 +48,9 @@ export function ConversationView() {
               const state =
                 isLast && isAssistant && v.hasDemo ? respToState(v.respState) : undefined
               const typing = isLast && isAssistant && v.typing
-              return <MessageView key={m.id} message={m} state={state} typing={typing} />
+              return (
+                <MessageView key={m.id} message={m} state={state} typing={typing} isLast={isLast} />
+              )
             })}
 
             {/* live "thinking" / writing indicator */}

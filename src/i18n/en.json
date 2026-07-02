@@ -75,7 +75,14 @@
     "traceHide": "Hide",
     "traceSummaryStream": "Nova is researching and computing…",
     "traceSummaryDone": "Nova searched the web and updated your documents",
-    "traceCaretDone": "5 tools · 6.4s"
+    "traceCaretDone": "5 tools · 6.4s",
+    "edit": "Edit",
+    "editAria": "Edit message",
+    "regenerate": "Regenerate",
+    "good": "Helpful",
+    "bad": "Not helpful",
+    "prevVersion": "Previous version",
+    "nextVersion": "Next version"
   },
   "composer": {
     "addToChat": "Add to chat",

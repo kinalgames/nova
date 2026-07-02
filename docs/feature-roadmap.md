@@ -20,14 +20,20 @@ in components or the VM.**
 Remaining (phase 2): locale-aware demo seed content (seedThreads, project
 seeds, preview documents, QuietMode sample conversation).
 
-## A — Conversation core (approved decisions)
+## A — Conversation core (DONE — all four shipped)
 
 | Item | Decision |
 |---|---|
-| A1 Composer | Multi-line textarea, auto-grow to ~8 lines. Desktop: Enter=send, Shift+Enter=newline. Mobile: Enter=newline, send via button. Applies to chat composer AND /new. |
-| A2 Edit/Regenerate | **Versions model** (sibling versions per message, `‹ 2/3 ›` navigation beside the message; the visible tail follows the selected version). Message schema gains `versions`. User messages: Sao chép · Sửa. Replies: Sao chép · Tạo lại + 👍👎 feedback (UI-only for now). |
-| A3 Markdown | Full markdown rendered inside text blocks (headings, lists, tables, links, code fences). Syntax highlight: **shiki, lazy-loaded** with the chat route. Code cards reuse the existing `bg-code-bg` terminal style + copy button. |
-| A4 Scroll | Scroll-to-bottom floating button; auto-stick to bottom during streaming only when the user is already near the bottom (never yank while reading history). |
+| A1 Composer ✓ | Multi-line textarea, auto-grow to ~8 lines. Desktop: Enter=send, Shift+Enter=newline. Mobile: Enter=newline, send via button. Applies to chat composer AND /new. |
+| A2 Edit/Regenerate ✓ | **Versions model** — `Thread` tree (`src/state/thread.ts`: `{byId, children, selected}`, pure helpers) per conversation; sibling versions per message with `‹ i/n ›` navigation, the visible tail follows the selected version. User messages: Sao chép · Sửa (inline edit re-runs the reply). Replies: Sao chép · Tạo lại + 👍👎 feedback (UI-only). `streamReply(conv, parentId, prompt)` is the shared engine for send/edit/regenerate. |
+| A3 Markdown ✓ | Full markdown inside text blocks via `react-markdown` + GFM (`src/components/Markdown.tsx`, `React.lazy` — plain-text `Rich` renders as the Suspense fallback). Code fences: **shiki** (`min-dark`, loaded only when a fence renders) in the `bg-code-bg` terminal card + copy button. Optimization debt: full `shiki` bundle ships the oniguruma wasm engine (~230 kB gz lazy chunk) — consider `shiki/bundle/web` or the JS regex engine when tuning bundle size. |
+| A4 Scroll ✓ | Scroll-to-bottom floating button; auto-stick to bottom during streaming only when the user is already near the bottom (never yank while reading history). |
+
+Shipped alongside A (found during browser verification): a message composed on
+Home/`/new` starts a **fresh conversation** — titled from the prompt's first
+line, in the composer's visible project — instead of appending to the
+last-open thread; Home gets its own staged-files bucket (`HOME_TRAY`) so a new
+chat never inherits another conversation's attachments.
 
 ## P — Provider & assistant depth (approved decisions)
 

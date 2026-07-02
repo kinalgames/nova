@@ -75,7 +75,14 @@
     "traceHide": "Ẩn",
     "traceSummaryStream": "Nova đang tra cứu và tính toán…",
     "traceSummaryDone": "Nova đã tra cứu web và cập nhật tài liệu của bạn",
-    "traceCaretDone": "5 công cụ · 6.4 giây"
+    "traceCaretDone": "5 công cụ · 6.4 giây",
+    "edit": "Sửa",
+    "editAria": "Sửa tin nhắn",
+    "regenerate": "Tạo lại",
+    "good": "Hữu ích",
+    "bad": "Chưa tốt",
+    "prevVersion": "Phiên bản trước",
+    "nextVersion": "Phiên bản sau"
   },
   "composer": {
     "addToChat": "Thêm vào chat",

@@ -36,9 +36,33 @@ import type {
   ViewName,
 } from './types'
 import { composeReply, thinkingDelay, tokenInterval } from '../services/chat'
+import {
+  addSibling,
+  appendChild,
+  appendToLeaf,
+  emptyThread,
+  fromLinear,
+  selectSibling,
+  siblingInfo,
+  updateMessage,
+  visiblePath,
+} from './thread'
 import { downloadFile, openFile, previewSample } from '../services/files'
 
 const ACCENT_DEFAULT = 'var(--accent)'
+
+/** staged-attachments bucket for the Home composer — Home gets its own tray
+ * so a brand-new chat never inherits another conversation's files */
+export const HOME_TRAY = '__home__'
+
+const stagedKeyOf = (nav: NavState) => (nav.view === 'home' ? HOME_TRAY : nav.activeConv)
+
+/** sidebar title for a conversation seeded from a prompt: first non-empty
+ * line, capped, so markdown fences and newlines stay out of the sidebar */
+function titleFrom(text: string): string {
+  const line = (text.split('\n').find((l) => l.trim()) ?? text).trim()
+  return line.length > 48 ? `${line.slice(0, 48)}…` : line
+}
 
 /** Navigation state derived from the URL — the single source of truth for
  *  which view/auth screen is showing and which Settings tab (if any) is open. */
@@ -69,7 +93,7 @@ function pathToView(pathname: string): { view: ViewName; authView: AuthView } {
 
 // bump the version suffix whenever the persisted shape changes so stale data
 // from an older schema is ignored rather than corrupting the new state
-export const PERSIST_KEY = 'nova.flow.settings.v3'
+export const PERSIST_KEY = 'nova.flow.settings.v4'
 
 interface Persisted {
   theme?: Theme
@@ -127,7 +151,11 @@ function initialState(): NovaState {
     conversations: p.conversations ?? convDefs.map((c) => ({ ...c })),
     deleting: [],
     activeConv: p.activeConv ?? 'c1',
-    threads: p.threads ?? { ...seedThreads },
+    threads:
+      p.threads ??
+      Object.fromEntries(Object.entries(seedThreads).map(([id, ms]) => [id, fromLinear(ms)])),
+    editingMsg: null,
+    copiedMsg: null,
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
@@ -373,100 +401,227 @@ export function StoreProvider({
     [set, navigate],
   )
 
-  const send = useCallback(() => {
-    // empty composer is a no-op: never send a message the user didn't write
-    if (!sRef.current.draft.trim()) return
-    // the URL owns the active conversation; Home (no :convId) falls back to the
-    // last-selected cache so a Home-composed message lands somewhere sensible
-    const convId = navRef.current.activeConv
-    setS((prev) => {
-      const t = (prev.draft || '').trim()
-      if (!t) return prev
-      const conv = convId
+  /**
+   * Stream a fake assistant reply as a child of `parentId` in `conv` — the
+   * one engine behind send, edit-and-rerun and regenerate (a regenerated
+   * reply shares the same parent, so it lands as a sibling version).
+   */
+  const streamReply = useCallback(
+    (conv: string, parentId: string, prompt: string) => {
       clearTimeout(t1.current)
       clearTimeout(t2.current)
       clearInterval(tc.current)
-
-      const stagedNow = prev.staged[conv] ?? []
-      const userBlocks: Block[] = [{ type: 'text', text: t }]
-      if (stagedNow.length)
-        userBlocks.push({
-          type: 'files',
-          items: stagedNow.map((f) => ({
-            kind: f.kind,
-            name: f.name,
-            meta: f.size,
-            image: f.kind === 'image',
-            open: f.kind,
-          })),
-        })
-
+      const prev = sRef.current
       const projName =
         prev.projects.find(
           (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
         )?.name ?? 'Chung'
-      const reply = composeReply(t, {
+      const reply = composeReply(prompt, {
         model: prev.model,
         thinking: prev.thinkingLevel,
         project: projName,
       })
       const words = reply.split(' ')
       const step = tokenInterval(prev.model)
-
+      const replyId = uid()
+      set({
+        typing: true,
+        typingLabel:
+          prev.thinkingLevel === 'off' ? i18n.t('chat.writingLabel') : i18n.t('chat.thinkingLabel'),
+      })
       // after a "thinking" pause, append an empty Nova bubble and stream into it
       t1.current = setTimeout(() => {
         set((x) => ({
           typingLabel: i18n.t('chat.writingLabel'),
           threads: {
             ...x.threads,
-            [conv]: [
-              ...(x.threads[conv] ?? []),
-              { id: uid(), role: 'assistant', who: 'NOVA', blocks: [{ type: 'text', size: 'lead', text: '' }] },
-            ],
+            [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
+              id: replyId,
+              role: 'assistant',
+              who: 'NOVA',
+              blocks: [{ type: 'text', size: 'lead', text: '' }],
+            }),
           },
         }))
         let i = 0
         tc.current = setInterval(() => {
           i += 1
-          set((x) => {
-            const thread = (x.threads[conv] ?? []).slice()
-            thread[thread.length - 1] = {
-              ...thread[thread.length - 1],
-              blocks: [{ type: 'text', size: 'lead', text: words.slice(0, i).join(' ') }],
-            }
-            return { threads: { ...x.threads, [conv]: thread } }
-          })
+          set((x) => ({
+            threads: {
+              ...x.threads,
+              [conv]: updateMessage(x.threads[conv], replyId, {
+                blocks: [{ type: 'text', size: 'lead', text: words.slice(0, i).join(' ') }],
+              }),
+            },
+          }))
           if (i >= words.length) {
             clearInterval(tc.current)
             set({ typing: false, tokenPct: `${Math.min(98, 42 + words.length)}%` })
           }
         }, step)
       }, thinkingDelay(prev.thinkingLevel))
+    },
+    [set],
+  )
 
-      return {
-        ...prev,
-        threads: {
-          ...prev.threads,
-          [conv]: [
-            ...(prev.threads[conv] ?? []),
-            { id: uid(), role: 'user', who: 'MINH', blocks: userBlocks },
-          ],
-        },
-        // sending consumes this conversation's staged attachments
-        staged: { ...prev.staged, [conv]: [] },
-        draft: '',
-        typing: true,
-        typingLabel:
-          prev.thinkingLevel === 'off' ? i18n.t('chat.writingLabel') : i18n.t('chat.thinkingLabel'),
-      }
-    })
+  const send = useCallback(() => {
+    // empty composer is a no-op: never send a message the user didn't write
+    const text = sRef.current.draft.trim()
+    if (!text) return
+    // the URL owns the active conversation. Home has no :convId — a message
+    // composed there starts a FRESH conversation (in the composer's visible
+    // project) rather than silently appending to the last-open thread
+    const onHome = navRef.current.view === 'home'
+    const srcKey = stagedKeyOf(navRef.current) // Home composes into its own tray bucket
+    const convId = onHome ? uid() : navRef.current.activeConv
+    const stagedNow = sRef.current.staged[srcKey] ?? []
+    const userBlocks: Block[] = [{ type: 'text', text }]
+    if (stagedNow.length)
+      userBlocks.push({
+        type: 'files',
+        items: stagedNow.map((f) => ({
+          kind: f.kind,
+          name: f.name,
+          meta: f.size,
+          image: f.kind === 'image',
+          open: f.kind,
+        })),
+      })
+    const userId = uid()
+    set((x) => ({
+      draft: '',
+      // sending consumes the staged attachments visible in the composer
+      staged: { ...x.staged, [srcKey]: [] },
+      ...(onHome
+        ? {
+            conversations: [
+              {
+                id: convId,
+                // seed the title from the prompt's first line so markdown
+                // fences and newlines never leak into the sidebar
+                title: titleFrom(text),
+                projectId:
+                  x.conversations.find((c) => c.id === navRef.current.activeConv)
+                    ?.projectId ?? 'chung',
+              },
+              ...x.conversations,
+            ],
+            activeConv: convId,
+          }
+        : {}),
+      threads: {
+        ...x.threads,
+        [convId]: appendToLeaf(x.threads[convId] ?? emptyThread(), {
+          id: userId,
+          role: 'user',
+          who: i18n.t('user.who'),
+          blocks: userBlocks,
+        }),
+      },
+    }))
+    streamReply(convId, userId, text)
     navigate({ to: '/chat/$convId', params: { convId } })
     // sending always snaps to the bottom (after the append renders)
     setTimeout(() => {
       const el = scrollRef.current
       if (el) el.scrollTop = el.scrollHeight
     }, 0)
-  }, [set, navigate])
+  }, [set, navigate, streamReply])
+
+  // edit a user message: the edit becomes a sibling VERSION (original stays
+  // reachable via ‹ ›), keeps the original attachments, and re-runs the reply
+  const editMessage = useCallback(
+    (messageId: string, text: string) => {
+      const conv = navRef.current.activeConv
+      const th = sRef.current.threads[conv]
+      const orig = th?.byId[messageId]
+      if (!th || !orig || orig.role !== 'user' || !text.trim()) return
+      const keep = orig.blocks.filter((b) => b.type === 'files')
+      const newId = uid()
+      set((x) => ({
+        editingMsg: null,
+        threads: {
+          ...x.threads,
+          [conv]: addSibling(x.threads[conv], messageId, {
+            id: newId,
+            role: 'user',
+            who: orig.who,
+            blocks: [{ type: 'text', text: text.trim() }, ...keep],
+          }),
+        },
+      }))
+      streamReply(conv, newId, text.trim())
+    },
+    [set, streamReply],
+  )
+
+  // regenerate an assistant reply as a sibling version under the same prompt
+  const regenerate = useCallback(
+    (replyId: string) => {
+      const conv = navRef.current.activeConv
+      const th = sRef.current.threads[conv]
+      const reply = th?.byId[replyId]
+      if (!th || !reply || reply.role !== 'assistant' || !reply.parentId) return
+      const parent = th.byId[reply.parentId]
+      const promptBlock = parent?.blocks.find((b) => b.type === 'text')
+      const prompt = promptBlock && promptBlock.type === 'text' ? promptBlock.text : ''
+      streamReply(conv, reply.parentId, prompt)
+    },
+    [streamReply],
+  )
+
+  const selectVersion = useCallback(
+    (messageId: string, delta: number) => {
+      const conv = navRef.current.activeConv
+      set((x) =>
+        x.threads[conv]
+          ? { threads: { ...x.threads, [conv]: selectSibling(x.threads[conv], messageId, delta) } }
+          : {},
+      )
+    },
+    [set],
+  )
+
+  const copyMessage = useCallback(
+    (messageId: string) => {
+      const conv = navRef.current.activeConv
+      const msg = sRef.current.threads[conv]?.byId[messageId]
+      if (!msg) return
+      const text = msg.blocks
+        .filter((b) => b.type === 'text')
+        .map((b) => (b.type === 'text' ? b.text : ''))
+        .join('\n\n')
+      try {
+        void navigator.clipboard?.writeText(text)
+      } catch {
+        /* ignore */
+      }
+      set({ copiedMsg: messageId })
+      clearTimeout(t2.current)
+      t2.current = setTimeout(() => set({ copiedMsg: null }), 1400)
+    },
+    [set],
+  )
+
+  const setFeedback = useCallback(
+    (messageId: string, val: 'up' | 'down') => {
+      const conv = navRef.current.activeConv
+      set((x) => {
+        const th = x.threads[conv]
+        const msg = th?.byId[messageId]
+        if (!th || !msg) return {}
+        return {
+          threads: {
+            ...x.threads,
+            [conv]: updateMessage(th, messageId, {
+              feedback: msg.feedback === val ? undefined : val,
+            }),
+          },
+        }
+      })
+    },
+    [set],
+  )
 
   const copyCode = useCallback(() => {
     set({ copied: true })
@@ -503,9 +658,9 @@ export function StoreProvider({
           ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
           : `${Math.max(1, Math.round(file.size / 1024))} KB`
       const item: StagedFile = { id: uid(), kind, name: file.name, size, url }
-      const conv = navRef.current.activeConv
+      const key = stagedKeyOf(navRef.current)
       set((x) => ({
-        staged: { ...x.staged, [conv]: [...(x.staged[conv] ?? []), item] },
+        staged: { ...x.staged, [key]: [...(x.staged[key] ?? []), item] },
       }))
     },
     [set],
@@ -578,8 +733,13 @@ export function StoreProvider({
         nav,
         navigate,
         t,
+        editMessage,
+        regenerate,
+        selectVersion,
+        copyMessage,
+        setFeedback,
       }),
-    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t],
+    [s, set, go, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback],
   )
 
   const store: Store = useMemo(
@@ -613,10 +773,31 @@ function deriveValues(
     nav: NavState
     navigate: Navigate
     t: TFunction
+    editMessage: (id: string, text: string) => void
+    regenerate: (id: string) => void
+    selectVersion: (id: string, delta: number) => void
+    copyMessage: (id: string) => void
+    setFeedback: (id: string, val: 'up' | 'down') => void
   },
 ) {
-  const { go, send, stop, copyCode, dark, scrollRef, delConv, undoDelete, nav, navigate, t } =
-    extra
+  const {
+    go,
+    send,
+    stop,
+    copyCode,
+    dark,
+    scrollRef,
+    delConv,
+    undoDelete,
+    nav,
+    navigate,
+    t,
+    editMessage,
+    regenerate,
+    selectVersion,
+    copyMessage,
+    setFeedback,
+  } = extra
   const activeConv = nav.activeConv
   const activeConvObj = s.conversations.find((c) => c.id === activeConv)
   const activeProjectId = activeConvObj?.projectId ?? 'chung'
@@ -667,7 +848,7 @@ function deriveValues(
     const id = uid()
     set((x) => ({
       conversations: [{ id, title: t('nav.newChat'), projectId }, ...x.conversations],
-      threads: { ...x.threads, [id]: [] },
+      threads: { ...x.threads, [id]: emptyThread() },
       activeConv: id,
       respState: 'done',
       palette: false,
@@ -714,8 +895,13 @@ function deriveValues(
   const isMobile = s.vw < 880
   const isDesktop = !isMobile
   const rs = s.respState
-  const activeThread = s.threads[activeConv] ?? []
-  const activeStaged = s.staged[activeConv] ?? []
+  const activeThreadTree = s.threads[activeConv]
+  const activeThread = activeThreadTree ? visiblePath(activeThreadTree) : []
+  // version position for every visible message (only forks show ‹ i/n ›)
+  const versions: Record<string, { index: number; count: number }> = {}
+  if (activeThreadTree)
+    for (const msg of activeThread) versions[msg.id] = siblingInfo(activeThreadTree, msg.id)
+  const activeStaged = s.staged[stagedKeyOf(nav)] ?? []
   const activeIsDemo = !!activeConvObj?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
@@ -947,12 +1133,15 @@ function deriveValues(
     staged: activeStaged,
     hasStaged: activeStaged.length > 0,
     removeStaged: (id: string) =>
-      set((x) => ({
-        staged: {
-          ...x.staged,
-          [activeConv]: (x.staged[activeConv] ?? []).filter((f) => f.id !== id),
-        },
-      })),
+      set((x) => {
+        const key = stagedKeyOf(nav)
+        return {
+          staged: {
+            ...x.staged,
+            [key]: (x.staged[key] ?? []).filter((f) => f.id !== id),
+          },
+        }
+      }),
     openLightbox: () => set({ preview: { kind: 'image', name: 'moodboard.png' } }),
     openStaged: (f: StagedFile) =>
       set({ preview: { kind: f.kind, name: f.name, url: f.url } }),
@@ -1178,6 +1367,18 @@ function deriveValues(
     draft: s.draft,
     q: s.q,
     sent: activeThread,
+    versions,
+    selectVersion,
+    copyMessage,
+    copiedMsg: s.copiedMsg,
+    setFeedback,
+    regenerate,
+    editingMsg: s.editingMsg,
+    startEdit: (id: string) => set({ editingMsg: id }),
+    cancelEdit: () => set({ editingMsg: null }),
+    saveEdit: (text: string) => {
+      if (s.editingMsg) editMessage(s.editingMsg, text)
+    },
     typing: s.typing,
     typingLabel: s.typingLabel,
     activeCount,

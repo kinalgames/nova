@@ -1,7 +1,8 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, Suspense, lazy, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { GrowingTextarea } from './GrowingTextarea'
 import type {
   Block,
   Message,
@@ -11,6 +12,9 @@ import type {
   PreviewKind,
   TraceStep,
 } from '../state/types'
+
+/** full markdown renderer — lazy so the parser + shiki stay out of the main chunk */
+const Markdown = lazy(() => import('./Markdown'))
 
 const USER_LABEL = 'mb-2.5 font-mono text-eyebrow tracking-[.12em] text-muted'
 const NOVA_HEAD = 'mb-3 flex items-center gap-2'
@@ -59,7 +63,8 @@ function runAction(v: V, action: MsgAction['action']) {
   else openPreview(v, action)
 }
 
-/** minimal inline formatter: **bold**, *italic*, and \n line breaks */
+/** plain-text approximation of a markdown block — Suspense fallback while the
+ * Markdown chunk loads, so text never flashes empty */
 function Rich({ text }: { text: string }): ReactNode {
   return (
     <>
@@ -197,7 +202,9 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
     case 'text':
       return (
         <div className={`${block.size === 'lead' ? 'text-lead' : 'text-body'} mt-3 leading-relaxed first:mt-0`}>
-          <Rich text={block.text} />
+          <Suspense fallback={<Rich text={block.text} />}>
+            <Markdown text={block.text} />
+          </Suspense>
           {streaming && <span className={CARET} />}
         </div>
       )
@@ -313,6 +320,111 @@ function ApprovalCard({ tool, command }: { tool: string; command: string }) {
   )
 }
 
+/** ‹ i/n › version switcher — rendered only at real forks */
+function VersionNav({ id }: { id: string }) {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const info = v.versions[id]
+  if (!info || info.count < 2) return null
+  const btn =
+    'flex cursor-pointer items-center border-none bg-transparent px-0.5 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+  return (
+    <span className="inline-flex items-center gap-0.5 font-mono text-eyebrow text-faint">
+      <button type="button" aria-label={t('chat.prevVersion')} disabled={info.index <= 1} onClick={() => v.selectVersion(id, -1)} className={btn}>
+        ‹
+      </button>
+      {info.index}/{info.count}
+      <button type="button" aria-label={t('chat.nextVersion')} disabled={info.index >= info.count} onClick={() => v.selectVersion(id, 1)} className={btn}>
+        ›
+      </button>
+    </span>
+  )
+}
+
+/** per-message actions — hover-revealed, always visible on the last message */
+function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const copied = v.copiedMsg === message.id
+  const btn =
+    'flex cursor-pointer items-center rounded-sm border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+  return (
+    <div
+      className={`mt-1.5 flex items-center gap-0.5 ${
+        isLast ? '' : 'opacity-0 transition-opacity group-hover/msg:opacity-100 group-focus-within/msg:opacity-100'
+      }`}
+    >
+      <button type="button" aria-label={t('common.copy')} onClick={() => v.copyMessage(message.id)} className={btn}>
+        <Icon n={copied ? 'check' : 'copy'} size={14} />
+      </button>
+      {message.role === 'user' ? (
+        <button type="button" aria-label={t('chat.edit')} onClick={() => v.startEdit(message.id)} className={btn}>
+          <Icon n="write" size={14} />
+        </button>
+      ) : (
+        <>
+          <button type="button" aria-label={t('chat.regenerate')} onClick={() => v.regenerate(message.id)} className={btn}>
+            <Icon n="retry" size={14} />
+          </button>
+          <button
+            type="button"
+            aria-label={t('chat.good')}
+            aria-pressed={message.feedback === 'up'}
+            onClick={() => v.setFeedback(message.id, 'up')}
+            className={`${btn} ${message.feedback === 'up' ? 'text-accent-text' : ''}`}
+          >
+            <Icon n="thumbUp" size={14} />
+          </button>
+          <button
+            type="button"
+            aria-label={t('chat.bad')}
+            aria-pressed={message.feedback === 'down'}
+            onClick={() => v.setFeedback(message.id, 'down')}
+            className={`${btn} ${message.feedback === 'down' ? 'text-accent-text' : ''}`}
+          >
+            <Icon n="thumbDown" size={14} />
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** inline edit-and-rerun for a user message */
+function EditForm({ message }: { message: Message }) {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const orig = message.blocks.find((b) => b.type === 'text')
+  const [val, setVal] = useState(orig && orig.type === 'text' ? orig.text : '')
+  return (
+    <div className="field rounded-lg border border-border bg-panel px-3 pb-2.5 pt-2.5">
+      <GrowingTextarea
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        aria-label={t('chat.editAria')}
+        className="w-full text-body text-text"
+      />
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={v.cancelEdit}
+          className="cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-muted"
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          onClick={() => v.saveEdit(val)}
+          disabled={!val.trim()}
+          className="cursor-pointer rounded-sm border-none bg-ink px-3 py-1.5 text-small text-bg disabled:cursor-default disabled:opacity-[.38]"
+        >
+          {t('common.save')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function TypingIndicator({ label }: { label: string }) {
   return (
     <div className="mt-6 flex items-center gap-2.5">
@@ -342,12 +454,15 @@ export function MessageView({
   message,
   state,
   typing,
+  isLast,
 }: {
   message: Message
   /** overrides the message's render state (demo switcher / live stream) */
   state?: MsgState
   /** live typing caret on the final text block */
   typing?: boolean
+  /** last visible message — its actions stay visible without hover */
+  isLast?: boolean
 }) {
   const { v } = useStore()
   const { t } = useTranslation()
@@ -357,22 +472,33 @@ export function MessageView({
 
   if (isUser) {
     return (
-      <div className="mb-8 mt-8 first:mt-0">
-        <div className={USER_LABEL}>{message.who}</div>
-        {message.blocks.map((b, i) => (
-          <BlockView key={i} block={b} />
-        ))}
+      <div className="group/msg mb-8 mt-8 first:mt-0">
+        <div className={`${USER_LABEL} flex items-center gap-2`}>
+          <span>{message.who}</span>
+          <VersionNav id={message.id} />
+        </div>
+        {v.editingMsg === message.id ? (
+          <EditForm key={message.id} message={message} />
+        ) : (
+          <>
+            {message.blocks.map((b, i) => (
+              <BlockView key={i} block={b} />
+            ))}
+            <ActionRow message={message} isLast={isLast} />
+          </>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="mb-8 mt-8 first:mt-0">
+    <div className="group/msg mb-8 mt-8 first:mt-0">
       <div className={NOVA_HEAD}>
         <span className={NOVA_DOT}>
           <Icon n="nova" size={13} />
         </span>
         <span className={NOVA_TAG}>{message.who}</span>
+        <VersionNav id={message.id} />
         {state === 'streaming' && (
           <span className="text-meta text-faint">{t('chat.streamReplying')}</span>
         )}
@@ -424,9 +550,12 @@ export function MessageView({
           </div>
         </>
       ) : (
-        answer.map((b, i) => (
-          <BlockView key={i} block={b} streaming={typing && i === answer.length - 1 && b.type === 'text'} />
-        ))
+        <>
+          {answer.map((b, i) => (
+            <BlockView key={i} block={b} streaming={typing && i === answer.length - 1 && b.type === 'text'} />
+          ))}
+          {!typing && <ActionRow message={message} isLast={isLast} />}
+        </>
       )}
     </div>
   )

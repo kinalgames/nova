@@ -29,7 +29,8 @@ describe('ConversationView — data-driven message blocks', () => {
   it('message actions run (copy marks copied, open shows a preview)', async () => {
     const user = makeUser()
     const { store } = await renderApp(undefined, { path: '/chat/c1' })
-    await user.click((await screen.findAllByRole('button', { name: /Sao chép/ }))[0])
+    // the demo actions-block button carries visible text (ActionRow is icon-only)
+    await user.click((await screen.findAllByText('Sao chép'))[0])
     expect(store().s.copied).toBe(true)
     await user.click((await screen.findAllByRole('button', { name: /Mở plan\.md/ }))[0])
     expect(await screen.findByRole('dialog')).toBeInTheDocument()

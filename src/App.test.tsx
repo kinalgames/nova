@@ -49,14 +49,13 @@ describe('App — root redirect', () => {
 
   it('redirects the root to the persisted last conversation', async () => {
     localStorage.setItem(
-      'nova.flow.settings.v3',
+      'nova.flow.settings.v4',
       JSON.stringify({
         activeConv: 'c3',
         conversations: [
           { id: 'c1', title: 'a', projectId: 'aurora' },
           { id: 'c3', title: 'b', projectId: 'aurora' },
         ],
-        threads: { c3: [] },
       }),
     )
     const { store } = await renderApp(undefined, { path: '/' })
