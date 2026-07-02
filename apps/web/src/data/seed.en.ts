@@ -77,6 +77,80 @@ export const seedEn: SeedData = {
     csv: '412 rows · 18 KB',
     md: 'Markdown · 2.1 KB',
   },
+  previewNames: {
+    pdf: 'Brief-Aurora.pdf',
+    code: 'analyze.py',
+    csv: 'Survey.csv',
+    md: 'plan.md',
+  },
+  previewDocs: {
+    pdf: {
+      title: 'Aurora — Brief',
+      meta: 'Product launch · Q3 2026',
+      lead: 'Aurora is a single-thread AI workspace for deep workers — every conversation, document and tool gathered in one focused place.',
+      page: 'page 1 / 8',
+    },
+    code: { print: 'activation' },
+    csv: {
+      head: ['user', 'activated 72h', 'channel'],
+      rows: [
+        { id: 'u_0142', ok: true, okText: 'yes', channel: 'email' },
+        { id: 'u_0143', ok: false, okText: 'no', channel: 'ads' },
+        { id: 'u_0144', ok: true, okText: 'yes', channel: 'referral' },
+      ],
+    },
+    md: {
+      title: 'Aurora launch plan',
+      gapHeading: 'Activation gap',
+      bullets: [
+        { pre: '72-hour activation: ', strong: '29%', tail: ' (target 38%)' },
+        { pre: 'Cause: multi-step sign-up' },
+        { pre: 'Action: collapse to one step before launch' },
+      ],
+      sixHeading: 'Six weeks',
+      sixBody: 'Positioning → Production → Launch & measure.',
+    },
+  },
+  replies: {
+    templates: [
+      {
+        match: /code|function|bug|error|component|api|typescript|react/i,
+        replies: [
+          "I'd extract that into a pure function so it's easy to test, then add guards for the edge cases. Want me to include unit tests?",
+          "The root cause is state being recomputed on every render. I'd wrap it in useMemo and trim the dependencies down to what actually changes — the jank disappears.",
+          "I suggest splitting the interface first, writing a red test, then implementing. That keeps every change small and safe.",
+        ],
+      },
+      {
+        match: /write|email|post|article|content|draft|copy/i,
+        replies: [
+          "Here's a draft that keeps the voice confident without overselling: open with one value line, three key points, close with a clear call to action.",
+          "I trimmed it to three sentences, one idea each, no filler. Short versions actually get read — want me to keep this length?",
+        ],
+      },
+      {
+        match: /plan|schedule|timeline|roadmap|step/i,
+        replies: [
+          "I'd split it into three phases: Positioning → Production → Launch & measure. Each phase gets one hard milestone so the schedule can't slip.",
+          'The biggest task goes first because it blocks everything else. I ordered by dependency, not by inspiration — here is the suggested sequence.',
+        ],
+      },
+      {
+        match: /analy|data|report|metric|benchmark|survey/i,
+        replies: [
+          "Cross-check done: your key metric trails the leaders, and the cause sits in the multi-step onboarding. I'll fold the summary into the doc.",
+          'One outlier is dragging the mean — the median reflects reality better here. Want me to plot the distribution?',
+        ],
+      },
+    ],
+    fallbacks: [
+      "Got it. I'll stay within the {project} project context and carry this part forward for you.",
+      "Sure, on it. Where something is uncertain I'll ask instead of guessing.",
+      'Understood. Here is the direction I suggest, with brief reasoning so you can decide quickly.',
+    ],
+    smartSuffix: 'I also weighed a few alternatives and picked the tradeoff that serves you best.',
+    instructionsNote: "(Following the instructions of the {project} project.)",
+  },
   quiet: {
     user: 'Write the Risks section for the plan — tight, with mitigations.',
     intro: 'The four biggest risks and their mitigations:',

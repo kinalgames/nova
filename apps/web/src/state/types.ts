@@ -217,6 +217,8 @@ export interface NovaState {
   cheatsheet: boolean
   /** display name of the user — drives the MINH label and greetings */
   userName: string
+  /** signed-in account email — absent until a real session exists */
+  userEmail?: string
   /** what the assistant is called — drives the NOVA label */
   assistantName: string
   presetDefault: Record<PresetId, boolean>

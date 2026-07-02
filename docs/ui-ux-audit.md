@@ -99,3 +99,12 @@ tốt, giữ.
 
 Sau mỗi batch: cập nhật bảng này (✅ + commit hash). Coverage ≥90% branches
 chốt sau cùng (đã thống nhất với user).
+
+## Ghi chú roadmap (quyết định product 2026-07-02)
+
+- **Seed → kịch bản thật trong DB**: khi đủ mọi tính năng thể hiện được UI
+  (files thật, share, tool-calls thật…), chuyển demo seed bundles thành
+  kịch bản ghi VÀO op-log của user đầu tiên của app (dogfood chính hệ
+  thống sync/DO thay vì content giả client-side). Làm SAU khi
+  feature-complete — đến lúc đó seed.vi/en.ts trở thành script seeding,
+  không phải runtime data.

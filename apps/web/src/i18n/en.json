@@ -182,9 +182,17 @@
     "newline": "New line inside a message",
     "close": "Close the open overlay"
   },
+  "errors": {
+    "network": "Could not reach the server",
+    "httpStatus": "Error {{status}}",
+    "apiNetwork": "Could not reach the Nova API server",
+    "emptyStream": "The server returned no stream",
+    "stream": "Stream error"
+  },
   "user": {
-    "name": "Minh Trần",
+    "name": "Minh Tran",
     "firstName": "Minh",
+    "demoEmail": "minh@aurora.studio",
     "plan": "Pro plan",
     "who": "MINH"
   },
@@ -347,6 +355,7 @@
     "subtitle": "Each project has its own instructions and skills for Nova.",
     "new": "New project",
     "defaultBadge": "Default",
+    "defaultName": "General",
     "threads_one": "{{count}} thread",
     "threads_other": "{{count}} threads",
     "configAria": "Configure {{name}}",

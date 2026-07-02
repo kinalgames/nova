@@ -181,9 +181,17 @@
     "newline": "Xuống dòng trong tin nhắn",
     "close": "Đóng overlay đang mở"
   },
+  "errors": {
+    "network": "Không kết nối được máy chủ",
+    "httpStatus": "Lỗi {{status}}",
+    "apiNetwork": "Không kết nối được máy chủ Nova API",
+    "emptyStream": "Máy chủ không trả về stream",
+    "stream": "Stream lỗi"
+  },
   "user": {
     "name": "Minh Trần",
     "firstName": "Minh",
+    "demoEmail": "minh@aurora.studio",
     "plan": "Gói Pro",
     "who": "MINH"
   },
@@ -346,6 +354,7 @@
     "subtitle": "Mỗi dự án có hướng dẫn và kỹ năng riêng cho Nova.",
     "new": "Dự án mới",
     "defaultBadge": "Mặc định",
+    "defaultName": "Chung",
     "threads_other": "{{count}} luồng",
     "configAria": "Cấu hình {{name}}",
     "view": {

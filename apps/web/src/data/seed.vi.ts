@@ -77,6 +77,80 @@ export const seedVi: SeedData = {
     csv: '412 dòng · 18 KB',
     md: 'Markdown · 2.1 KB',
   },
+  previewNames: {
+    pdf: 'Brief-Aurora.pdf',
+    code: 'analyze.py',
+    csv: 'Khảo-sát.csv',
+    md: 'plan.md',
+  },
+  previewDocs: {
+    pdf: {
+      title: 'Aurora — Brief',
+      meta: 'Ra mắt sản phẩm · Q3 2026',
+      lead: 'Aurora là không gian làm việc AI một luồng, dành cho người làm việc sâu — gom mọi cuộc trò chuyện, tài liệu và công cụ vào một nơi tập trung.',
+      page: 'trang 1 / 8',
+    },
+    code: { print: 'kích hoạt' },
+    csv: {
+      head: ['người dùng', 'kích hoạt 72h', 'kênh'],
+      rows: [
+        { id: 'u_0142', ok: true, okText: 'có', channel: 'email' },
+        { id: 'u_0143', ok: false, okText: 'không', channel: 'ads' },
+        { id: 'u_0144', ok: true, okText: 'có', channel: 'giới thiệu' },
+      ],
+    },
+    md: {
+      title: 'Kế hoạch ra mắt Aurora',
+      gapHeading: 'Khoảng cách kích hoạt',
+      bullets: [
+        { pre: 'Kích hoạt 72 giờ: ', strong: '29%', tail: ' (mục tiêu 38%)' },
+        { pre: 'Nguyên nhân: đăng ký nhiều bước' },
+        { pre: 'Hành động: gộp còn một bước trước ra mắt' },
+      ],
+      sixHeading: 'Sáu tuần',
+      sixBody: 'Định vị → Sản xuất → Ra mắt & đo lường.',
+    },
+  },
+  replies: {
+    templates: [
+      {
+        match: /code|lập trình|hàm|bug|lỗi|component|api|typescript|react/i,
+        replies: [
+          'Mình tách phần đó thành một hàm thuần để dễ test, rồi thêm guard cho các ca biên. Bạn muốn mình kèm cả unit test không?',
+          'Gốc rễ là state được tính lại mỗi render. Mình bọc trong useMemo và rút phụ thuộc xuống còn những gì thực sự đổi — sẽ hết giật.',
+          'Mình đề xuất tách interface trước, viết test đỏ, rồi mới cài đặt. Cách này giữ cho thay đổi nhỏ và an toàn.',
+        ],
+      },
+      {
+        match: /viết|email|bài|nội dung|content|soạn|draft/i,
+        replies: [
+          'Đây là bản nháp giữ giọng tự tin, không phô trương: mở bằng một câu chốt giá trị, ba ý chính, kết bằng lời mời hành động rõ ràng.',
+          'Mình rút còn ba câu, mỗi câu một ý, bỏ các từ đệm. Bản ngắn thường được đọc hết — bạn muốn mình giữ độ dài này chứ?',
+        ],
+      },
+      {
+        match: /kế hoạch|plan|lịch|timeline|roadmap|bước/i,
+        replies: [
+          'Mình chia thành ba giai đoạn: Định vị → Sản xuất → Ra mắt & đo lường. Mỗi giai đoạn có một mốc cứng để không trượt lịch.',
+          'Việc lớn nhất nên làm trước vì nó chặn các việc sau. Mình xếp theo phụ thuộc, không theo cảm hứng — gửi bạn thứ tự gợi ý.',
+        ],
+      },
+      {
+        match: /phân tích|số liệu|dữ liệu|báo cáo|benchmark|khảo sát|data/i,
+        replies: [
+          'Đối chiếu xong: chỉ số chính của bạn thấp hơn mức dẫn đầu một khoảng, nguyên nhân nằm ở bước onboarding nhiều tầng. Mình tóm tắt vào tài liệu nhé.',
+          'Mình thấy một outlier kéo lệch trung bình — dùng trung vị sẽ phản ánh đúng hơn. Bạn muốn mình vẽ phân phối không?',
+        ],
+      },
+    ],
+    fallbacks: [
+      'Đã rõ. Mình giữ đúng ngữ cảnh dự án {project} và làm tiếp phần này cho bạn.',
+      'Được, mình xử lý ngay. Nếu cần mình sẽ hỏi lại thay vì đoán những chỗ chưa chắc.',
+      'Mình hiểu ý bạn. Đây là hướng mình đề xuất, kèm lý do ngắn gọn để bạn dễ quyết.',
+    ],
+    smartSuffix: 'Mình cũng đã cân nhắc vài phương án khác và chọn cái đánh đổi tốt nhất cho bạn.',
+    instructionsNote: '(Bám theo chỉ dẫn của dự án {project}.)',
+  },
   quiet: {
     user: 'Viết phần Rủi ro cho kế hoạch — gọn, có cách giảm thiểu.',
     intro: 'Bốn rủi ro lớn nhất và cách giảm thiểu:',

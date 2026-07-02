@@ -37,6 +37,12 @@ describe('locale-aware seed bundles (i18n phase 2)', () => {
     expect(Object.keys(seedEn.profiles)).toEqual(Object.keys(seedVi.profiles))
     expect(seedEn.quiet.risks).toHaveLength(seedVi.quiet.risks.length)
     expect(Object.keys(seedEn.samples)).toEqual(Object.keys(seedVi.samples))
+    expect(Object.keys(seedEn.previewNames)).toEqual(Object.keys(seedVi.previewNames))
+    expect(Object.keys(seedEn.previewDocs)).toEqual(Object.keys(seedVi.previewDocs))
+    expect(seedEn.previewDocs.csv.rows).toHaveLength(seedVi.previewDocs.csv.rows.length)
+    expect(seedEn.previewDocs.md.bullets).toHaveLength(seedVi.previewDocs.md.bullets.length)
+    expect(seedEn.replies.templates).toHaveLength(seedVi.replies.templates.length)
+    expect(seedEn.replies.fallbacks).toHaveLength(seedVi.replies.fallbacks.length)
   })
 
   it('an english boot seeds the store with english demo content', async () => {

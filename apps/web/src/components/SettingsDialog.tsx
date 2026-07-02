@@ -254,7 +254,7 @@ function General() {
         <div className="size-[38px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
         <div className="min-w-0 flex-1">
           <div className="text-body">{v.userName}</div>
-          <div className="text-small text-muted">minh@aurora.studio · {t('user.plan')}</div>
+          <div className="text-small text-muted">{v.userEmail} · {t('user.plan')}</div>
         </div>
         <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint">{t('nav.logout')}</button>
       </div>

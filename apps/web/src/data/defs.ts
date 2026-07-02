@@ -127,7 +127,8 @@ export const provDefs: ProviderDef[] = [
   },
   {
     id: 'ollama',
-    name: 'Trên máy của bạn',
+    // display name is localized at consumption (vocab.providers.ollama.name)
+    name: 'Ollama',
     glyph: '◍',
     badgeBg: 'var(--success-bg)',
     badgeFg: 'var(--success)',

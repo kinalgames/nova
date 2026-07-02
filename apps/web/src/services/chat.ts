@@ -4,6 +4,7 @@
 
 import type { SlotId } from '../data/defs'
 import type { ThinkLevel } from '../state/types'
+import { getSeed } from '../data/seed'
 
 export interface ReplyOptions {
   /** which quality slot the chat routes through — “smart” answers more thoroughly */
@@ -13,44 +14,6 @@ export interface ReplyOptions {
   /** project instructions (the project description) — steer the reply voice */
   instructions?: string
 }
-
-const TEMPLATES: { match: RegExp; replies: string[] }[] = [
-  {
-    match: /code|lập trình|hàm|bug|lỗi|component|api|typescript|react/i,
-    replies: [
-      'Mình tách phần đó thành một hàm thuần để dễ test, rồi thêm guard cho các ca biên. Bạn muốn mình kèm cả unit test không?',
-      'Gốc rễ là state được tính lại mỗi render. Mình bọc trong useMemo và rút phụ thuộc xuống còn những gì thực sự đổi — sẽ hết giật.',
-      'Mình đề xuất tách interface trước, viết test đỏ, rồi mới cài đặt. Cách này giữ cho thay đổi nhỏ và an toàn.',
-    ],
-  },
-  {
-    match: /viết|email|bài|nội dung|content|soạn|draft/i,
-    replies: [
-      'Đây là bản nháp giữ giọng tự tin, không phô trương: mở bằng một câu chốt giá trị, ba ý chính, kết bằng lời mời hành động rõ ràng.',
-      'Mình rút còn ba câu, mỗi câu một ý, bỏ các từ đệm. Bản ngắn thường được đọc hết — bạn muốn mình giữ độ dài này chứ?',
-    ],
-  },
-  {
-    match: /kế hoạch|plan|lịch|timeline|roadmap|bước/i,
-    replies: [
-      'Mình chia thành ba giai đoạn: Định vị → Sản xuất → Ra mắt & đo lường. Mỗi giai đoạn có một mốc cứng để không trượt lịch.',
-      'Việc lớn nhất nên làm trước vì nó chặn các việc sau. Mình xếp theo phụ thuộc, không theo cảm hứng — gửi bạn thứ tự gợi ý.',
-    ],
-  },
-  {
-    match: /phân tích|số liệu|dữ liệu|báo cáo|benchmark|khảo sát|data/i,
-    replies: [
-      'Đối chiếu xong: chỉ số chính của bạn thấp hơn mức dẫn đầu một khoảng, nguyên nhân nằm ở bước onboarding nhiều tầng. Mình tóm tắt vào tài liệu nhé.',
-      'Mình thấy một outlier kéo lệch trung bình — dùng trung vị sẽ phản ánh đúng hơn. Bạn muốn mình vẽ phân phối không?',
-    ],
-  },
-]
-
-const FALLBACKS = [
-  'Đã rõ. Mình giữ đúng ngữ cảnh dự án {project} và làm tiếp phần này cho bạn.',
-  'Được, mình xử lý ngay. Nếu cần mình sẽ hỏi lại thay vì đoán những chỗ chưa chắc.',
-  'Mình hiểu ý bạn. Đây là hướng mình đề xuất, kèm lý do ngắn gọn để bạn dễ quyết.',
-]
 
 let seed = 1
 function pick<T>(arr: T[]): T {
@@ -64,19 +27,20 @@ export function resetReplySeed(s = 1) {
   seed = s
 }
 
-/** Compose a contextual reply for a user message. */
+/** Compose a contextual reply for a user message — locale-aware demo corpus. */
 export function composeReply(userText: string, opts: ReplyOptions): string {
-  const group = TEMPLATES.find((t) => t.match.test(userText))
-  let body = group ? pick(group.replies) : pick(FALLBACKS)
+  const corpus = getSeed().replies
+  const group = corpus.templates.find((t) => t.match.test(userText))
+  let body = group ? pick(group.replies) : pick(corpus.fallbacks)
   body = body.replace('{project}', opts.project)
-  // "Thông minh" answers a touch more thoroughly than "Nhanh"
+  // the smart slot answers a touch more thoroughly than the fast one
   if (opts.slot === 'smart' && opts.thinking !== 'off') {
-    body += ' Mình cũng đã cân nhắc vài phương án khác và chọn cái đánh đổi tốt nhất cho bạn.'
+    body += ` ${corpus.smartSuffix}`
   }
   // project instructions visibly steer the fake reply — the real backend will
   // inject them into the system prompt with the same contract
   if (opts.instructions?.trim()) {
-    body += ` (Bám theo chỉ dẫn của dự án ${opts.project}.)`
+    body += ` ${corpus.instructionsNote.replace('{project}', opts.project)}`
   }
   return body
 }

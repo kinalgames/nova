@@ -139,6 +139,7 @@ function persistSliceOf(s: NovaState): import('./persist').Persisted {
     advanced: s.advanced,
     accent: s.accent,
     userName: s.userName,
+    userEmail: s.userEmail,
     assistantName: s.assistantName,
     activeSlot: s.activeSlot,
     slots: s.slots,
@@ -216,6 +217,7 @@ function initialState(): NovaState {
     archivedOpen: false,
     cheatsheet: false,
     userName: p.userName ?? i18n.t('user.name'),
+    userEmail: p.userEmail,
     assistantName: p.assistantName ?? 'Nova',
     thinkingLevel: p.thinkingLevel ?? 'normal',
     theme: p.theme ?? 'light',
@@ -373,6 +375,7 @@ export function StoreProvider({
         set((x) => ({
           ...('theme' in slice ? { theme: slice.theme } : {}),
           userName: slice.userName ?? x.userName,
+          userEmail: slice.userEmail ?? x.userEmail,
           assistantName: slice.assistantName ?? x.assistantName,
           activeSlot: slice.activeSlot ?? x.activeSlot,
           slots: slice.slots ?? x.slots,
@@ -549,7 +552,7 @@ export function StoreProvider({
       const proj = prev.projects.find(
         (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
       )
-      const projName = proj?.name ?? 'Chung'
+      const projName = proj?.name ?? i18n.t('projects.defaultName')
       // routing: the active slot names a {provider, model}; rotation picks the
       // auth profile (sticky + ordered fallback) the request bills against
       const ref = prev.slots[prev.activeSlot]
@@ -1082,7 +1085,7 @@ function deriveValues(
   // otherwise the active conversation's project. Drives the sidebar scope and
   // which project/conversation reads as active.
   const currentProjectId = viewProject?.id ?? 'chung'
-  const currentProjectName = viewProject?.name ?? 'Chung'
+  const currentProjectName = viewProject?.name ?? t('projects.defaultName')
 
   // ----- project CRUD (fake store — no backend) -----
   const createProject = (name: string, description: string, accent?: string) => {
@@ -1596,6 +1599,7 @@ function deriveValues(
     // D — profile, data controls, cheatsheet
     stylesState: s.styles,
     userName: s.userName,
+    userEmail: s.userEmail ?? t('user.demoEmail'),
     userFirstName: s.userName.trim().split(/\s+/)[0] || s.userName,
     setUserName: (name: string) => set({ userName: name }),
     assistantName: s.assistantName,
@@ -1645,7 +1649,7 @@ function deriveValues(
     stBgError: stBg('error'),
     stFgError: stFg('error'),
     // composer
-    chatProject: activeProject?.name ?? 'Chung',
+    chatProject: activeProject?.name ?? t('projects.defaultName'),
     staged: activeStaged,
     hasStaged: activeStaged.length > 0,
     removeStaged: (id: string) =>
@@ -1674,10 +1678,10 @@ function deriveValues(
       s.preview?.kind === 'image'
         ? '1440×960 · 820 KB'
         : (getSeed().previewMeta as Record<string, string>)[s.preview?.kind || ''] || '',
-    openPdf: () => set({ preview: { kind: 'pdf', name: 'Brief-Aurora.pdf' } }),
-    openCode: () => set({ preview: { kind: 'code', name: 'analyze.py' } }),
-    openCsv: () => set({ preview: { kind: 'csv', name: 'Khảo-sát.csv' } }),
-    openMd: () => set({ preview: { kind: 'md', name: 'plan.md' } }),
+    openPdf: () => set({ preview: { kind: 'pdf', name: getSeed().previewNames.pdf } }),
+    openCode: () => set({ preview: { kind: 'code', name: getSeed().previewNames.code } }),
+    openCsv: () => set({ preview: { kind: 'csv', name: getSeed().previewNames.csv } }),
+    openMd: () => set({ preview: { kind: 'md', name: getSeed().previewNames.md } }),
     closePreview: () => set({ preview: null }),
     downloadPreview: () => {
       if (!s.preview) return
@@ -1715,6 +1719,7 @@ function deriveValues(
     isLogin: nav.authView !== 'signup',
     logout: () => {
       if (API_BASE) void signOut()
+      set({ userEmail: undefined })
       __resetSync() // the next login re-hydrates/imports from scratch
       navigate({ to: '/login' })
     },
@@ -1737,6 +1742,7 @@ function deriveValues(
       if (me)
         set({
           userName: me.name,
+          userEmail: me.email,
           ...(me.assistantName ? { assistantName: me.assistantName } : {}),
         })
       // start syncing this user's op-log immediately — no reload needed
@@ -1859,13 +1865,13 @@ function deriveValues(
       dot: p.accent,
       isDefault: !!p.isDefault,
       count: convCount(p.id),
-      threads: `${convCount(p.id)} luồng`,
+      threads: t('projects.threads', { count: convCount(p.id) }),
     })),
     activeProjectId,
-    activeProjectName: activeProject?.name ?? 'Chung',
+    activeProjectName: activeProject?.name ?? t('projects.defaultName'),
     currentProjectName,
     viewProjectId: viewProject?.id ?? 'chung',
-    viewProjectName: viewProject?.name ?? 'Chung',
+    viewProjectName: viewProject?.name ?? t('projects.defaultName'),
     viewProjectDescription: viewProject?.description ?? '',
     viewProjectAccent: viewProject?.accent ?? 'var(--faint)',
     viewProjectIsDefault: !!viewProject?.isDefault,
@@ -1891,7 +1897,7 @@ function deriveValues(
     paletteConvs: sortConvs(s.conversations).map((c) => ({
       id: c.id,
       title: c.title,
-      projectName: s.projects.find((p) => p.id === c.projectId)?.name ?? 'Chung',
+      projectName: s.projects.find((p) => p.id === c.projectId)?.name ?? t('projects.defaultName'),
       open: () => {
         set({ activeConv: c.id, palette: false, q: '' })
         navigate({ to: '/chat/$convId', params: { convId: c.id } })

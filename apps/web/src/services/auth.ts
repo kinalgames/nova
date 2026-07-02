@@ -3,6 +3,7 @@
 // native clients) authenticate the same way. No API_BASE → demo mode.
 
 import { API_BASE } from './llm'
+import i18n from '../i18n'
 
 export interface SessionUser {
   id: string
@@ -33,7 +34,7 @@ async function call(path: string, body?: unknown): Promise<Response> {
 
 async function errorOf(res: Response): Promise<string> {
   const data = (await res.json().catch(() => ({}))) as { message?: string }
-  return data.message ?? `Lỗi ${res.status}`
+  return data.message ?? i18n.t('errors.httpStatus', { status: res.status })
 }
 
 /** returns null on success, an error message otherwise */
@@ -42,7 +43,7 @@ export async function signUp(name: string, email: string, password: string): Pro
     const res = await call('/api/auth/sign-up/email', { name, email, password })
     return res.ok ? null : await errorOf(res)
   } catch {
-    return 'Không kết nối được máy chủ'
+    return i18n.t('errors.network')
   }
 }
 
@@ -52,7 +53,7 @@ export async function signIn(email: string, password: string): Promise<string | 
     const res = await call('/api/auth/sign-in/email', { email, password })
     return res.ok ? null : await errorOf(res)
   } catch {
-    return 'Không kết nối được máy chủ'
+    return i18n.t('errors.network')
   }
 }
 

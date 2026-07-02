@@ -16,6 +16,7 @@ export interface Persisted {
   advanced?: boolean
   accent?: string
   userName?: string
+  userEmail?: string
   assistantName?: string
   focusDur?: '15' | '25' | '50'
   barOn?: boolean

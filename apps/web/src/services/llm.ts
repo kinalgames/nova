@@ -3,6 +3,7 @@
 // a NON-DEMO auth profile exists for the routed provider.
 
 import type { ChatProxyRequest } from '@nova/shared'
+import i18n from '../i18n'
 
 /** API origin — dev defaults to the local wrangler dev port */
 export const API_BASE: string =
@@ -31,7 +32,7 @@ export async function streamChat(
     })
   } catch (e) {
     if ((e as Error).name !== 'AbortError')
-      h.onError('network', 'Không kết nối được máy chủ Nova API')
+      h.onError('network', i18n.t('errors.apiNetwork'))
     return
   }
   if (!res.ok) {
@@ -42,7 +43,7 @@ export async function streamChat(
   }
   const reader = res.body?.getReader()
   if (!reader) {
-    h.onError('empty_stream', 'Máy chủ không trả về stream')
+    h.onError('empty_stream', i18n.t('errors.emptyStream'))
     return
   }
   const dec = new TextDecoder()
@@ -68,7 +69,7 @@ export async function streamChat(
           h.onDone(evt.usage ?? { inputTokens: 0, outputTokens: 0 })
           return
         } else if (evt.type === 'error') {
-          h.onError(evt.code ?? 'stream_error', evt.message ?? 'Stream lỗi')
+          h.onError(evt.code ?? 'stream_error', evt.message ?? i18n.t('errors.stream'))
           return
         }
       }

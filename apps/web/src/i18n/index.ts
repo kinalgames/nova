@@ -31,6 +31,13 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 })
 
+/** keep <html lang> in sync with the active language (a11y/SEO) */
+function syncDocLang(lng: string) {
+  if (typeof document !== 'undefined') document.documentElement.lang = lng
+}
+i18n.on('languageChanged', syncDocLang)
+syncDocLang(i18n.language)
+
 export function setLanguage(lng: Language) {
   void i18n.changeLanguage(lng)
   try {

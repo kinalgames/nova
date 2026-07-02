@@ -48,6 +48,30 @@ export interface SeedData {
   samples: Record<PreviewKind, { type: string; body: string }>
   /** meta line under a preview title, per kind */
   previewMeta: Record<'pdf' | 'code' | 'csv' | 'md', string>
+  /** display names of the openable demo documents, per kind */
+  previewNames: Record<'pdf' | 'code' | 'csv' | 'md', string>
+  /** textual content of the preview demo documents (components/Preview.tsx) */
+  previewDocs: {
+    pdf: { title: string; meta: string; lead: string; page: string }
+    code: { print: string }
+    csv: { head: [string, string, string]; rows: { id: string; ok: boolean; okText: string; channel: string }[] }
+    md: {
+      title: string
+      gapHeading: string
+      bullets: { pre: string; strong?: string; tail?: string }[]
+      sixHeading: string
+      sixBody: string
+    }
+  }
+  /** demo reply corpus for the fake streaming assistant (services/chat.ts) */
+  replies: {
+    templates: { match: RegExp; replies: string[] }[]
+    fallbacks: string[]
+    /** appended to smart-slot replies when thinking is on */
+    smartSuffix: string
+    /** appended when project instructions exist — {project} interpolated */
+    instructionsNote: string
+  }
   /** the quiet-mode sample exchange */
   quiet: { user: string; intro: string; risks: { t: string; d: string }[] }
 }
