@@ -17,7 +17,12 @@
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "drizzle"
     }
-  ]
+  ],
+  // BE2 — one SQLite-backed DO per user: the durable op-log + record store
+  "durable_objects": {
+    "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserStore"] }]
   // Later phases: BE2 Durable Objects (per-user store) · BE3 BYOK master-key
   // secret + Analytics Engine · BE4 R2 bucket. Secrets via `wrangler secret
   // put` / .dev.vars only. After ANY binding change: `npm run cf-typegen`.

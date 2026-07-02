@@ -31,6 +31,26 @@ export interface ChatTurn {
   content: string
 }
 
+/** tables the sync protocol carries — record-level op-log (BE2) */
+export type SyncTable = 'settings' | 'project' | 'conversation' | 'thread'
+
+/** one record-level operation in the per-user op-log */
+export interface SyncOp {
+  kind: 'put' | 'del'
+  table: SyncTable
+  /** record id ('settings' is a singleton; thread ids = conversation ids) */
+  id: string
+  /** JSON value for put; absent for del */
+  value?: unknown
+  /** client wall-clock ms (informational; server seq is authoritative) */
+  at: number
+}
+
+export interface SyncPullResponse {
+  seq: number
+  ops: SyncOp[]
+}
+
 /** request body of POST /v1/chat — the provider proxy contract */
 export interface ChatProxyRequest {
   providerId: ProviderId

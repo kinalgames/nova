@@ -48,7 +48,9 @@ import {
 import { loadPersisted, PERSIST_KEY } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { API_BASE, streamChat } from '../services/llm'
-import { fetchMe, signIn, signOut, signUp } from '../services/auth'
+import { fetchMe, getToken, signIn, signOut, signUp } from '../services/auth'
+import { pullOps, pushOps } from '../services/sync'
+import { diffRecords, fromRecords, toRecords, type SyncRecord } from './syncmap'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
   addSibling,
@@ -114,6 +116,44 @@ let _uid = 0
 const uid = () => `f${++_uid}`
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+
+// BE2 sync — module-level because there is a single store instance. `synced`
+// mirrors what the server holds so each persist push sends only the diff.
+let syncedRecords: SyncRecord[] | null = null
+let syncPushTimer: ReturnType<typeof setTimeout> | undefined
+const syncReady = () => Boolean(API_BASE && getToken())
+
+/** test-only: reset the module-level sync mirror between renders */
+export function __resetSync() {
+  syncedRecords = null
+  clearTimeout(syncPushTimer)
+}
+
+/** the persisted slice of the store — single source for localStorage + sync */
+function persistSliceOf(s: NovaState): import('./persist').Persisted {
+  return {
+    theme: s.theme,
+    advanced: s.advanced,
+    accent: s.accent,
+    userName: s.userName,
+    assistantName: s.assistantName,
+    activeSlot: s.activeSlot,
+    slots: s.slots,
+    focusDur: s.focusDur,
+    barOn: s.barOn,
+    thinkingLevel: s.thinkingLevel,
+    profiles: s.profiles,
+    autoRotate: s.autoRotate,
+    stickyProfile: s.stickyProfile,
+    tools: s.tools,
+    styles: s.styles,
+    projects: s.projects,
+    presetDefault: s.presetDefault,
+    conversations: s.conversations,
+    activeConv: s.activeConv,
+    threads: s.threads,
+  }
+}
 
 /** the uppercase first-name tag rendered beside a user message */
 const whoLabel = (name: string) => (name.trim().split(/\s+/)[0] || 'BẠN').toUpperCase()
@@ -263,32 +303,26 @@ export function StoreProvider({
 
   // persist a slice of settings
   useEffect(() => {
-    const p: import('./persist').Persisted = {
-      theme: s.theme,
-      advanced: s.advanced,
-      accent: s.accent,
-      userName: s.userName,
-      assistantName: s.assistantName,
-      activeSlot: s.activeSlot,
-      slots: s.slots,
-      focusDur: s.focusDur,
-      barOn: s.barOn,
-      thinkingLevel: s.thinkingLevel,
-      profiles: s.profiles,
-      autoRotate: s.autoRotate,
-      stickyProfile: s.stickyProfile,
-      tools: s.tools,
-      styles: s.styles,
-      projects: s.projects,
-      presetDefault: s.presetDefault,
-      conversations: s.conversations,
-      activeConv: s.activeConv,
-      threads: s.threads,
-    }
+    // sRef (not s) so the dependency list stays the explicit persisted fields
+    const p = persistSliceOf(sRef.current)
     try {
       localStorage.setItem(PERSIST_KEY, JSON.stringify(p))
     } catch {
       /* ignore */
+    }
+    // BE2: mirror the change to the per-user op-log (debounced diff push).
+    // Only after the boot pull primed `syncedRecords` — never race hydration.
+    if (syncReady() && syncedRecords !== null) {
+      clearTimeout(syncPushTimer)
+      const snapshot = p
+      syncPushTimer = setTimeout(() => {
+        const next = toRecords(snapshot)
+        const ops = diffRecords(syncedRecords ?? [], next)
+        if (ops.length === 0) return
+        void pushOps(ops).then((seq) => {
+          if (seq !== null) syncedRecords = next
+        })
+      }, 800)
     }
   }, [
     s.theme,
@@ -318,6 +352,50 @@ export function StoreProvider({
     const onResize = () => set({ vw: window.innerWidth })
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
+  }, [set])
+
+  // BE2: hydrate from the per-user op-log once a session exists. Server state
+  // wins for records it has; a fresh server gets the local data pushed up
+  // (that IS the localStorage import path).
+  useEffect(() => {
+    if (!syncReady()) return
+    let stop = false
+    void pullOps(0).then((res) => {
+      if (stop || !res) return
+      const remote = res.ops
+        .filter((o) => o.kind === 'put')
+        .map((o) => ({ table: o.table, id: o.id, value: o.value }))
+      if (remote.length > 0) {
+        const slice = fromRecords(remote)
+        set((x) => ({
+          ...('theme' in slice ? { theme: slice.theme } : {}),
+          userName: slice.userName ?? x.userName,
+          assistantName: slice.assistantName ?? x.assistantName,
+          activeSlot: slice.activeSlot ?? x.activeSlot,
+          slots: slice.slots ?? x.slots,
+          profiles: slice.profiles ?? x.profiles,
+          autoRotate: slice.autoRotate ?? x.autoRotate,
+          stickyProfile: slice.stickyProfile ?? x.stickyProfile,
+          styles: slice.styles ?? x.styles,
+          tools: slice.tools ?? x.tools,
+          presetDefault: slice.presetDefault ?? x.presetDefault,
+          projects: slice.projects ?? x.projects,
+          conversations: slice.conversations ?? x.conversations,
+          threads: slice.threads ? { ...x.threads, ...slice.threads } : x.threads,
+        }))
+        syncedRecords = remote
+      } else {
+        // empty server → import everything local
+        const local = toRecords(persistSliceOf(sRef.current))
+        syncedRecords = []
+        void pushOps(diffRecords([], local)).then((seq) => {
+          if (seq !== null) syncedRecords = local
+        })
+      }
+    })
+    return () => {
+      stop = true
+    }
   }, [set])
 
   // E1: poll /version.json for a newer deploy — on mount, on focus, and every

@@ -114,12 +114,20 @@ single reload on `vite:preloadError`) · update-available toast
   (userName/assistantName) on `users`. Local dev is fully offline
   (`wrangler dev` with local D1) — no cloud account or secrets needed until
   deploy; OAuth credentials arrive later (email/password first).
-- **BE2 — op-log sync & import**: design the op-log protocol (append
-  message/version ops, selection moves, metadata patches) with the per-user
-  DO as the durable log + snapshot; conversation list lives in the DO, D1
-  stays thin (auth/user lookup); `POST /v1/import` (persist v5) replays a
-  localStorage user into ops; web store becomes the optimistic cache over
-  the same endpoints.
+- **BE2 — op-log sync & import (SHIPPED, v1)**: record-level op-log —
+  envelope `{kind: put|del, table: settings|project|conversation|thread, id,
+  value, at}` with a server-authoritative `seq`. One SQLite-backed
+  **UserStore DO per user** holds the records with tombstones;
+  `GET/POST /v1/sync` (session-gated) pulls deltas by `since` and applies
+  batches. The web client hydrates on boot (server wins per record), an
+  empty server receives the full local push — which IS the localStorage
+  import path — and every later persist writes a debounced record diff.
+  Conversation list + threads live in the DO; D1 stays thin (auth only).
+  v1 granularity: whole `thread` values per conversation — native clients
+  granularize to per-message ops later without changing the envelope.
+  Still open for BE2.x: per-device `since` cursors for incremental pulls,
+  live cross-device push (DO WebSocket), and op-level merge instead of
+  record LWW.
 - **BE3 — provider proxy + real streaming** (FIRST SLICE SHIPPED, pulled
   forward for credential testing): `POST /v1/chat` proxies Anthropic with SSE
   transformed to the Nova contract; both credential kinds work —

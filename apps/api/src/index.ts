@@ -3,12 +3,19 @@ import { cors } from 'hono/cors'
 import type { ChatProxyRequest } from '@nova/shared'
 import { callAnthropic, toNovaStream } from './providers/anthropic'
 import { createAuth, type AuthEnv } from './auth'
+import type { SyncOp } from '@nova/shared'
+
+export { UserStore } from './do/userStore'
+
+interface Env extends AuthEnv {
+  USER_STORE: DurableObjectNamespace
+}
 
 // BE1 auth (Better Auth on D1) + the provider proxy (BE3 slice pulled
 // forward). Conventions locked in docs/backend-architecture.md: REST /v1,
 // RFC 7807 errors, SSE streaming.
 
-const app = new Hono<{ Bindings: AuthEnv }>()
+const app = new Hono<{ Bindings: Env }>()
 
 // dev CORS: the Vite client on another port; tighten per-env at deploy time.
 // credentials:true → origin must be reflected, never '*'.
@@ -85,6 +92,41 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
   }
   return body as ChatProxyRequest
 }
+
+// — BE2: per-user op-log sync —
+async function userIdOf(c: { env: Env; req: { raw: Request } }): Promise<string | null> {
+  const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
+  return session?.user.id ?? null
+}
+
+const userStub = (env: Env, userId: string) =>
+  env.USER_STORE.get(env.USER_STORE.idFromName(userId))
+
+app.get('/v1/sync', async (c) => {
+  const uid = await userIdOf(c)
+  if (!uid) return problem(401, 'unauthenticated', 'No valid session')
+  const since = Number(c.req.query('since') ?? '0') || 0
+  const res = await userStub(c.env, uid).fetch(`https://do/ops?since=${since}`)
+  return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json' } })
+})
+
+app.post('/v1/sync', async (c) => {
+  const uid = await userIdOf(c)
+  if (!uid) return problem(401, 'unauthenticated', 'No valid session')
+  let body: { ops?: SyncOp[] }
+  try {
+    body = (await c.req.json()) as { ops?: SyncOp[] }
+  } catch {
+    return problem(400, 'invalid_json', 'Body must be JSON')
+  }
+  if (!Array.isArray(body.ops)) return problem(400, 'invalid_request', 'Expected {ops: SyncOp[]}')
+  const res = await userStub(c.env, uid).fetch('https://do/ops', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ops: body.ops }),
+  })
+  return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json' } })
+})
 
 app.post('/v1/chat', async (c) => {
   let body: unknown
