@@ -101,6 +101,29 @@ describe('store — theme persistence', () => {
     expect(result.current.s.activeSlot).toBe('fast')
     expect(result.current.s.advanced).toBe(true)
   })
+
+  it('heals persisted slots whose model was retired from the catalog', async () => {
+    localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({
+        slots: {
+          // claude-opus-4 was retired upstream — must fall back to the default
+          smart: { providerId: 'claude', modelId: 'claude-opus-4' },
+          // still-valid ref must be preserved untouched
+          fast: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+        },
+      }),
+    )
+    const { result } = await setup()
+    expect(result.current.s.slots.smart).toEqual({
+      providerId: 'claude',
+      modelId: 'claude-opus-4-8',
+    })
+    expect(result.current.s.slots.fast).toEqual({
+      providerId: 'gemini',
+      modelId: 'gemini-2.5-flash',
+    })
+  })
 })
 
 describe('store — composer send', () => {

@@ -117,6 +117,18 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined
 /** the uppercase first-name tag rendered beside a user message */
 const whoLabel = (name: string) => (name.trim().split(/\s+/)[0] || 'BẠN').toUpperCase()
 
+/** heal persisted slot refs whose model has been retired from the catalog —
+ * providers deprecate ids over time and a stale ref would 404 every send */
+function sanitizeSlots(slots: Record<SlotId, ModelRef> | undefined): Record<SlotId, ModelRef> {
+  if (!slots) return defaultSlots
+  const fix = (slot: SlotId): ModelRef => {
+    const ref = slots[slot]
+    const prov = provDefs.find((pd) => pd.id === ref?.providerId)
+    return prov && prov.models.some((m) => m.id === ref.modelId) ? ref : defaultSlots[slot]
+  }
+  return { smart: fix('smart'), fast: fix('fast') }
+}
+
 function initialState(): NovaState {
   const p = loadPersisted()
   // the language detected at first boot decides which seed bundle persists
@@ -166,7 +178,7 @@ function initialState(): NovaState {
     focusDur: p.focusDur ?? '25',
     styles: p.styles ?? { concise: true, warm: false, formal: false, humor: false },
     activeSlot: p.activeSlot ?? 'smart',
-    slots: p.slots ?? defaultSlots,
+    slots: sanitizeSlots(p.slots),
     tools: p.tools ?? { web: true, fetch: true, files: true, bash: true },
     draft: '',
     q: '',
