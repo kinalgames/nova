@@ -64,6 +64,7 @@ export function MobileDrawer() {
                 to="/projects/$projectId"
                 params={{ projectId: p.id }}
                 onClick={v.closeDrawer}
+                aria-current={p.current ? 'true' : undefined}
                 aria-label={t('nav.projectAria', { name: p.name })}
                 className={`${navRow} no-underline`}
                 style={{ background: p.bg }}
@@ -88,6 +89,7 @@ export function MobileDrawer() {
                   params={{ convId: c.id }}
                   onClick={c.onSelect}
                   disabled={c.deleting}
+                  aria-current={c.active ? 'page' : undefined}
                   className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 bg-transparent text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-disabled:cursor-default"
                 >
                   <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>

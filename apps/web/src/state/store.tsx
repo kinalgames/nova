@@ -1520,6 +1520,7 @@ function deriveValues(
     name: p.name,
     dot: p.accent,
     count: String(convCount(p.id)),
+    current: p.id === currentProjectId,
     bg: p.id === currentProjectId ? 'var(--accent-soft)' : 'transparent',
     fg: p.id === currentProjectId ? 'var(--text)' : 'var(--text-2)',
   }))

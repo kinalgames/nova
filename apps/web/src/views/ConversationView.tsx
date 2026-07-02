@@ -36,7 +36,7 @@ export function ConversationView() {
         <div className="relative min-h-0 flex-1">
         {/* a scrollable region must be keyboard-focusable (axe scrollable-region-focusable); jsx-a11y's noninteractive-tabindex is a false positive here */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-        <div ref={v.scrollRef} onScroll={onScroll} tabIndex={0} role="region" aria-label={t('chat.regionAria')} className="flex h-full justify-center overflow-y-auto scroll-smooth">
+        <div ref={v.scrollRef} onScroll={onScroll} tabIndex={0} role="region" aria-label={t('chat.regionAria')} className="flex h-full justify-center overflow-y-auto">
           <div className="w-[680px] max-w-full" style={{ padding: v.convPad }}>
             {v.isEmptyChat && <EmptyChat />}
 

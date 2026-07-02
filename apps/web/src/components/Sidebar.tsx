@@ -21,6 +21,7 @@ function ConvRow({ c }: { c: ConvVM }) {
         params={{ convId: c.id }}
         onClick={c.onSelect}
         disabled={c.deleting}
+        aria-current={c.active ? 'page' : undefined}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-sm bg-transparent px-2.5 py-2 text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent aria-disabled:cursor-default"
       >
         <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
@@ -205,6 +206,7 @@ export function Sidebar() {
             to="/projects/$projectId"
             params={{ projectId: p.id }}
             data-hover="soft"
+            aria-current={p.current ? 'true' : undefined}
             aria-label={t('nav.projectAria', { name: p.name })}
             className="mb-px flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 no-underline"
             style={{ justifyContent: v.railJustify, background: p.bg }}

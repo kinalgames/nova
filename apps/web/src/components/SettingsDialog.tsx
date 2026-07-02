@@ -145,14 +145,14 @@ function General() {
       </div>
 
       <div className={`${LABEL} mb-3`}>{t('settings.appearance')}</div>
-      <div className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
+      <div role="group" aria-label={t('settings.appearance')} className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
         <button type="button" aria-pressed={v.themeVal === 'light'} onClick={v.setLight} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeLightBd, background: v.themeLightBg, color: v.themeLightFg }}>{t('settings.themeLight')}</button>
         <button type="button" aria-pressed={v.themeVal === 'dark'} onClick={v.setDark} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeDarkBd, background: v.themeDarkBg, color: v.themeDarkFg }}>{t('settings.themeDark')}</button>
         <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeAutoBd, background: v.themeAutoBg, color: v.themeAutoFg }}>{t('settings.themeAuto')}</button>
       </div>
 
       <div className={`${LABEL} mb-3 mt-4`}>{t('settings.language')}</div>
-      <div className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
+      <div role="group" aria-label={t('settings.language')} className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
         {langBtn('vi', 'Tiếng Việt')}
         {langBtn('en', 'English')}
       </div>
@@ -167,7 +167,7 @@ function General() {
       <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.focusSection')}</div>
       <div className="flex items-center justify-between gap-3 border-b border-border px-0.5 py-3">
         <span className="text-body">{t('settings.sessionLength')}</span>
-        <div className="flex shrink-0 gap-1.5">
+        <div role="group" aria-label={t('settings.sessionLength')} className="flex shrink-0 gap-1.5">
           <button type="button" aria-pressed={v.focusVal === '15'} onClick={v.setF15} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f15Bd, background: v.f15Bg, color: v.f15Fg }}>15′</button>
           <button type="button" aria-pressed={v.focusVal === '25'} onClick={v.setF25} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f25Bd, background: v.f25Bg, color: v.f25Fg }}>25′</button>
           <button type="button" aria-pressed={v.focusVal === '50'} onClick={v.setF50} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f50Bd, background: v.f50Bg, color: v.f50Fg }}>50′</button>
@@ -457,7 +457,7 @@ function Assistant() {
   return (
     <>
       <div className={`${LABEL} mb-3`}>{t('settings.styleSection')}</div>
-      <div className="mb-7 flex flex-wrap gap-2">
+      <div role="group" aria-label={t('settings.styleSection')} className="mb-7 flex flex-wrap gap-2">
         <button type="button" aria-pressed={v.styleConcise} onClick={v.toggleConcise} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stConciseBd, background: v.stConciseBg, color: v.stConciseFg }}>{t('vocab.styles.concise')}</button>
         <button type="button" aria-pressed={v.styleWarm} onClick={v.toggleWarm} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stWarmBd, background: v.stWarmBg, color: v.stWarmFg }}>{t('vocab.styles.warm')}</button>
         <button type="button" aria-pressed={v.styleFormal} onClick={v.toggleFormal} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stFormalBd, background: v.stFormalBg, color: v.stFormalFg }}>{t('vocab.styles.formal')}</button>
