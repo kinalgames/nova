@@ -500,10 +500,10 @@ export function StoreProvider({
 
   useEffect(() => {
     triggerCredHydrate = () => void hydrateCredentials()
-    // defer past the commit — hydration always sets state asynchronously
-    const boot = setTimeout(() => void hydrateCredentials(), 0)
+    // microtask: runs right after this commit (deterministic, unlike a
+    // setTimeout macrotask) so the async hydrate never sets state mid-render
+    queueMicrotask(() => void hydrateCredentials())
     return () => {
-      clearTimeout(boot)
       triggerCredHydrate = null
     }
   }, [hydrateCredentials])

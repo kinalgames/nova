@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { act, waitFor } from '@testing-library/react'
+import { act, configure, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
+
+// the async credential hydrate resolves a microtask after mount; give waitFor
+// headroom so this file stays green under the parallel projects run
+configure({ asyncUtilTimeout: 5000 })
 import { PERSIST_KEY } from './persist'
 import {
   addCredential,
@@ -55,7 +59,7 @@ beforeEach(() => {
 
 describe('store — server-side BYOK wiring (BE3)', () => {
   it('boot hydrates profiles from the server list — hints only, never secrets', async () => {
-    vi.mocked(listCredentials).mockResolvedValueOnce([row()])
+    vi.mocked(listCredentials).mockResolvedValue([row()])
     const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(result.current.s.profiles.claude).toHaveLength(1))
     expect(result.current.s.profiles.claude[0]).toMatchObject({
@@ -80,7 +84,7 @@ describe('store — server-side BYOK wiring (BE3)', () => {
     )
     vi.mocked(listCredentials)
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([row({ id: 'srv-mig', hint: '…nt-x' })])
+      .mockResolvedValue([row({ id: 'srv-mig', hint: '…nt-x' })])
     const { result } = await renderStore({ world: 'real' })
     await waitFor(() =>
       expect(addCredential).toHaveBeenCalledWith('claude', 'api_key', 'Cũ', 'sk-ant-x'),
@@ -106,7 +110,7 @@ describe('store — server-side BYOK wiring (BE3)', () => {
   })
 
   it('a real send chats by credentialId — no secret travels in the request', async () => {
-    vi.mocked(listCredentials).mockResolvedValueOnce([row()])
+    vi.mocked(listCredentials).mockResolvedValue([row()])
     const { result } = await renderStore({ world: 'real', path: '/new' })
     await waitFor(() => expect(result.current.s.profiles.claude).toHaveLength(1))
     await act(async () => result.current.set({ draft: 'xin chào server' }))
@@ -121,7 +125,7 @@ describe('store — server-side BYOK wiring (BE3)', () => {
   })
 
   it('testing a server credential runs a REAL probe and stores the verdict', async () => {
-    vi.mocked(listCredentials).mockResolvedValueOnce([row({ status: 'untested' })])
+    vi.mocked(listCredentials).mockResolvedValue([row({ status: 'untested' })])
     vi.mocked(pingCredential).mockResolvedValueOnce('limited')
     const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(result.current.s.profiles.claude).toHaveLength(1))
