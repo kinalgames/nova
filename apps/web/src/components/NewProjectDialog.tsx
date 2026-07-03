@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { projectAccents } from '../data/defs'
+import { BTN_PRIMARY } from './ui'
 
 const FIELD = 'field w-full rounded-md border border-border bg-bg px-3 py-2.5 text-body'
 const LABEL = 'mb-1.5 block font-mono text-eyebrow tracking-[.14em] text-label'
@@ -101,7 +102,7 @@ export function NewProjectDialog({
               <button
                 type="submit"
                 disabled={!name.trim()}
-                className="cursor-pointer rounded-sm border-none bg-ink px-3.5 py-2 text-ui text-bg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-[.38]"
+                className={BTN_PRIMARY}
               >
                 {t('newProject.submit')}
               </button>

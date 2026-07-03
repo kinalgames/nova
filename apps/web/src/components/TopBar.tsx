@@ -103,12 +103,18 @@ export function TopBar() {
               className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-small text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <span className="size-1.5 rounded-full bg-accent" />
-              <span className="grid text-left">
-                <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-nowrap">
-                  {t('model.smart')}
+              {/* on mobile the conversation title owns the bar — the chip keeps
+                  only dot + caret (mode stays in aria-label and in the menu) */}
+              {!v.isMobile && (
+                <span className="grid text-left">
+                  {/* the ghost reserves the widest label so switching modes
+                      never shifts layout */}
+                  <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-nowrap">
+                    {t('model.smart')}
+                  </span>
+                  <span className="col-start-1 row-start-1 whitespace-nowrap">{v.modelLabel}</span>
                 </span>
-                <span className="col-start-1 row-start-1 whitespace-nowrap">{v.modelLabel}</span>
-              </span>
+              )}
               <Icon n="caret" size={13} className="text-faint" />
             </button>
           </DropdownMenu.Trigger>

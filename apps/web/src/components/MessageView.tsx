@@ -349,7 +349,7 @@ function ApprovalCard({ tool, command }: { tool: string; command: string }) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2.5 px-4 py-3">
-        <button type="button" onClick={v.approveTool} className="cursor-pointer rounded-sm border-none bg-ink px-4 py-2 text-left text-ui text-bg">
+        <button type="button" onClick={v.approveTool} className={BTN_PRIMARY}>
           {t('chat.approvalAllow')}
         </button>
         <button type="button" onClick={v.denyTool} className="cursor-pointer rounded-sm border border-border bg-transparent px-4 py-2 text-left text-ui text-muted">
@@ -457,7 +457,7 @@ function EditForm({ message }: { message: Message }) {
           type="button"
           onClick={() => v.saveEdit(val)}
           disabled={!val.trim()}
-          className="cursor-pointer rounded-sm border-none bg-ink px-3 py-1.5 text-small text-bg disabled:cursor-default disabled:opacity-[.38]"
+          className={BTN_PRIMARY}
         >
           {t('common.save')}
         </button>

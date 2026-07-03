@@ -2,6 +2,7 @@ import { WorldLink as Link } from '../components/WorldLink'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from '../components/Icon'
+import { BTN_PRIMARY } from '../components/ui'
 
 export function ProjectView() {
   const { v } = useStore()
@@ -37,7 +38,7 @@ export function ProjectView() {
           <button
             type="button"
             onClick={() => v.newChatInProject(v.viewProjectId)}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-ui text-bg"
+            className={`${BTN_PRIMARY} shrink-0`}
           >
             <Icon n="plus" size={15} stroke={2} /> {t('projects.view.newChatHere')}
           </button>

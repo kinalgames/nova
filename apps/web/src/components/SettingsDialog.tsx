@@ -8,6 +8,7 @@ import { Icon } from './Icon'
 import { ToggleRow } from './ToggleRow'
 import { PresetCard } from './PresetCard'
 import { ProviderLogo } from './ProviderLogo'
+import { BTN_DANGER, BTN_DANGER_OUTLINE, BTN_PRIMARY, BTN_SECONDARY } from './ui'
 
 const TABS = [
   { id: 'general', labelKey: 'settings.tabGeneral', icon: 'settings' },
@@ -225,7 +226,7 @@ function General() {
               <button
                 type="button"
                 onClick={v.clearAllData}
-                className="cursor-pointer rounded-sm border-none bg-danger-strong px-3 py-1.5 text-small text-on-ink"
+                className={BTN_DANGER}
               >
                 {t('settings.clearAllConfirm')}
               </button>
@@ -241,7 +242,7 @@ function General() {
             <button
               type="button"
               onClick={() => setConfirmClear(true)}
-              className="shrink-0 cursor-pointer rounded-sm border border-danger-line bg-transparent px-3 py-1.5 text-small text-danger"
+              className={`${BTN_DANGER_OUTLINE} shrink-0`}
             >
               {t('settings.clearAllAction')}
             </button>
@@ -329,7 +330,7 @@ function Providers() {
   const { v } = useStore()
   const { t } = useTranslation()
   const iconBtn =
-    'flex cursor-pointer items-center border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+    'flex cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
   return (
     <>
       <div className={`${LABEL} mb-3`}>{t('settings.providersModels')}</div>
@@ -343,10 +344,10 @@ function Providers() {
         />
         {v.monthUsage && (
           <div className="flex items-center justify-between gap-3 px-0.5 py-3">
-            <span className="font-mono text-eyebrow tracking-[.12em] text-faint">
+            <span className="shrink-0 whitespace-nowrap font-mono text-eyebrow tracking-[.12em] text-faint">
               {t('settings.monthUsage')}
             </span>
-            <span className="font-mono text-eyebrow text-text-2">{v.monthUsage}</span>
+            <span className="min-w-0 text-right font-mono text-eyebrow text-text-2">{v.monthUsage}</span>
           </div>
         )}
       </div>
@@ -370,9 +371,9 @@ function Providers() {
               <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.profilesLabel')}</div>
               <div className="flex flex-col gap-1.5">
                 {pr.profiles.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2">
+                  <div key={f.id} className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                     <span className="whitespace-nowrap rounded-xs bg-fill px-1.5 py-0.5 font-mono text-eyebrow text-muted">{f.kindLabel}</span>
-                    <span className="min-w-0 truncate text-small text-text">{f.name}</span>
+                    <span className="min-w-0 truncate text-small text-text max-sm:min-w-[6em] max-sm:flex-1">{f.name}</span>
                     <span className="hidden min-w-0 flex-1 truncate font-mono text-eyebrow text-faint sm:block">
                       {f.credential}
                       {f.usage && <span className="ml-2 text-muted">{f.usage}</span>}
@@ -381,18 +382,21 @@ function Providers() {
                     <span className="ml-auto whitespace-nowrap rounded-xs px-1.5 py-0.5 font-mono text-eyebrow" style={{ color: f.statusFg, background: f.statusBg }}>
                       {f.badge}
                     </span>
-                    <button type="button" onClick={f.test} disabled={f.testing} aria-label={`${t('settings.test')} — ${f.name}`} className={`${iconBtn} font-mono text-eyebrow`}>
-                      {f.testing ? t('settings.testing') : t('settings.test')}
-                    </button>
-                    <button type="button" onClick={f.moveUp} disabled={!f.canUp} aria-label={t('settings.moveUp', { name: f.name })} className={iconBtn}>
-                      <Icon n="caret" size={13} className="rotate-180" />
-                    </button>
-                    <button type="button" onClick={f.moveDown} disabled={!f.canDown} aria-label={t('settings.moveDown', { name: f.name })} className={iconBtn}>
-                      <Icon n="caret" size={13} />
-                    </button>
-                    <button type="button" onClick={f.remove} aria-label={t('settings.removeProfile', { name: f.name })} className={iconBtn}>
-                      <Icon n="close" size={13} />
-                    </button>
+                    {/* one unit — the controls wrap together, never an orphaned ✕ */}
+                    <span className="flex items-center gap-0.5">
+                      <button type="button" onClick={f.test} disabled={f.testing} aria-label={`${t('settings.test')} — ${f.name}`} className={`${iconBtn} font-mono text-eyebrow`}>
+                        {f.testing ? t('settings.testing') : t('settings.test')}
+                      </button>
+                      <button type="button" onClick={f.moveUp} disabled={!f.canUp} aria-label={t('settings.moveUp', { name: f.name })} className={iconBtn}>
+                        <Icon n="caret" size={13} className="rotate-180" />
+                      </button>
+                      <button type="button" onClick={f.moveDown} disabled={!f.canDown} aria-label={t('settings.moveDown', { name: f.name })} className={iconBtn}>
+                        <Icon n="caret" size={13} />
+                      </button>
+                      <button type="button" onClick={f.remove} aria-label={t('settings.removeProfile', { name: f.name })} className={iconBtn}>
+                        <Icon n="close" size={13} />
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -406,9 +410,9 @@ function Providers() {
               )}
               <div className="flex flex-col gap-1.5">
                 {pr.models.map((md) => (
-                  <div key={md.id} className="flex items-center gap-2">
-                    <span className="font-mono text-meta text-text">{md.name}</span>
-                    <span className="font-mono text-eyebrow text-faint">{md.price}</span>
+                  <div key={md.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="whitespace-nowrap font-mono text-meta text-text">{md.name}</span>
+                    <span className="whitespace-nowrap font-mono text-eyebrow text-faint">{md.price}</span>
                     <span className="ml-auto flex gap-1.5">
                       <button
                         type="button"
@@ -416,7 +420,7 @@ function Providers() {
                         aria-label={`${t('model.smart')} — ${md.name}`}
                         onClick={md.useSmart}
                         disabled={!md.enabled}
-                        className={`cursor-pointer rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
+                        className={`cursor-pointer whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
                           md.smartOn
                             ? 'border-accent-line bg-accent-soft text-accent-text'
                             : 'border-border bg-transparent text-muted'
@@ -430,7 +434,7 @@ function Providers() {
                         aria-label={`${t('model.fast')} — ${md.name}`}
                         onClick={md.useFast}
                         disabled={!md.enabled}
-                        className={`cursor-pointer rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
+                        className={`cursor-pointer whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
                           md.fastOn
                             ? 'border-accent-line bg-accent-soft text-accent-text'
                             : 'border-border bg-transparent text-muted'
@@ -518,7 +522,7 @@ function PasswordSection() {
               type="button"
               disabled={busy}
               onClick={() => void submit()}
-              className="cursor-pointer rounded-sm border-none bg-ink px-3 py-1.5 text-small text-bg disabled:cursor-default disabled:opacity-60"
+              className={BTN_PRIMARY}
             >
               {t('account.pwSave')}
             </button>
@@ -528,7 +532,7 @@ function PasswordSection() {
                 setOpen(false)
                 setErr(null)
               }}
-              className="cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-muted"
+              className={BTN_SECONDARY}
             >
               {t('common.cancel')}
             </button>
@@ -572,7 +576,7 @@ function DangerZone() {
                 await v.deleteAccount()
                 setBusy(false)
               }}
-              className="cursor-pointer rounded-sm border-none bg-danger-strong px-3 py-1.5 text-small text-on-ink disabled:cursor-default disabled:opacity-50"
+              className={BTN_DANGER}
             >
               {t('account.deleteConfirm')}
             </button>
@@ -589,7 +593,7 @@ function DangerZone() {
         <button
           type="button"
           onClick={() => setArmed(true)}
-          className="mt-3 cursor-pointer rounded-sm border border-danger-line bg-transparent px-3 py-1.5 text-small text-danger"
+          className={`${BTN_DANGER_OUTLINE} mt-3`}
         >
           {t('account.deleteArm')}
         </button>

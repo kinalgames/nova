@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
+import { BTN_PRIMARY } from './ui'
 
 /** Paper-style rename for a conversation (replaces window.prompt). */
 export function RenameDialog() {
@@ -43,7 +44,7 @@ export function RenameDialog() {
               </Dialog.Close>
               <button
                 type="submit"
-                className="cursor-pointer rounded-sm border-none bg-ink px-3.5 py-2 text-ui text-bg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className={BTN_PRIMARY}
               >
                 {t('common.save')}
               </button>

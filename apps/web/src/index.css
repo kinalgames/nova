@@ -307,16 +307,23 @@ body {
 .font-mono {
   font-variant-numeric: tabular-nums;
 }
-input,
-textarea {
-  font-family: inherit;
-  border: none;
-  outline: none;
-  background: transparent;
-}
-input::placeholder,
-textarea::placeholder {
-  color: var(--placeholder);
+/* IN @layer base ON PURPOSE: un-layered author CSS beats every @layer rule
+   (Tailwind v4 puts utilities in @layer utilities), so an un-layered reset
+   here silently killed `border`/`bg-*` utilities on EVERY input in the app —
+   login, settings and password fields all rendered borderless. Base-layer
+   resets lose to utilities, which is exactly the contract we want. */
+@layer base {
+  input,
+  textarea {
+    font-family: inherit;
+    border: none;
+    outline: none;
+    background: transparent;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--placeholder);
+  }
 }
 [data-click],
 input,
