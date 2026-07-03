@@ -5,6 +5,11 @@
   "compatibility_date": "2026-06-20",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Smart Placement: run near the upstream LLM APIs (US) instead of the
+  // user's nearest colo — Anthropic/OpenAI 403-block egress from some Asian
+  // colos ("Request not allowed" / unsupported_country_region_territory),
+  // which hit real users chatting from VN. Static assets stay on the edge.
+  "placement": { "mode": "smart" },
 
   // ── local development (wrangler dev, no --env) ──────────────────────────
   // The web client runs on Vite (:5173) locally, so no assets here; bindings

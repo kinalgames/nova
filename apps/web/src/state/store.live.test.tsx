@@ -463,9 +463,10 @@ describe('real provider routing (nova-api proxy)', () => {
     const prof = result.current.s.profiles.claude.find((f) => f.name === 'Khóa thật')!
     expect(prof.status).toBe('limited')
     expect(prof.limitedUntil).toBeGreaterThan(Date.now())
-    // the specific error drives the danger card, not buried bubble text
+    // the specific error drives the danger card, not buried bubble text —
+    // humanized: the rate-limit class shows its own sentence, not raw code
     expect(result.current.v.isError).toBe(true)
-    expect(result.current.v.errorDetail).toContain('rate_limited')
+    expect(result.current.v.errorDetail).toContain('giới hạn tốc độ')
     expect(result.current.v.errorAction).toBe('retry')
     expect(result.current.s.typing).toBe(false)
   })
@@ -491,7 +492,9 @@ describe('real provider routing (nova-api proxy)', () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'key sai thử xem' }))
     await act(async () => result.current.v.send())
-    expect(result.current.v.errorDetail).toBe('upstream_error: invalid x-api-key')
+    // humanized: a rejected key explains itself and keeps the provider text
+    expect(result.current.v.errorDetail).toContain('Khóa API')
+    expect(result.current.v.errorDetail).toContain('invalid x-api-key')
     // B4 — the correlation id lands beside the error for support reports
     expect(result.current.v.errorRequestId).toBe('ray-9')
     expect(result.current.v.isError).toBe(true)
@@ -509,7 +512,7 @@ describe('real provider routing (nova-api proxy)', () => {
     await act(async () => result.current.v.send())
     // partial answer is kept ABOVE the card; the error goes to the card
     expect(msgText(result.current.v.sent.at(-1))).toContain('một phần trả lời')
-    expect(result.current.v.errorDetail).toContain('rate_limited')
+    expect(result.current.v.errorDetail).toContain('giới hạn tốc độ')
     const prof = result.current.s.profiles.claude.find((f) => f.name === 'Khóa thật')!
     expect(prof.limitedUntil).toBeGreaterThanOrEqual(Date.now() + 55_000)
   })

@@ -77,6 +77,7 @@ import {
 import { fetchMonthUsage } from '../services/usage'
 import { pullOps, pushOps } from '../services/sync'
 import { diffRecords, fromRecords, toRecords, type SyncRecord } from './syncmap'
+import { humanErrorDetail } from '../services/errors'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
   addSibling,
@@ -987,7 +988,7 @@ export function StoreProvider({
               set({
                 typing: false,
                 respState: 'error',
-                errorDetail: `${code}: ${message}`,
+                errorDetail: humanErrorDetail(code, message, status),
                 errorRequestId: requestId ?? null,
                 errorAction: 'retry',
                 errorConv: conv,
