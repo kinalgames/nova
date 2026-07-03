@@ -622,6 +622,19 @@ describe('store — message versions (edit / regenerate / navigate)', () => {
     expect(result.current.v.sent[2].id).toBe(userMsg.id)
   })
 
+  it('saving an edit with UNCHANGED text creates no version — branch only on real change', async () => {
+    const { result } = await setup()
+    const userMsg = result.current.v.sent[2] // c1-3 (user)
+    const original = msgText(userMsg)
+    await act(async () => result.current.v.startEdit(userMsg.id))
+    // same content (whitespace ignored) → exit edit mode, no sibling, no rerun
+    await act(async () => result.current.v.saveEdit(`  ${original}  `))
+    expect(result.current.v.editingMsg).toBeNull()
+    expect(result.current.v.sent[2].id).toBe(userMsg.id)
+    expect(result.current.v.versions[userMsg.id]).toEqual({ index: 1, count: 1 })
+    expect(result.current.v.sent.length).toBe(4)
+  })
+
   it('regenerate adds a sibling reply version under the same prompt', async () => {
     vi.useFakeTimers()
     const { result } = await setup()

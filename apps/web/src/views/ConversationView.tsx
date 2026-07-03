@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { Composer } from '../components/Composer'
 import { Icon } from '../components/Icon'
 import { MessageView, TypingIndicator } from '../components/MessageView'
+import { ProviderNudge } from '../components/ProviderNudge'
 import type { MsgState, RespState } from '../state/types'
 
 function respToState(rs: RespState): MsgState | undefined {
@@ -38,7 +39,7 @@ export function ConversationView() {
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
         <div ref={v.scrollRef} onScroll={onScroll} tabIndex={0} role="region" aria-label={t('chat.regionAria')} className="flex h-full justify-center overflow-y-auto overscroll-contain">
           <div className="w-[680px] max-w-full" style={{ padding: v.convPad }}>
-            {v.isEmptyChat && <EmptyChat />}
+            {v.isEmptyChat && (v.needsProvider ? <ProviderNudge /> : <EmptyChat />)}
 
             {v.sent.map((m, i) => {
               const isLast = i === v.sent.length - 1
@@ -87,6 +88,11 @@ export function ConversationView() {
           </div>
         )}
 
+        {!v.isEmptyChat && (
+          <div className="px-4">
+            <ProviderNudge compact />
+          </div>
+        )}
         <Composer />
       </div>
     </div>

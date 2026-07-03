@@ -492,6 +492,8 @@ describe('real provider routing (nova-api proxy)', () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'key sai thử xem' }))
     await act(async () => result.current.v.send())
+    // a configured profile means no BYOK nudge on the chat surface
+    expect(result.current.v.needsProvider).toBe(false)
     // humanized: a rejected key explains itself and keeps the provider text
     expect(result.current.v.errorDetail).toContain('Khóa API')
     expect(result.current.v.errorDetail).toContain('invalid x-api-key')
@@ -519,6 +521,8 @@ describe('real provider routing (nova-api proxy)', () => {
 
   it('real mode with NO provider shows the error card, never silent nothing', async () => {
     const { result } = await renderStore({ world: 'real' })
+    // no live profile for the active model → the BYOK nudge shows on chat
+    expect(result.current.v.needsProvider).toBe(true)
     await act(async () => result.current.set({ draft: 'chào' }))
     await act(async () => result.current.v.send())
     // a persistent danger card, not a vanished toast

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './../components/Icon'
 import { Composer } from '../components/Composer'
+import { ProviderNudge } from '../components/ProviderNudge'
 
 function greetingKey():
   | 'home.greetingMorning'
@@ -37,6 +38,9 @@ export function HomeView() {
             new-chat input */}
         <div className="w-full">
           <Composer placeholder={t('home.inputPlaceholder')} />
+        </div>
+        <div className="mt-3 w-full">
+          <ProviderNudge compact />
         </div>
 
         <div className="mt-3 grid w-full gap-2.5 px-3" style={{ gridTemplateColumns: v.sugCols }}>

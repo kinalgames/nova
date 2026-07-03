@@ -229,6 +229,26 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
   44px/icon-centered/row≤48px, elementFromPoint sweep không bị overlay
   che. Đây là tầng “sự thật UI” — jsdom không thấy layout/z-index/touch.
 
+### Chat UX pass 3 (user báo — cùng ngày)
+
+- **Smart Placement** bật ở wrangler.jsonc (placement.mode=smart, kế thừa
+  cả 2 env): Anthropic/OpenAI 403 “Request not allowed” /
+  unsupported_country với egress colo châu Á — Worker giờ chạy gần
+  upstream US. Nếu vẫn 403: phương án B là AI Gateway.
+- **humanErrorDetail** (`services/errors.ts`): bóc message trong cùng
+  từ body JSON provider (kể cả double-encoded), phân lớp 403-region /
+  401-key / 429-rate / 529-overloaded thành câu tiếng Việt (i18n
+  chat.err*), fallback `code: innermost`. Đừng bao giờ render raw JSON
+  lên error card.
+- **Edit không đổi nội dung = KHÔNG tạo version** — editMessage so
+  text.trim() với block text gốc, giống nhau → chỉ đóng edit mode.
+  Branch chỉ sinh khi message đổi thật hoặc regenerate.
+- **ProviderNudge** (BYOK empty-state): khi provider của ACTIVE model
+  không có profile live (real world) → chat không bao giờ trống rỗng:
+  EmptyChat thay bằng card “Kết nối nhà cung cấp”, chat có sẵn tin +
+  Home hiện strip compact trên composer. CTA: chưa accountId → /login,
+  có rồi → settings=providers. VM: needsProvider/nudgeLogin/nudgeGo.
+
 ## QUYẾT ĐỊNH ĐÓNG (user chốt 2026-07-03)
 
 - **CI auto-deploy: WON'T DO** — CI testing trên GitHub Actions giữ

@@ -1187,6 +1187,13 @@ export function StoreProvider({
       const th = sRef.current.threads[conv]
       const orig = th?.byId[messageId]
       if (!th || !orig || orig.role !== 'user' || !text.trim()) return
+      // an edit that changes NOTHING is not a new version — branching happens
+      // only when the message really changed (or on explicit regenerate)
+      const origText = orig.blocks.find((b) => b.type === 'text')
+      if (origText?.type === 'text' && origText.text.trim() === text.trim()) {
+        set({ editingMsg: null })
+        return
+      }
       const keep = orig.blocks.filter((b) => b.type === 'files')
       const newId = uid()
       set((x) => ({
@@ -2130,6 +2137,19 @@ function deriveValues(
     setFg: nav.settingsOpen ? accentText : 'var(--text-2)',
     settingsOpen: nav.settingsOpen,
     settingsTab: nav.settingsTab,
+    // BYOK nudge — the ACTIVE model's provider has no live profile: chat
+    // surfaces “connect a provider” instead of a silent empty screen
+    needsProvider:
+      !demo && (s.profiles[s.slots[s.activeSlot].providerId] ?? []).filter((f) => !f.demo).length === 0,
+    nudgeLogin: !s.accountId,
+    nudgeGo: () => {
+      if (!s.accountId) {
+        navigate({ to: '/login' })
+        return
+      }
+      set({ palette: false, drawerOpen: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'providers' }) })
+    },
     openSettings: (tab: SettingsTab) => {
       set({ palette: false, drawerOpen: false })
       navigate({ to: '.', search: (prev) => ({ ...prev, settings: tab }) })
