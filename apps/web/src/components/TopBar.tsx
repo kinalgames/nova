@@ -114,7 +114,9 @@ export function TopBar() {
                 {v.modelMenuLabel}
               </div>
               <DropdownMenu.Item onSelect={v.pickSmart} className={menuItem}>
-                <span className="mt-1.5 size-[7px] rounded-full bg-accent" />
+                {/* the dot mirrors the ACTIVE slot — a static color read as a
+                    stuck active state */}
+                <span className={`mt-1.5 size-[7px] rounded-full ${v.checkA ? 'bg-accent' : 'bg-border'}`} />
                 <div className="flex-1">
                   <div className="text-body text-text">{v.modelAMode}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted">
@@ -134,7 +136,7 @@ export function TopBar() {
                 onSelect={v.pickFast}
                 className={`${menuItem} border-t border-border`}
               >
-                <span className="mt-1.5 size-[7px] rounded-full bg-border" />
+                <span className={`mt-1.5 size-[7px] rounded-full ${v.checkB ? 'bg-accent' : 'bg-border'}`} />
                 <div className="flex-1">
                   <div className="text-body text-text">{v.modelBMode}</div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted">

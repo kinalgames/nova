@@ -278,6 +278,11 @@ body {
   margin: 0;
   height: 100%;
   font-family: var(--font-body);
+  /* color/background MUST live here, not only on the app-root div: Radix
+     portals mount on <body>, and any portaled text without an explicit
+     text-* class was falling back to browser-default BLACK in dark mode */
+  color: var(--text);
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

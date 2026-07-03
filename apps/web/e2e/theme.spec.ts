@@ -21,6 +21,24 @@ test('dark mode flips the interaction tokens (hover wash, scrim)', async ({ page
   expect(tokens.bg).toBe('#16130f')
 })
 
+test('dark tokens reach PORTALED surfaces — settings dialog text is never black', async ({ page }) => {
+  // regression guard: .dark used to sit on the app-root div, so Radix portals
+  // (mounted on <body>) rendered light tokens / browser-default black text
+  await page.goto('/demo/chat/c1?settings=general')
+  await page.getByRole('button', { name: 'Tối' }).click()
+  const { color, htmlHasDark } = await page.evaluate(() => {
+    const dlg = document.querySelector('[role="dialog"]')
+    const title = dlg?.querySelector('.font-display')
+    return {
+      color: title ? getComputedStyle(title).color : 'missing',
+      htmlHasDark: document.documentElement.classList.contains('dark'),
+    }
+  })
+  expect(htmlHasDark).toBe(true)
+  // dark --text is light ink #efeae1
+  expect(color).toBe('rgb(239, 234, 225)')
+})
+
 test('fonts are self-hosted — zero third-party font requests', async ({ page }) => {
   const external: string[] = []
   page.on('request', (r) => {
