@@ -83,6 +83,7 @@ import {
   appendChild,
   appendToLeaf,
   emptyThread,
+  sanitizeThreads,
   fromLinear,
   selectSibling,
   siblingInfo,
@@ -140,8 +141,14 @@ function pathToView(rawPathname: string): { view: ViewName; authView: AuthView }
 // persisted-settings schema + stepwise migrations live in ./persist
 export { PERSIST_KEY }
 
-let _uid = 0
-const uid = () => `f${++_uid}`
+// ids must be unique ACROSS SESSIONS: conversations and messages persist to
+// localStorage and sync through the DO, and a session-scoped counter reborn
+// at `f1` collided with persisted ids — one colliding MESSAGE id turns the
+// thread tree into a cycle (the app froze in an infinite visiblePath walk).
+const uid = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `f${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -291,11 +298,11 @@ function initialState(demo: boolean): NovaState {
         : []),
     deleting: [],
     activeConv: p.activeConv ?? (demo ? 'c1' : ''),
-    threads:
-      p.threads ??
-      (demo
+    threads: p.threads
+      ? sanitizeThreads(p.threads)
+      : demo
         ? Object.fromEntries(Object.entries(seed.threads).map(([id, ms]) => [id, fromLinear(ms)]))
-        : {}),
+        : {},
     editingMsg: null,
     copiedMsg: null,
     toast: null,
@@ -498,7 +505,7 @@ export function StoreProvider({
           presetDefault: slice.presetDefault ?? x.presetDefault,
           projects: slice.projects ?? x.projects,
           conversations: slice.conversations ?? x.conversations,
-          threads: slice.threads ? { ...x.threads, ...slice.threads } : x.threads,
+          threads: slice.threads ? sanitizeThreads({ ...x.threads, ...slice.threads }) : x.threads,
         }))
         syncedRecords = remote
       } else {

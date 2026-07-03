@@ -249,6 +249,15 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 
 ## BẪY ĐÃ CẮN — đọc trước khi gõ lệnh
 
+- **P0 frozen-app (đã fix)**: `uid()` từng là counter module `f${++n}` —
+  reset mỗi page load, trong khi conv/message ids persist + sync → đụng id
+  cũ → message trùng id biến thread tree thành CHU TRÌNH → visiblePath
+  treo vô hạn khi gửi tin vào conv cũ. Fix 3 tầng: uid = crypto.randomUUID;
+  visiblePath cycle-guard; sanitizeThread(s) heal tại persist-load + sync-pull
+  (dữ liệu hỏng ĐÃ lên server của user thật — heal bắt buộc).
+  LUẬT: mọi id đi vào persistence/sync PHẢI unique toàn cục, không bao
+  giờ dùng counter session-scoped.
+
 - **OpenAI chặn region colo Worker**: smoke từ dev (colo gần VN) →
   `403 unsupported_country_region_territory` từ api.openai.com — user
   dùng key OpenAI qua proxy có thể dính tùy colo. Hướng xử lý khi cần:

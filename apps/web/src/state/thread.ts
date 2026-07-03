@@ -30,14 +30,20 @@ function activeChild(t: Thread, parentKey: string): string | undefined {
   return sel && ids.includes(sel) ? sel : ids[ids.length - 1]
 }
 
-/** the conversation the user currently sees: follow selections root → leaf */
+/** the conversation the user currently sees: follow selections root → leaf.
+ *  Cycle-guarded: a corrupted tree (cross-session id collisions shipped one
+ *  to production) must truncate the walk, never freeze the app. */
 export function visiblePath(t: Thread): Message[] {
   const path: Message[] = []
+  const seen = new Set<string>()
   let key = ROOT
   for (;;) {
     const id = activeChild(t, key)
-    if (!id) return path
-    path.push(t.byId[id])
+    if (!id || seen.has(id)) return path
+    const m = t.byId[id]
+    if (!m) return path
+    seen.add(id)
+    path.push(m)
     key = id
   }
 }
@@ -97,6 +103,46 @@ export function updateMessage(t: Thread, id: string, patch: Partial<Message>): T
   const m = t.byId[id]
   if (!m) return t
   return { ...t, byId: { ...t.byId, [id]: { ...m, ...patch } } }
+}
+
+/** Rebuild a thread keeping only edges reachable from ROOT without repeats —
+ *  duplicate ids, cycles and orphaned selections are dropped. Heals trees
+ *  corrupted by cross-session id collisions at every point where persisted or
+ *  synced data enters the store. Returns the SAME object when already sound. */
+export function sanitizeThread(t: Thread): Thread {
+  const out = emptyThread()
+  const seen = new Set<string>()
+  let dirty = false
+  const walk = (key: string) => {
+    for (const id of t.children[key] ?? []) {
+      const m = t.byId[id]
+      if (!m || seen.has(id)) {
+        dirty = true
+        continue
+      }
+      seen.add(id)
+      out.byId[id] = m
+      ;(out.children[key] ??= []).push(id)
+      walk(id)
+    }
+    const sel = t.selected[key]
+    if (sel && out.children[key]?.includes(sel)) out.selected[key] = sel
+    else if (sel !== undefined) dirty = true
+  }
+  walk(ROOT)
+  if (Object.keys(t.byId).length !== seen.size) dirty = true
+  return dirty ? out : t
+}
+
+/** sanitize every thread in a persisted/synced map (same map when clean) */
+export function sanitizeThreads(m: Record<string, Thread>): Record<string, Thread> {
+  let dirty = false
+  const out: Record<string, Thread> = {}
+  for (const [id, t] of Object.entries(m)) {
+    out[id] = sanitizeThread(t)
+    if (out[id] !== t) dirty = true
+  }
+  return dirty ? out : m
 }
 
 /** build a tree from a plain linear conversation (seed/authoring format) */
