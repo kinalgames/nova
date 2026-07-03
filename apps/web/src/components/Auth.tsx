@@ -167,7 +167,7 @@ function SocialButtons() {
       .finally(() => setBusy(null))
   }
   const btn =
-    'flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body hover:bg-fill disabled:cursor-default disabled:opacity-[.38]'
+    'flex cursor-pointer items-center justify-center gap-2.5 rounded-md border border-border bg-panel p-3 text-left text-body hover:bg-fill active:bg-fill disabled:cursor-default disabled:opacity-[.38]'
   return (
     <div className="mb-4 flex flex-col gap-2">
       <button type="button" disabled={busy !== null} onClick={() => start('google')} className={btn}>

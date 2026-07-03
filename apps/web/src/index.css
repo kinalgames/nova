@@ -69,17 +69,30 @@
 
   --ease-paper: var(--ease);
 
-  /* type scale — one editorial ramp; every step is a deliberate role */
+  /* type scale — one editorial ramp; every step is a deliberate role.
+     Each size carries its PAIRED line-height: without one, Tailwind v4
+     falls back to lh 1, which crushed every wrapped line (worst on mobile
+     where wrapping is the norm) and forced ad-hoc leading-* utilities. */
   --text-micro: 10px;
+  --text-micro--line-height: 1.4;
   --text-eyebrow: 11px;
+  --text-eyebrow--line-height: 1.4;
   --text-meta: 12px;
+  --text-meta--line-height: 1.45;
   --text-small: 13px;
+  --text-small--line-height: 1.5;
   --text-ui: 14px;
+  --text-ui--line-height: 1.45;
   --text-body: 15px;
+  --text-body--line-height: 1.55;
   --text-lead: 18px;
+  --text-lead--line-height: 1.6;
   --text-h3: 22px;
+  --text-h3--line-height: 1.25;
   --text-h2: 30px;
+  --text-h2--line-height: 1.15;
   --text-h1: 34px;
+  --text-h1--line-height: 1.1;
 
   /* line-height — four rungs paired with the type roles */
   --leading-tight: 1.1;
@@ -422,9 +435,18 @@ button:focus-visible {
 }
 
 /* hover helper for rows whose background is set inline (inline style beats a
-   hover: variant) — the wash flips with the theme via --hover-1 */
-[data-hover="soft"]:hover {
-  background: var(--hover-1) !important;
+   hover: variant) — the wash flips with the theme via --hover-1.
+   Gated to hover-capable devices: on touch, :hover STICKS after a tap and
+   rows looked permanently “selected”. Touch gets a pressed wash instead. */
+@media (hover: hover) {
+  [data-hover="soft"]:hover {
+    background: var(--hover-1) !important;
+  }
+}
+@media (hover: none) {
+  [data-hover="soft"]:active {
+    background: var(--hover-2) !important;
+  }
 }
 
 /* turning to a new part of the same page — a quiet rise, not a window swap */
@@ -465,6 +487,12 @@ button:focus-visible {
   .tap {
     min-width: 44px;
     min-height: 44px;
+  }
+  /* compact controls (segmented chips, inline ✕, small actions) that a full
+     44px box would visually break — still grown to a usable 34px */
+  .tap-sm {
+    min-width: 34px;
+    min-height: 34px;
   }
 }
 

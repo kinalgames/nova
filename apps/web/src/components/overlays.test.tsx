@@ -115,8 +115,58 @@ describe('overlay open/close wiring', () => {
     const more = within(dialog).getAllByRole('button', { name: 'Tùy chọn cuộc trò chuyện' })
     expect(more.length).toBeGreaterThan(0)
     await user.click(more[0])
+    // full parity with the desktop sidebar menu (was rename/pin/delete only)
     expect(await screen.findByRole('menuitem', { name: 'Đổi tên' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Lưu trữ' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Chia sẻ liên kết' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Xuất Markdown' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Xóa' })).toBeInTheDocument()
+  })
+
+  it('mobile drawer rows reflect pinned/shared, deleting (undo) and busy (replying)', async () => {
+    const user = makeUser()
+    // busy follows the NAV-active conversation (c1 at the default /chat/c1
+    // route) — pinned/shared and deleting go on the OTHER two rows
+    await renderApp((s) =>
+      s.set((x) => ({
+        vw: 375,
+        drawerOpen: true,
+        typing: true,
+        deleting: [x.conversations[2].id],
+        conversations: x.conversations.map((c, i) => ({
+          ...c,
+          projectId: x.conversations[0].projectId,
+          ...(i === 1 ? { pinned: true, shareId: 'sh-x' } : {}),
+        })),
+      })),
+    )
+    const dialog = await screen.findByRole('dialog')
+    // deleting row shows Undo; the nav-active row shows the replying pulse
+    expect(within(dialog).getByRole('button', { name: 'Hoàn tác' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('img', { name: 'Đang trả lời' })).toBeInTheDocument()
+    // the pinned+shared row (sorted first) carries Unpin AND Stop-sharing
+    const more = within(dialog).getAllByRole('button', { name: 'Tùy chọn cuộc trò chuyện' })
+    await user.click(more[0])
+    expect(await screen.findByRole('menuitem', { name: 'Bỏ ghim' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Huỷ chia sẻ' })).toBeInTheDocument()
+  })
+
+  it('mobile drawer surfaces archived conversations for restore (parity)', async () => {
+    const user = makeUser()
+    await renderApp((s) =>
+      s.set((x) => ({
+        vw: 375,
+        drawerOpen: true,
+        conversations: x.conversations.map((c, i) => (i === 0 ? { ...c, archived: true } : c)),
+      })),
+    )
+    const dialog = await screen.findByRole('dialog')
+    // the archived section toggle is present and expands to the row
+    const toggle = within(dialog).getByRole('button', { name: /LƯU TRỮ/ })
+    await user.click(toggle)
+    // an archived conversation now has its options menu reachable on mobile
+    const more = within(dialog).getAllByRole('button', { name: 'Tùy chọn cuộc trò chuyện' })
+    expect(more.length).toBeGreaterThan(0)
   })
 })
 

@@ -7,7 +7,7 @@ import type { IconName } from './Icon'
 
 const row =
   'flex w-full cursor-pointer items-center gap-3 rounded-sm px-3 py-3 text-left text-body text-text ' +
-  'outline-none hover:bg-hover-1 focus-visible:bg-hover-2'
+  'outline-none hover:bg-hover-1 focus-visible:bg-hover-2 active:bg-hover-2'
 const SECTION = 'px-3 pb-1 pt-2 font-mono text-micro tracking-[0.14em] text-faint'
 
 /** diacritic-insensitive fold so "khao sat" matches "Khảo sát" */

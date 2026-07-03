@@ -168,6 +168,19 @@ Design/Product:
 Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 (accepted-risk); nâng actions Node 24 runner.
 
+## MOBILE AUDIT ĐÃ SHIP (2026-07-03)
+
+- Menu conversation FULL PARITY trên MobileDrawer (rename/pin/archive/
+  export×2/share/unshare/delete) + section LƯU TRỮ khôi phục được —
+  DrawerConvRow tách component dùng chung recent+archived.
+- Type scale có PAIRED line-height trong @theme (--text-*--line-height)
+  — hết lh:1 crush khi wrap; không cần leading-* thủ công cho token.
+- [data-hover=soft] gate @media(hover:hover) — hết sticky-hover sau tap;
+  touch nhận :active wash (hover:none → active hover-2).
+- Pressed feedback: MENU_ITEM/navRow/palette rows/settings tabs/social
+  buttons đều có active:bg — touch không còn bấm-không-thấy-gì.
+- .tap-sm (34px min trên touch) cho compact controls cạnh .tap 44px.
+
 ## QUYẾT ĐỊNH ĐÓNG (user chốt 2026-07-03)
 
 - **CI auto-deploy: WON'T DO** — CI testing trên GitHub Actions giữ

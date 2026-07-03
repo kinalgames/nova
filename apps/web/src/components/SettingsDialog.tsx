@@ -61,7 +61,7 @@ export function SettingsDialog() {
                     (mobile ? 'px-3 py-1.5 ' : 'px-3 py-2 ') +
                     (active
                       ? 'bg-accent-soft text-accent-text ' + (mobile ? '' : 'shadow-[inset_2px_0_0_var(--accent)]')
-                      : 'bg-transparent text-text-2 hover:bg-hover-1')
+                      : 'bg-transparent text-text-2 hover:bg-hover-1 active:bg-hover-2')
                   }
                 >
                   <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? 'text-accent' : 'opacity-50')} />

@@ -8,7 +8,102 @@ import { Icon } from './Icon'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 const navRow =
-  'flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-hover-1 focus-visible:bg-hover-2'
+  'flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-hover-1 focus-visible:bg-hover-2 active:bg-hover-2'
+
+type ConvVM = ReturnType<typeof useStore>['v']['sideConvs'][number]
+
+/** one conversation row in the drawer — shared by RECENT and ARCHIVED so the
+ *  full options menu (and restore) is reachable on mobile, at parity with the
+ *  desktop sidebar */
+function DrawerConvRow({ c }: { c: ConvVM }) {
+  const { t } = useTranslation()
+  return (
+    <div
+      className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2"
+      style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
+    >
+      <Link
+        to="/chat/$convId"
+        params={{ convId: c.id }}
+        onClick={c.onSelect}
+        disabled={c.deleting}
+        aria-current={c.active ? 'page' : undefined}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 bg-transparent py-0.5 text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-disabled:cursor-default"
+      >
+        <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
+          {c.title}
+        </span>
+        {c.pinned && <Icon n="pin" size={12} fill="currentColor" className="flex-shrink-0 text-faint" />}
+      </Link>
+      {c.deleting ? (
+        <button
+          type="button"
+          onClick={c.undo}
+          className="tap flex-shrink-0 cursor-pointer rounded-md border-none bg-transparent px-1 text-small text-accent-text outline-none"
+        >
+          {t('common.undo')}
+        </button>
+      ) : c.busy ? (
+        <span
+          role="img"
+          aria-label={t('common.replying')}
+          className="relative mr-1 flex size-[7px] flex-shrink-0 items-center justify-center"
+        >
+          <span
+            className="absolute inset-0 rounded-full bg-[var(--accent-line)]"
+            style={{ animation: 'pulseRing 1.6s ease-out infinite' }}
+          />
+          <span className="size-[5px] rounded-full bg-accent" />
+        </span>
+      ) : (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              aria-label={t('common.convOptions')}
+              className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <Icon n="more" size={16} />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content align="end" sideOffset={4} className={MENU_CONTENT}>
+              {/* full parity with the desktop sidebar menu */}
+              <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
+                {t('common.rename')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
+                {c.pinned ? t('common.unpin') : t('common.pin')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className={MENU_ITEM} onSelect={c.archive}>
+                {c.archived ? t('common.unarchive') : t('common.archive')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator className={MENU_SEP} />
+              <DropdownMenu.Item className={MENU_ITEM} onSelect={c.exportMd}>
+                {t('common.exportMd')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className={MENU_ITEM} onSelect={c.exportJson}>
+                {t('common.exportJson')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className={MENU_ITEM} onSelect={c.share}>
+                {t('common.share')}
+              </DropdownMenu.Item>
+              {c.shared && (
+                <DropdownMenu.Item className={MENU_ITEM} onSelect={c.unshare}>
+                  {t('share.revoke')}
+                </DropdownMenu.Item>
+              )}
+              <DropdownMenu.Separator className={MENU_SEP} />
+              <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
+                {t('common.delete')}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      )}
+    </div>
+  )
+}
 
 export function MobileDrawer() {
   const { v } = useStore()
@@ -79,73 +174,24 @@ export function MobileDrawer() {
               {t('sidebar.recent', { project: v.currentProjectName.toUpperCase() })}
             </div>
             {v.sideConvs.map((c) => (
-              <div
-                key={c.id}
-                className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-hover-1"
-                style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
-              >
-                <Link
-                  to="/chat/$convId"
-                  params={{ convId: c.id }}
-                  onClick={c.onSelect}
-                  disabled={c.deleting}
-                  aria-current={c.active ? 'page' : undefined}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 bg-transparent text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-disabled:cursor-default"
-                >
-                  <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
-                    {c.title}
-                  </span>
-                  {c.pinned && <Icon n="pin" size={12} fill="currentColor" className="flex-shrink-0 text-faint" />}
-                </Link>
-                {c.deleting ? (
-                  <button
-                    type="button"
-                    onClick={c.undo}
-                    className="tap flex-shrink-0 cursor-pointer rounded-md border-none bg-transparent px-1 text-small text-accent-text outline-none"
-                  >
-                    {t('common.undo')}
-                  </button>
-                ) : c.busy ? (
-                  <span
-                    role="img"
-                    aria-label={t('common.replying')}
-                    className="relative mr-1 flex size-[7px] flex-shrink-0 items-center justify-center"
-                  >
-                    <span
-                      className="absolute inset-0 rounded-full bg-[var(--accent-line)]"
-                      style={{ animation: 'pulseRing 1.6s ease-out infinite' }}
-                    />
-                    <span className="size-[5px] rounded-full bg-accent" />
-                  </span>
-                ) : (
-                  <DropdownMenu.Root>
-                    <DropdownMenu.Trigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t('common.convOptions')}
-                        className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      >
-                        <Icon n="more" size={16} />
-                      </button>
-                    </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
-                      <DropdownMenu.Content align="end" sideOffset={4} className={MENU_CONTENT}>
-                        <DropdownMenu.Item className={MENU_ITEM} onSelect={c.rename}>
-                          {t('common.rename')}
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item className={MENU_ITEM} onSelect={c.pin}>
-                          {c.pinned ? t('common.unpin') : t('common.pin')}
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Separator className={MENU_SEP} />
-                        <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
-                          {t('common.delete')}
-                        </DropdownMenu.Item>
-                      </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
-                  </DropdownMenu.Root>
-                )}
-              </div>
+              <DrawerConvRow key={c.id} c={c} />
             ))}
+            {v.archivedConvs.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={v.toggleArchived}
+                  aria-expanded={v.archivedOpen}
+                  className="mt-2 flex w-full cursor-pointer items-center gap-1.5 rounded-sm border-none bg-transparent px-2 py-2 font-mono text-micro tracking-[.14em] text-faint active:bg-hover-1"
+                >
+                  <span className="flex-1 text-left">
+                    {t('sidebar.archived')} · {v.archivedConvs.length}
+                  </span>
+                  <Icon n="caret" size={12} className={v.archivedOpen ? 'rotate-180' : undefined} />
+                </button>
+                {v.archivedOpen && v.archivedConvs.map((c) => <DrawerConvRow key={c.id} c={c} />)}
+              </>
+            )}
           </div>
 
           <div className="flex-shrink-0 border-t border-border px-3 pb-3.5 pt-2">
