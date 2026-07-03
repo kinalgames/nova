@@ -203,6 +203,9 @@ function initialState(demo: boolean): NovaState {
     renamingConv: null,
     preview: null,
     respState: 'done',
+    errorDetail: null,
+    errorAction: null,
+    errorConv: null,
     projects:
       p.projects ??
       (demo
@@ -558,6 +561,8 @@ export function StoreProvider({
     }
   }, [hydrateCredentials, hydrateUsage, hydrateUser])
 
+
+
   // E1: poll /version.json for a newer deploy — on mount, on focus, and every
   // minute. Skipped under vitest (the check itself is unit-tested in isolation).
   /* v8 ignore start */
@@ -700,6 +705,8 @@ export function StoreProvider({
       clearTimeout(t1.current)
       clearTimeout(t2.current)
       clearInterval(tc.current)
+      // a fresh reply clears any prior error card
+      set({ errorDetail: null, errorAction: null, errorConv: null, respState: 'done' })
       const prev = sRef.current
       const proj = prev.projects.find(
         (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
@@ -826,10 +833,16 @@ export function StoreProvider({
                     ),
                   },
                 }))
-              set({ typing: false })
-              // surface the raw provider error in the bubble — exactly what a
-              // credential test session needs to see
-              writeText(acc ? `${acc}\n\n⚠ ${code}: ${message}` : `⚠ ${code}: ${message}`)
+              // surface the SPECIFIC provider error in the chat error card
+              // (border-danger, retry) instead of burying it in bubble text
+              set({
+                typing: false,
+                respState: 'error',
+                errorDetail: `${code}: ${message}`,
+                errorAction: 'retry',
+                errorConv: conv,
+              })
+              if (acc) writeText(acc) // keep any partial answer above the card
             },
           },
           abort.signal,
@@ -837,12 +850,27 @@ export function StoreProvider({
         return
       }
 
-      // REAL product: no fake replies — nudge the user to provider setup
+      // REAL product: no fake replies. Surface a clear, PERSISTENT error card
+      // in the chat (not a 2s toast that vanishes) with a button to add a
+      // provider — reuses the same danger card as live provider errors.
       if (!demo) {
-        clearTimeout(toastTimer)
-        set({ toast: i18n.t('composer.needProvider'), typing: false })
-        toastTimer = setTimeout(() => set({ toast: null }), 2400)
-        void navigate({ to: '.', search: (prevS) => ({ ...prevS, settings: 'providers' }) })
+        const replyId = uid()
+        set((x) => ({
+          typing: false,
+          respState: 'error',
+          errorDetail: i18n.t('chat.noProviderBody'),
+          errorAction: 'providers',
+          errorConv: conv,
+          threads: {
+            ...x.threads,
+            [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
+              id: replyId,
+              role: 'assistant',
+              who: (prev.assistantName.trim() || 'Nova').toUpperCase(),
+              blocks: [{ type: 'text', size: 'lead', text: '' }],
+            }),
+          },
+        }))
         return
       }
 
@@ -1328,6 +1356,9 @@ function deriveValues(
       threads: { ...x.threads, [id]: emptyThread() },
       activeConv: id,
       respState: 'done',
+      errorDetail: null,
+      errorAction: null,
+      errorConv: null,
       palette: false,
       drawerOpen: false,
     }))
@@ -1885,6 +1916,10 @@ function deriveValues(
     isStream: rs === 'stream',
     isDone: rs === 'done',
     isError: rs === 'error',
+    // the card shows only in the conversation the error belongs to
+    errorHere: rs === 'error' && s.errorConv === activeConv,
+    errorDetail: s.errorDetail,
+    errorAction: s.errorAction,
     showTrace: rs === 'done' || rs === 'stream',
     traceIconBg: 'var(--accent-soft)',
     traceIconFg: accent,

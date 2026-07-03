@@ -82,7 +82,7 @@ function StagedItem({ f }: { f: StagedFile }) {
   )
 }
 
-export function Composer() {
+export function Composer({ placeholder }: { placeholder?: string } = {}) {
   const { v, addUpload } = useStore()
   const { t } = useTranslation()
   const imgInput = useRef<HTMLInputElement>(null)
@@ -195,7 +195,7 @@ export function Composer() {
               onChange={v.onDraft}
               onKeyDown={v.onKey}
               aria-label={t('home.inputAria')}
-              placeholder={t('composer.replyPlaceholder')}
+              placeholder={placeholder ?? t('composer.replyPlaceholder')}
               className="min-w-0 flex-1 py-2 text-lead text-text"
             />
             {v.typing ? (

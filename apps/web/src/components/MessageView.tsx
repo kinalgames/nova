@@ -535,21 +535,35 @@ export function MessageView({
               !
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-body text-text">{t('chat.errorTitle')}</div>
+              <div className="text-body text-text">
+                {v.errorAction === 'providers' ? t('chat.noProviderTitle') : t('chat.errorTitle')}
+              </div>
               <div className="mt-0.5 text-ui leading-normal text-danger-text">
-                {t('chat.errorBody')}
-                {v.advanced && (
+                {/* the SPECIFIC live error when present; the demo card keeps its
+                    generic copy + fake trace tail */}
+                {v.errorDetail ?? t('chat.errorBody')}
+                {v.advanced && !v.errorDetail && (
                   <span className="font-mono text-eyebrow text-danger-text"> · err 503 · stream_closed</span>
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={v.setDone}
-              className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-small text-bg"
-            >
-              <Icon n="retry" size={14} /> {t('common.retry')}
-            </button>
+            {v.errorAction === 'providers' ? (
+              <button
+                type="button"
+                onClick={() => v.openSettings('providers')}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-small text-bg"
+              >
+                <Icon n="plus" size={14} /> {t('chat.addProviderCta')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => (v.errorAction === 'retry' ? v.regenerate(message.id) : v.setDone())}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-small text-bg"
+              >
+                <Icon n="retry" size={14} /> {t('common.retry')}
+              </button>
+            )}
           </div>
         </>
       ) : (

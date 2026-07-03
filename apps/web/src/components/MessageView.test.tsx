@@ -90,6 +90,43 @@ describe('per-message actions', () => {
   })
 })
 
+describe('real error card', () => {
+  const seedError = (
+    errorAction: 'providers' | 'retry',
+    errorDetail: string,
+  ) => async () =>
+    renderApp((s) =>
+      s.set({
+        activeConv: 'c1',
+        threads: { c1: fromLinear([msg('u1', 'user', 'Hỏi gì đó'), msg('a1', 'assistant', '')]) },
+        respState: 'error',
+        errorConv: 'c1',
+        errorAction,
+        errorDetail,
+      }),
+    )
+
+  it('no-provider error shows the card + an Add-provider button (not silence)', async () => {
+    const user = makeUser()
+    await seedError('providers', 'Bạn chưa thêm khóa API nào.')()
+    expect(await screen.findByText('Chưa có nhà cung cấp AI')).toBeInTheDocument()
+    expect(screen.getByText('Bạn chưa thêm khóa API nào.')).toBeInTheDocument()
+    // the recovery button opens provider settings (covers the providers branch)
+    const cta = screen.getByRole('button', { name: 'Thêm nhà cung cấp' })
+    await user.click(cta)
+  })
+
+  it('provider error shows the specific message + a Retry that regenerates', async () => {
+    const user = makeUser()
+    await seedError('retry', 'rate_limited: quá tải')()
+    expect(await screen.findByText('rate_limited: quá tải')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }))
+    // retry re-runs the reply as a new streaming version
+    expect(await screen.findByText('Đang viết câu trả lời…')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Dừng/ }))
+  })
+})
+
 describe('inline edit-and-rerun', () => {
   it('opens prefilled, cancels without changes', async () => {
     const user = makeUser()

@@ -44,9 +44,13 @@ export function ConversationView() {
               const isLast = i === v.sent.length - 1
               const isAssistant = m.role === 'assistant'
               // the demo conversation's last assistant message showcases the
-              // four response states via the switcher; a live reply streams
+              // four response states via the switcher; a live reply streams.
+              // A REAL error (no provider / provider failure) also drives the
+              // danger card on the last assistant message.
               const state =
-                isLast && isAssistant && v.hasDemo ? respToState(v.respState) : undefined
+                isLast && isAssistant && (v.hasDemo || v.errorHere)
+                  ? respToState(v.respState)
+                  : undefined
               const typing = isLast && isAssistant && v.typing
               return (
                 <MessageView key={m.id} message={m} state={state} typing={typing} isLast={isLast} />

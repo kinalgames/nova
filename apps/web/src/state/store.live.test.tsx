@@ -93,7 +93,10 @@ describe('real provider routing (nova-api proxy)', () => {
     const prof = result.current.s.profiles.claude.find((f) => f.name === 'Khóa thật')!
     expect(prof.status).toBe('limited')
     expect(prof.limitedUntil).toBeGreaterThan(Date.now())
-    expect(msgText(result.current.v.sent.at(-1))).toContain('⚠ rate_limited')
+    // the specific error drives the danger card, not buried bubble text
+    expect(result.current.v.isError).toBe(true)
+    expect(result.current.v.errorDetail).toContain('rate_limited')
+    expect(result.current.v.errorAction).toBe('retry')
     expect(result.current.s.typing).toBe(false)
   })
 
@@ -118,7 +121,8 @@ describe('real provider routing (nova-api proxy)', () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'key sai thử xem' }))
     await act(async () => result.current.v.send())
-    expect(msgText(result.current.v.sent.at(-1))).toContain('⚠ upstream_error: invalid x-api-key')
+    expect(result.current.v.errorDetail).toBe('upstream_error: invalid x-api-key')
+    expect(result.current.v.isError).toBe(true)
     const prof = result.current.s.profiles.claude.find((f) => f.name === 'Khóa thật')!
     expect(prof.status).not.toBe('limited')
   })
@@ -131,11 +135,24 @@ describe('real provider routing (nova-api proxy)', () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'đứt giữa chừng' }))
     await act(async () => result.current.v.send())
-    const text = msgText(result.current.v.sent.at(-1))
-    expect(text).toContain('một phần trả lời')
-    expect(text).toContain('⚠ rate_limited')
+    // partial answer is kept ABOVE the card; the error goes to the card
+    expect(msgText(result.current.v.sent.at(-1))).toContain('một phần trả lời')
+    expect(result.current.v.errorDetail).toContain('rate_limited')
     const prof = result.current.s.profiles.claude.find((f) => f.name === 'Khóa thật')!
     expect(prof.limitedUntil).toBeGreaterThanOrEqual(Date.now() + 55_000)
+  })
+
+  it('real mode with NO provider shows the error card, never silent nothing', async () => {
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.set({ draft: 'chào' }))
+    await act(async () => result.current.v.send())
+    // a persistent danger card, not a vanished toast
+    expect(result.current.v.isError).toBe(true)
+    expect(result.current.v.errorAction).toBe('providers')
+    expect(result.current.v.errorDetail).toBeTruthy()
+    // an assistant bubble exists to carry the card, and no real call went out
+    expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
+    expect(vi.mocked(streamChat)).not.toHaveBeenCalled()
   })
 
   it('demo-only profiles never leave the device — the fake layer answers', async () => {
