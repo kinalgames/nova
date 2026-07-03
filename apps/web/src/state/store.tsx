@@ -1186,6 +1186,15 @@ export function StoreProvider({
 
   const dark = s.theme === 'dark' || (s.theme === 'auto' && prefersDark)
 
+  // Dark mode is a class over runtime tokens. It MUST live on <html>, not on
+  // the app-root div: Radix Dialog/Dropdown/HoverCard render through a Portal
+  // mounted on document.body — OUTSIDE the app root — so a root-scoped .dark
+  // never reaches them and every popover renders light-on-dark (active/hover
+  // states look wrong or unchanged). On <html> the tokens cascade everywhere.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+  }, [dark])
+
   // subscribing here re-renders the provider (and recomputes the VM strings)
   // when the language changes
   const { t } = useTranslation()
