@@ -105,9 +105,19 @@ Backend:
   riêng từng env (1xxx/2xxx/3xxx). KÈM: /v1/chat bắt buộc session
   (chặn open relay — user duyệt); streamChat gắn bearer
   (`services/token.ts` tách riêng tránh import cycle).
-- **B5 Thinking-level → API thật** (VỪA) — chip Suy nghĩ chưa truyền
-  reasoning/thinking param tới provider (anthropic thinking, gemini
-  thinkingConfig, openai reasoning_effort).
+- ~~B5 Thinking-level → API thật~~ ĐÃ XONG 2026-07-03: contract
+  `thinking?: ThinkingLevel` (off/low/normal/high, validate ở
+  parseChatRequest) · client gửi `prev.thinkingLevel` · mapping:
+  Claude adaptive-gen (opus-4-6+/sonnet-4-6+/sonnet-5/fable/mythos) →
+  `thinking:{type:'adaptive'}` + `output_config:{effort}` (budget_tokens
+  bị 400 ở gen này); Claude budget-gen (haiku-*, ≤4.5) →
+  `enabled`+`budget_tokens` 2048/8192/16384 (max_tokens luôn > budget);
+  Gemini 2.5 → `thinkingConfig.thinkingBudget` (off: pro floor 128 vì
+  không tắt được, flash 0; low 2048; normal omit = dynamic; high 24576;
+  gemini-3* omit — gen đó dùng thinkingLevel); OpenAI gpt-5*/o* →
+  `reasoning_effort` (off→minimal chỉ gpt-5*, o-series omit);
+  ollama: chưa (B6). Gemini transform đã cộng thoughtsTokenCount vào
+  outputTokens từ trước — metering đúng sẵn.
 - B4 structured logging request_id · B6 ollama client-direct · B7 sync
   cursor/live-push · CI deploy-dev.yml ĐÃ CÓ (chờ GH secret
   CLOUDFLARE_API_TOKEN) · AE_SQL_TOKEN chờ user tạo.
@@ -135,6 +145,12 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 (accepted-risk); nâng actions Node 24 runner.
 
 ## BẪY ĐÃ CẮN — đọc trước khi gõ lệnh
+
+- **Rate Limiting binding overshoot trên production**: counter per-colo
+  đồng bộ bất đồng bộ giữa các metal trong POP — burst ngắn vượt ~2×
+  ngưỡng trước khi 429 (dev thực đo: cắn sau ~22 req với limit 10/60s;
+  miniflare local cắn CHÍNH XÁC sau 10). Đây là shield chống abuse,
+  KHÔNG dùng làm quota billing — quota chính xác cần DO counter.
 
 - **`; echo "$?" && git commit` nuốt exit code** → commit lọt khi gate
   đỏ (đã xảy ra ở 2fc8b11). Luật: MỌI gate nối commit bằng MỘT chuỗi

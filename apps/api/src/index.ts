@@ -147,7 +147,9 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
     !b.model ||
     !Array.isArray(messages) ||
     messages.length === 0 ||
-    hasStored === hasInline // exactly one source
+    hasStored === hasInline || // exactly one source
+    (b.thinking !== undefined &&
+      !['off', 'low', 'normal', 'high'].includes(b.thinking as string))
   )
     return null
   for (const m of messages) {

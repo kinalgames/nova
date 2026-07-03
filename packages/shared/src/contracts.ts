@@ -68,12 +68,19 @@ export interface SyncPullResponse {
  *  Exactly ONE of `credentialId` (BE3: server-side sealed BYOK, requires a
  *  session) or `profile` (transitional: client-held credential in transit)
  *  must be present. */
+/** reasoning depth the user picked — the composer's “Suy nghĩ” chip */
+export type ThinkingLevel = 'off' | 'low' | 'normal' | 'high'
+
 export interface ChatProxyRequest {
   providerId: ProviderId
   model: string
   system?: string
   messages: ChatTurn[]
   maxTokens?: number
+  /** reasoning depth — adapters map it to each provider's native control
+   *  (Anthropic adaptive/budget thinking, Gemini thinkingConfig, OpenAI
+   *  reasoning_effort). Absent = provider default. */
+  thinking?: ThinkingLevel
   /** id of a stored server-side credential owned by the session user */
   credentialId?: string
   /** transitional client-held credential — retired once BYOK v2 ships */

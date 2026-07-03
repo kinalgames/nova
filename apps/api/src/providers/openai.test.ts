@@ -1,5 +1,39 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { callOpenAI, openaiBody, openaiHeaders, toNovaStream } from './openai'
+import {
+  callOpenAI,
+  openaiBody,
+  openaiHeaders,
+  openaiReasoningEffort,
+  toNovaStream,
+} from './openai'
+
+describe('B5 — reasoning_effort per level and model', () => {
+  it('levels map to low/medium/high on reasoning models', () => {
+    expect(openaiReasoningEffort({ model: 'gpt-5', thinking: 'low' })).toBe('low')
+    expect(openaiReasoningEffort({ model: 'gpt-5-mini', thinking: 'normal' })).toBe('medium')
+    expect(openaiReasoningEffort({ model: 'o3', thinking: 'high' })).toBe('high')
+  })
+
+  it("'off' becomes minimal on gpt-5 but is omitted on o-series and absent", () => {
+    expect(openaiReasoningEffort({ model: 'gpt-5', thinking: 'off' })).toBe('minimal')
+    expect(openaiReasoningEffort({ model: 'o3', thinking: 'off' })).toBeNull()
+    expect(openaiReasoningEffort({ model: 'gpt-5' })).toBeNull()
+  })
+
+  it('non-reasoning models never receive the param (they reject it)', () => {
+    expect(openaiReasoningEffort({ model: 'gpt-4.1', thinking: 'high' })).toBeNull()
+    const body = JSON.parse(
+      openaiBody({
+        providerId: 'openai',
+        model: 'gpt-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'sk-o' },
+        thinking: 'high',
+      }),
+    )
+    expect(body.reasoning_effort).toBe('high')
+  })
+})
 
 afterEach(() => vi.unstubAllGlobals())
 

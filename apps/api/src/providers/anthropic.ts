@@ -37,15 +37,36 @@ export function anthropicHeaders(
   return { ...base, 'x-api-key': profile.credential }
 }
 
+/** Claude generations on ADAPTIVE thinking + output_config.effort — these
+ *  reject `enabled`+`budget_tokens` with a 400. Haiku (all) and pre-4.6
+ *  Opus/Sonnet stay on the manual budget path. */
+const ADAPTIVE_THINKING =
+  /^claude-(opus-4-[6-9]|opus-[5-9]|sonnet-4-[6-9]|sonnet-[5-9]|fable|mythos)/
+
+const THINKING_BUDGET = { low: 2048, normal: 8192, high: 16384 } as const
+const THINKING_EFFORT = { low: 'low', normal: 'medium', high: 'high' } as const
+
 export function anthropicBody(req: ResolvedChatRequest): string {
-  // NOTE: no temperature/top_p/top_k — models ≥4.7 reject sampling params
+  // NOTE: no temperature/top_p/top_k — models ≥4.7 reject sampling params,
+  // and extended thinking is incompatible with them anyway
   const system: { type: 'text'; text: string }[] = []
   if (req.profile.kind === 'account') system.push({ type: 'text', text: CLAUDE_CODE_IDENTITY })
   if (req.system?.trim()) system.push({ type: 'text', text: req.system })
+  // B5 — thinking: 'off'/absent sends nothing (provider default: no extended
+  // thinking on budget models; adaptive models decide per request)
+  const level = req.thinking && req.thinking !== 'off' ? req.thinking : null
+  const adaptive = ADAPTIVE_THINKING.test(req.model)
+  const budget = level && !adaptive ? THINKING_BUDGET[level] : 0
+  const maxTokens = req.maxTokens ?? (level === 'high' ? 16384 : 8192)
   return JSON.stringify({
     model: req.model,
-    max_tokens: req.maxTokens ?? 8192,
+    // budget_tokens must stay BELOW max_tokens — widen the ceiling when needed
+    max_tokens: budget ? Math.max(maxTokens, budget + 8192) : maxTokens,
     stream: true,
+    ...(level && adaptive
+      ? { thinking: { type: 'adaptive' }, output_config: { effort: THINKING_EFFORT[level] } }
+      : {}),
+    ...(budget ? { thinking: { type: 'enabled', budget_tokens: budget } } : {}),
     ...(system.length ? { system } : {}),
     messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
   })

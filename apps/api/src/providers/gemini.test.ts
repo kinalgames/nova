@@ -1,5 +1,48 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { callGemini, geminiRequest, parseAccountCredential, toNovaStream } from './gemini'
+import {
+  callGemini,
+  geminiRequest,
+  geminiThinkingConfig,
+  parseAccountCredential,
+  toNovaStream,
+} from './gemini'
+
+describe('B5 — thinkingConfig per level and model', () => {
+  it("'off' floors at 128 on 2.5 Pro (cannot disable) and 0 on Flash", () => {
+    expect(geminiThinkingConfig({ model: 'gemini-2.5-pro', thinking: 'off' })).toEqual({
+      thinkingBudget: 128,
+    })
+    expect(geminiThinkingConfig({ model: 'gemini-2.5-flash', thinking: 'off' })).toEqual({
+      thinkingBudget: 0,
+    })
+  })
+
+  it("low/high map to fixed budgets; 'normal'/absent stay on dynamic default", () => {
+    expect(geminiThinkingConfig({ model: 'gemini-2.5-flash', thinking: 'low' })).toEqual({
+      thinkingBudget: 2048,
+    })
+    expect(geminiThinkingConfig({ model: 'gemini-2.5-pro', thinking: 'high' })).toEqual({
+      thinkingBudget: 24576,
+    })
+    expect(geminiThinkingConfig({ model: 'gemini-2.5-pro', thinking: 'normal' })).toBeNull()
+    expect(geminiThinkingConfig({ model: 'gemini-2.5-pro' })).toBeNull()
+  })
+
+  it('a Gemini 3.x id sends no budget (that generation takes thinkingLevel)', () => {
+    expect(geminiThinkingConfig({ model: 'gemini-3-pro', thinking: 'high' })).toBeNull()
+  })
+
+  it('the budget rides inside generationConfig on the shared request', () => {
+    const req = geminiRequest({
+      providerId: 'gemini',
+      model: 'gemini-2.5-flash',
+      messages: [{ role: 'user', content: 'hi' }],
+      profile: { kind: 'api_key', credential: 'AIza-x' },
+      thinking: 'high',
+    }) as { generationConfig: { thinkingConfig?: { thinkingBudget: number } } }
+    expect(req.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 24576 })
+  })
+})
 import { ProviderConfigError } from './shared'
 
 afterEach(() => vi.unstubAllGlobals())

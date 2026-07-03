@@ -17,7 +17,22 @@ export function openaiHeaders(
   }
 }
 
+/** B5 — reasoning models take reasoning_effort; anything else rejects the
+ *  param, so it is only sent to gpt-5 and o-series ids. 'off' maps to
+ *  gpt-5's 'minimal'; o-series has no minimal, so 'off' omits the param. */
+const REASONING_MODEL = /^(gpt-5|o\d)/
+const REASONING_EFFORT = { low: 'low', normal: 'medium', high: 'high' } as const
+
+export function openaiReasoningEffort(
+  req: Pick<ResolvedChatRequest, 'model' | 'thinking'>,
+): string | null {
+  if (!req.thinking || !REASONING_MODEL.test(req.model)) return null
+  if (req.thinking === 'off') return req.model.startsWith('gpt-5') ? 'minimal' : null
+  return REASONING_EFFORT[req.thinking]
+}
+
 export function openaiBody(req: ResolvedChatRequest): string {
+  const effort = openaiReasoningEffort(req)
   return JSON.stringify({
     model: req.model,
     messages: [
@@ -27,6 +42,7 @@ export function openaiBody(req: ResolvedChatRequest): string {
     stream: true,
     stream_options: { include_usage: true },
     max_completion_tokens: req.maxTokens ?? 8192,
+    ...(effort ? { reasoning_effort: effort } : {}),
   })
 }
 

@@ -60,6 +60,16 @@ describe('real provider routing (nova-api proxy)', () => {
     // the persona rides along as a REAL system prompt on every live send
     expect(calls[0].system).toContain('You are Nova')
     expect(calls[0].system).toContain('concise')
+    // B5 — the “Suy nghĩ” chip travels with the request
+    expect(calls[0].thinking).toBe('normal')
+  })
+
+  it('the thinking level follows the composer chip', async () => {
+    const { result } = await withRealProfile()
+    await act(async () => result.current.v.setThinkHigh())
+    await act(async () => result.current.set({ draft: 'suy nghĩ sâu' }))
+    await act(async () => result.current.v.send())
+    expect(calls[0].thinking).toBe('high')
   })
 
   it('the system prompt reflects name, style toggles and custom instructions', async () => {

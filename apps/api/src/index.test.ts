@@ -48,6 +48,22 @@ describe('nova-api skeleton', () => {
     expect(res.status).toBe(404)
   })
 
+  it('POST /v1/chat rejects an invalid thinking level', async () => {
+    asUser()
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'sk-x' },
+        thinking: 'ultra',
+      }),
+    })
+    expect(res.status).toBe(400)
+  })
+
   it('POST /v1/chat validates the request shape', async () => {
     asUser()
     const res = await app.request('/v1/chat', {

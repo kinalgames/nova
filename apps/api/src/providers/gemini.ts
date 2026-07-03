@@ -28,15 +28,36 @@ const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 // worker config (GEMINI_OAUTH_CLIENT_ID / GEMINI_OAUTH_CLIENT_SECRET) so no
 // secret-shaped literal lives in source — see ProviderEnv.
 
+/** B5 — thinkingBudget per level for the 2.5 generation. Gemini 3+ takes
+ *  `thinkingLevel` instead and rejects a budget — omit config there until the
+ *  catalog carries a 3.x model. 'normal'/absent = dynamic thinking (default). */
+const THINKING_BUDGET = { low: 2048, high: 24576 } as const
+
+export function geminiThinkingConfig(
+  req: Pick<ResolvedChatRequest, 'model' | 'thinking'>,
+): { thinkingBudget: number } | null {
+  const level = req.thinking
+  if (!level || level === 'normal') return null
+  if (/^gemini-3/.test(req.model)) return null
+  if (level === 'off')
+    // 2.5 Pro cannot disable thinking — 128 is its floor; Flash can go to 0
+    return { thinkingBudget: /^gemini-2\.5-pro/.test(req.model) ? 128 : 0 }
+  return { thinkingBudget: THINKING_BUDGET[level] }
+}
+
 /** the GenerateContentRequest both Gemini transports share */
 export function geminiRequest(req: ResolvedChatRequest): Record<string, unknown> {
+  const thinkingConfig = geminiThinkingConfig(req)
   return {
     contents: req.messages.map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     })),
     ...(req.system?.trim() ? { systemInstruction: { parts: [{ text: req.system }] } } : {}),
-    generationConfig: { maxOutputTokens: req.maxTokens ?? 8192 },
+    generationConfig: {
+      maxOutputTokens: req.maxTokens ?? 8192,
+      ...(thinkingConfig ? { thinkingConfig } : {}),
+    },
   }
 }
 

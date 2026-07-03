@@ -4,6 +4,52 @@ import { anthropicBody, anthropicHeaders, toNovaStream } from './anthropic'
 const profileKey = { kind: 'api_key' as const, credential: 'sk-ant-test' }
 const profileAcc = { kind: 'account' as const, credential: 'sk-ant-oat01-token' }
 
+describe('B5 — thinking mapping per model generation', () => {
+  const base = {
+    providerId: 'claude' as const,
+    messages: [{ role: 'user' as const, content: 'chào' }],
+    profile: profileKey,
+  }
+
+  it('adaptive generations take thinking.adaptive + output_config.effort', () => {
+    const high = JSON.parse(
+      anthropicBody({ ...base, model: 'claude-opus-4-8', thinking: 'high' as const }),
+    )
+    expect(high.thinking).toEqual({ type: 'adaptive' })
+    expect(high.output_config).toEqual({ effort: 'high' })
+    const normal = JSON.parse(
+      anthropicBody({ ...base, model: 'claude-sonnet-5', thinking: 'normal' as const }),
+    )
+    expect(normal.output_config.effort).toBe('medium')
+    expect(normal.thinking.budget_tokens).toBeUndefined()
+  })
+
+  it('budget generations take enabled + budget_tokens kept below max_tokens', () => {
+    const low = JSON.parse(
+      anthropicBody({ ...base, model: 'claude-haiku-4-5', thinking: 'low' as const }),
+    )
+    expect(low.thinking).toEqual({ type: 'enabled', budget_tokens: 2048 })
+    expect(low.output_config).toBeUndefined()
+    expect(low.max_tokens).toBeGreaterThan(2048)
+    const high = JSON.parse(
+      anthropicBody({ ...base, model: 'claude-haiku-4-5', thinking: 'high' as const }),
+    )
+    expect(high.thinking.budget_tokens).toBe(16384)
+    expect(high.max_tokens).toBeGreaterThan(16384)
+  })
+
+  it("'off' and absent send no thinking at all — the provider default", () => {
+    const off = JSON.parse(
+      anthropicBody({ ...base, model: 'claude-opus-4-8', thinking: 'off' as const }),
+    )
+    expect(off.thinking).toBeUndefined()
+    expect(off.output_config).toBeUndefined()
+    const absent = JSON.parse(anthropicBody({ ...base, model: 'claude-haiku-4-5' }))
+    expect(absent.thinking).toBeUndefined()
+    expect(absent.max_tokens).toBe(8192)
+  })
+})
+
 describe('anthropic adapter — auth transport per credential kind', () => {
   it('api_key uses x-api-key (the supported path)', () => {
     const h = anthropicHeaders(profileKey)

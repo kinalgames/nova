@@ -805,6 +805,9 @@ export function StoreProvider({
               customPrompt: prev.systemPrompt,
               projectInstructions: instructions || undefined,
             }),
+            // B5 — the “Suy nghĩ” chip drives the provider's native reasoning
+            // control (adaptive/budget thinking · thinkingConfig · effort)
+            thinking: prev.thinkingLevel,
             messages: turns,
             // server-backed profiles chat by id — the secret stays sealed
             // server-side; transitional local profiles still send inline
