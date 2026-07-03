@@ -97,8 +97,20 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## BACKLOG ĐẦY ĐỦ (kiểm kê 2026-07-03; OAuth social + deploy ĐÃ XONG)
 
 Backend:
-- **B1 R2 upload thật** (LỚN) — đính kèm hiện fake (staged local,
-  không upload); R2 creds đã có trong .dev.vars. Kèm BE4 share `/share/:id`.
+- ~~B1 R2 upload~~ ĐÃ XONG 2026-07-03 (scope user duyệt: upload+vision,
+  share đợt sau): R2 binding `ATTACH` (bucket nova-attachments{-dev},
+  key `att/{uid}/{id}`) + D1 bảng `attachment` (migration 0002, đã
+  apply local+dev+prod) · `POST/GET /v1/files` (whitelist ảnh≤5MB
+  png/jpg/webp/gif, pdf/text≤10MB, max 4 file/msg, owner-check qua D1)
+  · `ChatTurn.attachments[{id}]` → server resolve (attachments.ts:
+  text-fence vào content, ảnh/PDF thành base64 parts, budget 18MB từ
+  turn mới nhất, thiếu/quá budget → note) · adapters: claude
+  image/document blocks, gemini inline_data, openai image_url data-URL
+  + PDF note, ollama note · client: upload XHR progress
+  (services/upload.ts), pill progress/error trong Composer, send đợi
+  upload xong, ảnh thật trong message (objectURL + fetch bearer theo
+  fileId sau reload). CHẬY qua /v1/chat nên hưởng sẵn RL + metering.
+  Còn lại của track này: BE4 share `/share/:id` (đợt sau).
 - ~~B3 Rate-limit~~ ĐÃ XONG 2026-07-03: Workers Rate Limiting binding
   GA (key `ratelimits`, wrangler ≥ 4.36) — RL_AUTH 10/60s · RL_CHAT
   30/60s · RL_API 120/60s, keyed IP, fail-open có log, namespace_id

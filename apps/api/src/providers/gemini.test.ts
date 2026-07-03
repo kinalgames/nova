@@ -7,6 +7,27 @@ import {
   toNovaStream,
 } from './gemini'
 
+describe('B1 — binary parts ride as inline_data', () => {
+  it('images/PDFs precede the text part; empty content still yields a part', () => {
+    const req = geminiRequest({
+      providerId: 'gemini',
+      model: 'gemini-2.5-pro',
+      messages: [
+        {
+          role: 'user',
+          content: 'xem giúp',
+          parts: [{ type: 'image', name: 'a.webp', mime: 'image/webp', base64: 'QUJD' }],
+        },
+      ],
+      profile: { kind: 'api_key', credential: 'AIza-x' },
+    }) as { contents: { parts: unknown[] }[] }
+    expect(req.contents[0].parts).toEqual([
+      { inline_data: { mime_type: 'image/webp', data: 'QUJD' } },
+      { text: 'xem giúp' },
+    ])
+  })
+})
+
 describe('B5 — thinkingConfig per level and model', () => {
   it("'off' floors at 128 on 2.5 Pro (cannot disable) and 0 on Flash", () => {
     expect(geminiThinkingConfig({ model: 'gemini-2.5-pro', thinking: 'off' })).toEqual({

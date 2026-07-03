@@ -67,6 +67,23 @@ export const providerCredential = sqliteTable('provider_credential', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 })
 
+/** B1 — uploaded attachment metadata; the bytes live in R2 under `r2_key`.
+ *  The D1 row is the ownership check for serving/vision and the anchor for
+ *  future quota, GC and share features. */
+export const attachment = sqliteTable('attachment', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  mime: text('mime').notNull(),
+  /** preview family the UI renders: image | pdf | code | csv | md */
+  kind: text('kind').notNull(),
+  size: integer('size').notNull(),
+  r2Key: text('r2_key').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+})
+
 export const verification = sqliteTable('verification', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),

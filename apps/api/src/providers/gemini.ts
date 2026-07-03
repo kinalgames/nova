@@ -49,10 +49,22 @@ export function geminiThinkingConfig(
 export function geminiRequest(req: ResolvedChatRequest): Record<string, unknown> {
   const thinkingConfig = geminiThinkingConfig(req)
   return {
-    contents: req.messages.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
+    // B1 — binary parts ride as inline_data ahead of the text part
+    contents: req.messages.map((m) => {
+      const parts = [
+        ...(m.parts ?? []).map((p) => ({
+          inline_data: {
+            mime_type: p.type === 'pdf' ? 'application/pdf' : p.mime,
+            data: p.base64,
+          },
+        })),
+        ...(m.content ? [{ text: m.content }] : []),
+      ]
+      return {
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: parts.length ? parts : [{ text: m.content }],
+      }
+    }),
     ...(req.system?.trim() ? { systemInstruction: { parts: [{ text: req.system }] } } : {}),
     generationConfig: {
       maxOutputTokens: req.maxTokens ?? 8192,

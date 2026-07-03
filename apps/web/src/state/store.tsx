@@ -51,6 +51,7 @@ import { HAS_API, streamChat } from '../services/llm'
 import { fetchMe, getToken, signIn, signOut, signUp, updateMe } from '../services/auth'
 import { buildSystemPrompt } from '../services/prompt'
 import { generateTitle } from '../services/title'
+import { MAX_FILES, rejectUpload, uploadFile } from '../services/upload'
 import {
   addCredential,
   deleteCredential,
@@ -709,8 +710,16 @@ export function StoreProvider({
    * one engine behind send, edit-and-rerun and regenerate (a regenerated
    * reply shares the same parent, so it lands as a sibling version).
    */
+  /** files-block refs of a message — the attachments a turn rides with */
+  const attachmentRefsOf = (m: Message): { id: string }[] =>
+    m.blocks
+      .filter((b) => b.type === 'files')
+      .flatMap((b) => (b.type === 'files' ? b.items : []))
+      .filter((f) => f.fileId)
+      .map((f) => ({ id: f.fileId as string }))
+
   const streamReply = useCallback(
-    (conv: string, parentId: string, prompt: string) => {
+    (conv: string, parentId: string, prompt: string, promptAttachments?: { id: string }[]) => {
       clearTimeout(t1.current)
       clearTimeout(t2.current)
       clearInterval(tc.current)
@@ -755,16 +764,25 @@ export function StoreProvider({
         const path = visiblePath(prev.threads[conv] ?? emptyThread())
         const upto = path.findIndex((m) => m.id === parentId)
         const turns = (upto >= 0 ? path.slice(0, upto + 1) : path)
-          .map((m) => ({
-            role: m.role,
-            content: m.blocks
-              .filter((b) => b.type === 'text')
-              .map((b) => (b.type === 'text' ? b.text : ''))
-              .join('\n\n')
-              .trim(),
-          }))
-          .filter((t) => t.content)
-        if (upto < 0) turns.push({ role: 'user', content: prompt })
+          .map((m) => {
+            const attachments = attachmentRefsOf(m)
+            return {
+              role: m.role,
+              content: m.blocks
+                .filter((b) => b.type === 'text')
+                .map((b) => (b.type === 'text' ? b.text : ''))
+                .join('\n\n')
+                .trim(),
+              ...(attachments.length ? { attachments } : {}),
+            }
+          })
+          .filter((t) => t.content || t.attachments)
+        if (upto < 0)
+          turns.push({
+            role: 'user',
+            content: prompt,
+            ...(promptAttachments?.length ? { attachments: promptAttachments } : {}),
+          })
         const abort = new AbortController()
         llmAbort.current = abort
         let acc = ''
@@ -1003,7 +1021,11 @@ export function StoreProvider({
     const onHome = navRef.current.view === 'home'
     const srcKey = stagedKeyOf(navRef.current) // Home composes into its own tray bucket
     const convId = onHome ? uid() : navRef.current.activeConv
-    const stagedNow = sRef.current.staged[srcKey] ?? []
+    const stagedAll = sRef.current.staged[srcKey] ?? []
+    // B1 — never send mid-upload (the button is disabled too; this is the
+    // keyboard-path guard); failed files stay in the tray, they never ride
+    if (stagedAll.some((f) => f.progress !== undefined)) return
+    const stagedNow = stagedAll.filter((f) => !f.error)
     const userBlocks: Block[] = [{ type: 'text', text }]
     if (stagedNow.length)
       userBlocks.push({
@@ -1014,6 +1036,8 @@ export function StoreProvider({
           meta: f.size,
           image: f.kind === 'image',
           open: f.kind,
+          ...(f.fileId ? { fileId: f.fileId } : {}),
+          ...(f.url ? { url: f.url } : {}),
         })),
       })
     const userId = uid()
@@ -1049,7 +1073,12 @@ export function StoreProvider({
         }),
       },
     }))
-    streamReply(convId, userId, text)
+    streamReply(
+      convId,
+      userId,
+      text,
+      stagedNow.filter((f) => f.fileId).map((f) => ({ id: f.fileId as string })),
+    )
     goTo('/chat/$convId', { convId })
     // sending always snaps to the bottom (after the append renders)
     setTimeout(() => {
@@ -1177,13 +1206,42 @@ export function StoreProvider({
   const addUpload = useCallback(
     (file: File) => {
       const { kind, size, url } = describeUpload(file)
-      const item: StagedFile = { id: uid(), kind, name: file.name, size, url }
       const key = stagedKeyOf(navRef.current)
+      if ((sRef.current.staged[key] ?? []).length >= MAX_FILES) {
+        set({ toast: i18n.t('upload.max') })
+        return
+      }
+      const live = HAS_API && !demo && !!getToken()
+      // instant validation — an impossible file becomes a danger pill with a
+      // reason, no network call ever fires
+      const reason = live ? rejectUpload(file) : null
+      const item: StagedFile = {
+        id: uid(),
+        kind,
+        name: file.name,
+        size,
+        url,
+        ...(reason ? { error: i18n.t(reason) } : live ? { progress: 0 } : {}),
+      }
+      const key2 = key
       set((x) => ({
-        staged: { ...x.staged, [key]: [...(x.staged[key] ?? []), item] },
+        staged: { ...x.staged, [key2]: [...(x.staged[key2] ?? []), item] },
       }))
+      if (!live || reason) return
+      const patchItem = (patch: Partial<StagedFile>) =>
+        set((x) => ({
+          staged: {
+            ...x.staged,
+            [key2]: (x.staged[key2] ?? []).map((f) => (f.id === item.id ? { ...f, ...patch } : f)),
+          },
+        }))
+      void uploadFile(file, (pct) => patchItem({ progress: pct })).then((up) =>
+        up
+          ? patchItem({ fileId: up.id, progress: undefined })
+          : patchItem({ progress: undefined, error: i18n.t('upload.failed') }),
+      )
     },
-    [set],
+    [set, demo],
   )
 
   // optimistic conversation delete: flag it, then remove for real after a 5s
@@ -2019,6 +2077,8 @@ function deriveValues(
     chatProject: activeProject?.name ?? t('projects.defaultName'),
     staged: activeStaged,
     hasStaged: activeStaged.length > 0,
+    // B1 — sending waits for in-flight uploads (send() re-checks as well)
+    uploading: activeStaged.some((f) => f.progress !== undefined),
     removeStaged: (id: string) =>
       set((x) => {
         const key = stagedKeyOf(nav)
@@ -2383,7 +2443,7 @@ function deriveValues(
     },
     send,
     stop,
-    canSend: s.draft.trim().length > 0,
+    canSend: s.draft.trim().length > 0 && !activeStaged.some((f) => f.progress !== undefined),
     copyCode,
     pConvAurora: () => go('conversation'),
     pProjects: () => go('projects'),

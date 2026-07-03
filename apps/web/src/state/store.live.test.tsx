@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import { act, waitFor } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
 import { streamChat, type StreamHandlers } from '../services/llm'
+import { rejectUpload, uploadFile } from '../services/upload'
 import type { ChatProxyRequest } from '@nova/shared'
 
 const calls: ChatProxyRequest[] = []
@@ -17,10 +18,21 @@ vi.mock('../services/llm', () => ({
   }),
 }))
 
+vi.mock('../services/upload', () => ({
+  MAX_FILES: 4,
+  rejectUpload: vi.fn(() => null),
+  uploadFile: vi.fn(async (_f: File, onProgress: (pct: number) => void) => {
+    onProgress(50)
+    return { id: 'srv-1', name: 'a.png', kind: 'image', size: 3, mime: 'image/png' }
+  }),
+}))
+
 beforeEach(() => {
   localStorage.clear()
   calls.length = 0
   vi.mocked(streamChat).mockClear()
+  vi.mocked(rejectUpload).mockClear()
+  vi.mocked(uploadFile).mockClear()
 })
 afterEach(() => vi.useRealTimers())
 
@@ -83,6 +95,86 @@ describe('real provider routing (nova-api proxy)', () => {
     await act(async () => result.current.set({ draft: 'tiếp tục đi' }))
     await act(async () => result.current.v.send())
     expect(vi.mocked(streamChat)).toHaveBeenCalledTimes(3)
+  })
+
+  it('B1 — a real upload lands a fileId and rides the send as an attachment ref', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    // real world: BE3 owns addProfile server-side — inject the profile directly
+    await act(async () =>
+      result.current.set((x) => ({
+        profiles: {
+          ...x.profiles,
+          claude: [
+            { id: 'p1', name: 'Khóa', kind: 'api_key', credential: 'sk-ant-real-123', status: 'active' },
+          ],
+        },
+      })),
+    )
+    await act(async () =>
+      result.current.addUpload(new File(['x'], 'chart.png', { type: 'image/png' })),
+    )
+    const staged = () => Object.values(result.current.s.staged).flat()
+    await waitFor(() => expect(staged()[0]?.fileId).toBe('srv-1'))
+    expect(staged()[0]?.progress).toBeUndefined()
+
+    await act(async () => result.current.set({ draft: 'phân tích ảnh này' }))
+    await act(async () => result.current.v.send())
+    const turn = calls[0].messages.at(-1)!
+    expect(turn.attachments).toEqual([{ id: 'srv-1' }])
+    // the message block kept the display metadata AND the server id
+    const files = result.current.v.sent
+      .find((m) => m.role === 'user')!
+      .blocks.find((b) => b.type === 'files')
+    expect(files && files.type === 'files' && files.items[0].fileId).toBe('srv-1')
+  })
+
+  it('B1 — a rejected file becomes a danger pill, never uploads, never rides', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    vi.mocked(rejectUpload).mockReturnValueOnce('upload.tooLargeImage')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.set((x) => ({
+        profiles: {
+          ...x.profiles,
+          claude: [
+            { id: 'p1', name: 'Khóa', kind: 'api_key', credential: 'sk-ant-real-123', status: 'active' },
+          ],
+        },
+      })),
+    )
+    await act(async () =>
+      result.current.addUpload(new File(['x'.repeat(9)], 'big.png', { type: 'image/png' })),
+    )
+    const staged = () => Object.values(result.current.s.staged).flat()
+    expect(staged()[0]?.error).toBeTruthy()
+    expect(uploadFile).not.toHaveBeenCalled()
+
+    await act(async () => result.current.set({ draft: 'gửi thử' }))
+    await act(async () => result.current.v.send())
+    const turn = calls[0].messages.at(-1)!
+    expect(turn.attachments).toBeUndefined()
+    expect(
+      result.current.v.sent.find((m) => m.role === 'user')!.blocks.some((b) => b.type === 'files'),
+    ).toBe(false)
+  })
+
+  it('B1 — a failed upload flips into an error pill and the 4-file cap toasts', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    vi.mocked(uploadFile).mockResolvedValueOnce(null)
+    const { result } = await renderStore({ path: '/onboarding' })
+    const staged = () => Object.values(result.current.s.staged).flat()
+    await act(async () =>
+      result.current.addUpload(new File(['x'], 'a.png', { type: 'image/png' })),
+    )
+    await waitFor(() => expect(staged()[0]?.error).toBeTruthy())
+
+    for (let i = 0; i < 4; i++)
+      await act(async () =>
+        result.current.addUpload(new File(['x'], `f${i}.png`, { type: 'image/png' })),
+      )
+    expect(staged()).toHaveLength(4)
+    expect(result.current.s.toast).toBe('Tối đa 4 tệp mỗi tin nhắn')
   })
 
   it('the thinking level follows the composer chip', async () => {

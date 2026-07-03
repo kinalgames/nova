@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 import { addSibling, fromLinear } from '../state/thread'
-import type { Message } from '../state/types'
+import type { Message, MsgAttachment } from '../state/types'
 
 beforeEach(() => localStorage.clear())
 
@@ -20,6 +20,53 @@ const forked = () => addSibling(linear(), 'a1', msg('a2', 'assistant', 'Trả l�
 
 const seed = (thread: ReturnType<typeof linear>) => async () =>
   renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: thread } }))
+
+const imgMsg = (att: Partial<MsgAttachment>): Message => ({
+  id: 'u9',
+  role: 'user',
+  who: 'THÀNH',
+  blocks: [
+    { type: 'text', text: 'ảnh đây' },
+    { type: 'files', items: [{ kind: 'image', name: 'chart.png', image: true, ...att }] },
+  ],
+})
+
+describe('B1 — real image tiles', () => {
+  it('renders the session object URL instantly and opens it on click', async () => {
+    const user = makeUser()
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([imgMsg({ url: 'blob:local-1' })]) } }),
+    )
+    const tile = await screen.findByRole('button', { name: /chart\.png/ })
+    expect(tile.getAttribute('style')).toContain('blob:local-1')
+    await user.click(tile)
+    expect(openSpy).toHaveBeenCalledWith('blob:local-1', '_blank', 'noopener')
+    openSpy.mockRestore()
+  })
+
+  it('fetches by fileId after a reload; failure keeps the gradient placeholder', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(new Blob(['img']), { status: 200 })),
+    )
+    URL.createObjectURL = vi.fn(() => 'blob:fetched-1')
+    URL.revokeObjectURL = vi.fn()
+    await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([imgMsg({ fileId: 'srv-9' })]) } }),
+    )
+    const tile = await screen.findByRole('button', { name: /chart\.png/ })
+    await waitFor(() => expect(tile.getAttribute('style')).toContain('blob:fetched-1'))
+  })
+
+  it('a demo tile (no url, no fileId) keeps the gradient and the preview opener', async () => {
+    await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([imgMsg({})]) } }),
+    )
+    const tile = await screen.findByRole('button', { name: /chart\.png/ })
+    expect(tile.getAttribute('style')).toContain('linear-gradient')
+  })
+})
 
 describe('version navigator ‹ i/n ›', () => {
   // generous timeout: the file's FIRST test bears the whole import/transform

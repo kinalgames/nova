@@ -14,6 +14,8 @@ import {
 import { createAuth } from './auth'
 import { limitAuth, limitV1, type RateLimitEnv } from './ratelimit'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
+import { files } from './files'
+import { resolveAttachments } from './attachments'
 import { tapNovaUsage, usage, type UsageEnv } from './usage'
 import type { SyncOp } from '@nova/shared'
 
@@ -21,6 +23,8 @@ export { UserStore } from './do/userStore'
 
 export interface Env extends CredentialsEnv, ProviderEnv, UsageEnv, RateLimitEnv {
   USER_STORE: DurableObjectNamespace
+  /** B1 — attachment bytes (metadata in D1 `attachment`) */
+  ATTACH: R2Bucket
 }
 
 // BE1 auth (Better Auth on D1) + the provider proxy (BE3 slice pulled
@@ -116,6 +120,9 @@ app.route('/v1/credentials', credentials)
 // T8: month usage roll-up read-back (session-gated; AE SQL API)
 app.route('/v1/usage', usage)
 
+// B1: attachment upload + owner-checked serving (bytes in R2)
+app.route('/v1/files', files)
+
 app.get('/healthz', (c) =>
   c.json({
     ok: true,
@@ -155,6 +162,12 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
   for (const m of messages) {
     const t = m as Record<string, unknown>
     if ((t.role !== 'user' && t.role !== 'assistant') || typeof t.content !== 'string') return null
+    // B1 — attachment refs: optional, ≤4 per turn, each an { id: string }
+    if (t.attachments !== undefined) {
+      if (!Array.isArray(t.attachments) || t.attachments.length > 4) return null
+      for (const a of t.attachments as unknown[])
+        if (typeof (a as { id?: unknown })?.id !== 'string') return null
+    }
   }
   return body as ChatProxyRequest
 }
@@ -225,10 +238,14 @@ app.post('/v1/chat', async (c) => {
   const profile = req.profile
   if (!profile) return problem(400, 'invalid_request', 'Missing credential source')
 
+  // B1 — resolve attachment refs (owner-checked) into provider-ready parts;
+  // text files fold into the turn text, binaries become adapter parts
+  const messages = await resolveAttachments(c.env, uid, req.messages)
+
   const adapter = providerAdapters[req.providerId]
   let upstream: Response
   try {
-    upstream = await adapter.call({ ...req, profile }, c.req.raw.signal, c.env)
+    upstream = await adapter.call({ ...req, profile, messages }, c.req.raw.signal, c.env)
   } catch (e) {
     // a credential that cannot possibly work is the caller's error, not a 502
     if (e instanceof ProviderConfigError) return problem(400, 'invalid_credential', e.message)

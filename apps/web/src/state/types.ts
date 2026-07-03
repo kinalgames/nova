@@ -33,6 +33,13 @@ export interface StagedFile {
   size: string
   /** Object URL for real uploaded images. */
   url?: string
+  /** B1 — server attachment id once the upload lands (real world only) */
+  fileId?: string
+  /** 0-100 while the upload is in flight; absent once settled */
+  progress?: number
+  /** validation/upload failure — the tray pill renders danger and the
+   *  file never rides along with a send */
+  error?: string
   /** Demo placeholder (gradient image / pdf chip) when no real file. */
   demo?: boolean
 }
@@ -70,6 +77,11 @@ export interface MsgAttachment {
   image?: boolean
   /** which preview the chip opens */
   open?: PreviewKind
+  /** B1 — server attachment id: images render the REAL bytes via an
+   *  authenticated fetch; survives reloads (object URLs do not) */
+  fileId?: string
+  /** session-local object URL — instant thumbnail before/without a fetch */
+  url?: string
 }
 
 export interface MsgAction {

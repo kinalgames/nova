@@ -56,6 +56,13 @@
     "inputAria": "Message Nova",
     "inputPlaceholder": "Message Nova…"
   },
+  "upload": {
+    "unsupported": "Unsupported file type",
+    "tooLargeImage": "Images are capped at 5MB",
+    "tooLargeDoc": "Files are capped at 10MB",
+    "failed": "Upload failed",
+    "max": "At most 4 files per message"
+  },
   "chat": {
     "regionAria": "Conversation",
     "jumpToLatest": "Jump to latest",

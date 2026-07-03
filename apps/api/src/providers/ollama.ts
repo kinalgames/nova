@@ -25,7 +25,16 @@ export function ollamaBody(req: ResolvedChatRequest): string {
     model: req.model,
     messages: [
       ...(req.system?.trim() ? [{ role: 'system', content: req.system }] : []),
-      ...req.messages.map((m) => ({ role: m.role, content: m.content })),
+      // B1 — ollama takes text only here: binary parts degrade into notes
+      ...req.messages.map((m) => ({
+        role: m.role,
+        content: [
+          ...(m.parts ?? []).map((p) => `[attached: ${p.name} — not readable by this model]`),
+          m.content,
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
+      })),
     ],
     stream: true,
     options: { num_predict: req.maxTokens ?? 8192 },

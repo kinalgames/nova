@@ -34,11 +34,19 @@ function StagedItem({ f }: { f: StagedFile }) {
       <div className="relative size-[54px] shrink-0">
         <button
           type="button"
-          aria-label={t('composer.openFile', { name: f.name })}
+          aria-label={f.error ? `${f.name}: ${f.error}` : t('composer.openFile', { name: f.name })}
+          title={f.error}
           onClick={() => v.openStaged(f)}
-          className="block size-[54px] cursor-pointer rounded-sm border border-edge-soft p-0"
+          className={`block size-[54px] cursor-pointer rounded-sm border p-0 ${
+            f.error ? 'border-danger-line' : 'border-edge-soft'
+          }`}
           style={{ background: bg }}
         />
+        {f.progress !== undefined && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-sm bg-[rgba(0,0,0,.45)] font-mono text-micro text-white">
+            {f.progress}%
+          </div>
+        )}
         <button
           type="button"
           aria-label={t('composer.removeFile', { name: f.name })}
@@ -52,7 +60,11 @@ function StagedItem({ f }: { f: StagedFile }) {
   }
   const b = badgeStyle[f.kind] || badgeStyle.pdf
   return (
-    <div className="relative flex items-center gap-2 rounded-sm border border-border bg-panel py-1.5 pl-2 pr-3">
+    <div
+      className={`relative flex items-center gap-2 rounded-sm border bg-panel py-1.5 pl-2 pr-3 ${
+        f.error ? 'border-danger-line' : 'border-border'
+      }`}
+    >
       <button
         type="button"
         aria-label={t('composer.openFile', { name: f.name })}
@@ -67,7 +79,9 @@ function StagedItem({ f }: { f: StagedFile }) {
         </span>
         <div>
           <div className="text-small">{f.name}</div>
-          <div className="text-eyebrow text-muted">{f.size}</div>
+          <div className={`text-eyebrow ${f.error ? 'text-danger' : 'text-muted'}`}>
+            {f.error ?? (f.progress !== undefined ? `${f.progress}%` : f.size)}
+          </div>
         </div>
       </button>
       <button

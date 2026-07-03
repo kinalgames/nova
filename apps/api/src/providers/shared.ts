@@ -2,11 +2,33 @@
 // format (SSE or NDJSON) into Nova's event stream —
 // message_start · block_delta{text} · message_stop{usage} · error.
 
-import type { ChatProxyRequest } from '@nova/shared'
+import type { ChatProxyRequest, ChatTurn } from '@nova/shared'
 
-/** the proxy resolves the credential BEFORE calling — profile is guaranteed */
-export type ResolvedChatRequest = ChatProxyRequest & {
+/** B1 — an attachment resolved into a provider-ready part. Text files are
+ *  already folded into the turn's text by the resolver, so adapters only
+ *  ever see binary parts here. */
+export type ResolvedPart =
+  | { type: 'image'; name: string; mime: string; base64: string }
+  | { type: 'pdf'; name: string; base64: string }
+
+/** a chat turn after attachment resolution */
+export type ResolvedTurn = Pick<ChatTurn, 'role' | 'content'> & { parts?: ResolvedPart[] }
+
+/** the proxy resolves credential AND attachments BEFORE calling — profile is
+ *  guaranteed, messages carry provider-ready parts instead of refs */
+export type ResolvedChatRequest = Omit<ChatProxyRequest, 'messages'> & {
   profile: NonNullable<ChatProxyRequest['profile']>
+  messages: ResolvedTurn[]
+}
+
+/** chunked base64 — a spread over megabytes of bytes would blow the stack */
+export function toBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf)
+  let bin = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK)
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  return btoa(bin)
 }
 
 export interface NovaStreamEvent {

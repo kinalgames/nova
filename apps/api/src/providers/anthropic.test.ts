@@ -4,6 +4,38 @@ import { anthropicBody, anthropicHeaders, toNovaStream } from './anthropic'
 const profileKey = { kind: 'api_key' as const, credential: 'sk-ant-test' }
 const profileAcc = { kind: 'account' as const, credential: 'sk-ant-oat01-token' }
 
+describe('B1 — binary parts render as native blocks', () => {
+  it('images and PDFs precede the text block; plain turns stay strings', () => {
+    const body = JSON.parse(
+      anthropicBody({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [
+          {
+            role: 'user',
+            content: 'phân tích ảnh',
+            parts: [
+              { type: 'image', name: 'a.png', mime: 'image/png', base64: 'QUJD' },
+              { type: 'pdf', name: 'p.pdf', base64: 'UERG' },
+            ],
+          },
+          { role: 'assistant', content: 'đây là kết quả' },
+        ],
+        profile: profileKey,
+      }),
+    )
+    const [withParts, plain] = body.messages
+    expect(withParts.content).toHaveLength(3)
+    expect(withParts.content[0]).toEqual({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/png', data: 'QUJD' },
+    })
+    expect(withParts.content[1].type).toBe('document')
+    expect(withParts.content[2]).toEqual({ type: 'text', text: 'phân tích ảnh' })
+    expect(plain.content).toBe('đây là kết quả')
+  })
+})
+
 describe('B5 — thinking mapping per model generation', () => {
   const base = {
     providerId: 'claude' as const,

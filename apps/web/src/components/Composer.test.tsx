@@ -18,6 +18,28 @@ function renderComposerWithTray() {
   )
 }
 
+describe('B1 — staged upload states', () => {
+  it('renders progress overlays and danger pills without layout tricks', async () => {
+    await renderWithStore(<Composer />, (s) =>
+      s.set((x) => ({
+        staged: {
+          ...x.staged,
+          [HOME_TRAY]: [
+            { id: 's1', kind: 'pdf', name: 'big.pdf', size: '12 MB', error: 'Tệp tối đa 10MB' },
+            { id: 's2', kind: 'image', name: 'up.png', size: '1 MB', url: 'blob:x', progress: 40 },
+            { id: 's3', kind: 'code', name: 'main.py', size: '2 KB', progress: 80 },
+            { id: 's4', kind: 'image', name: 'bad.png', size: '9 MB', error: 'Ảnh tối đa 5MB' },
+          ],
+        },
+      })),
+    )
+    expect(screen.getByText('Tệp tối đa 10MB')).toBeInTheDocument()
+    expect(screen.getByText('40%')).toBeInTheDocument()
+    expect(screen.getByText('80%')).toBeInTheDocument()
+    expect(screen.getByTitle('Ảnh tối đa 5MB')).toBeInTheDocument()
+  })
+})
+
 describe('<Composer>', () => {
   it('opens the "add to chat" menu (Radix) and lists tools', async () => {
     const user = makeUser()

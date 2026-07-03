@@ -1,5 +1,7 @@
-import { Fragment, Suspense, lazy, useState, type ReactNode } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { API_BASE } from '../services/llm'
+import { getToken } from '../services/token'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { GrowingTextarea } from './GrowingTextarea'
@@ -94,22 +96,60 @@ function inline(s: string): ReactNode[] {
   return out
 }
 
+/** B1 — a real image tile. The session-local object URL renders instantly;
+ *  after a reload the bytes come back through an authenticated fetch (a
+ *  plain <img src> cannot carry the bearer). Demo items keep the gradient. */
+function ImageTile({ f }: { f: MsgAttachment }) {
+  const { v } = useStore()
+  const [fetched, setFetched] = useState<string | null>(null)
+  useEffect(() => {
+    if (!f.fileId || f.url) return
+    let stop = false
+    let url: string | null = null
+    void (async () => {
+      try {
+        const token = getToken()
+        const res = await fetch(`${API_BASE}/v1/files/${f.fileId}`, {
+          headers: token ? { authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
+        })
+        if (!res.ok || stop) return
+        url = URL.createObjectURL(await res.blob())
+        if (!stop) setFetched(url)
+      } catch {
+        /* placeholder gradient stays */
+      }
+    })()
+    return () => {
+      stop = true
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [f.fileId, f.url])
+  const src = f.url ?? fetched
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        src ? window.open(src, '_blank', 'noopener') : openPreview(v, f.open ?? 'image')
+      }
+      className="relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-edge-soft text-left"
+      style={{
+        background: src
+          ? `center/cover url(${src})`
+          : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)',
+      }}
+    >
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[linear-gradient(transparent,rgba(0,0,0,.45))] px-2 py-1.5">
+        <span className="text-eyebrow text-white">{f.name}</span>
+        <Icon n="expand" size={13} className="text-white" />
+      </div>
+    </button>
+  )
+}
+
 function FilePill({ f }: { f: MsgAttachment }) {
   const { v } = useStore()
-  if (f.image) {
-    return (
-      <button
-        type="button"
-        onClick={() => openPreview(v, f.open ?? 'image')}
-        className="relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-edge-soft bg-[linear-gradient(135deg,#E7C9A8,#C98F86_55%,#7E6E92)] text-left"
-      >
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[linear-gradient(transparent,rgba(0,0,0,.45))] px-2 py-1.5">
-          <span className="text-eyebrow text-white">{f.name}</span>
-          <Icon n="expand" size={13} className="text-white" />
-        </div>
-      </button>
-    )
-  }
+  if (f.image) return <ImageTile f={f} />
   const b = FILE_BADGE[f.kind] ?? FILE_BADGE.pdf
   return (
     <button type="button" onClick={() => openPreview(v, f.open ?? f.kind)} className={FILE_PILL}>

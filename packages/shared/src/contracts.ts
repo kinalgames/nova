@@ -42,6 +42,10 @@ export interface AuthProfile {
 export interface ChatTurn {
   role: 'user' | 'assistant'
   content: string
+  /** B1 — server-side attachment refs (≤4/turn). The proxy resolves them
+   *  owner-checked from R2 into provider-ready parts; the client never
+   *  ships bytes through the chat request. */
+  attachments?: { id: string }[]
 }
 
 /** tables the sync protocol carries — record-level op-log (BE2) */

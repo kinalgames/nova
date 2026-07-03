@@ -56,6 +56,13 @@
     "inputAria": "Nhắn cho Nova",
     "inputPlaceholder": "Nhắn cho Nova…"
   },
+  "upload": {
+    "unsupported": "Định dạng không hỗ trợ",
+    "tooLargeImage": "Ảnh tối đa 5MB",
+    "tooLargeDoc": "Tệp tối đa 10MB",
+    "failed": "Tải lên thất bại",
+    "max": "Tối đa 4 tệp mỗi tin nhắn"
+  },
   "chat": {
     "regionAria": "Hội thoại",
     "jumpToLatest": "Cuộn xuống cuối",

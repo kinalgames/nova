@@ -7,6 +7,35 @@ import {
   toNovaStream,
 } from './openai'
 
+describe('B1 — images as data URLs, PDFs degrade into a note', () => {
+  it('builds multimodal content only when images exist', () => {
+    const body = JSON.parse(
+      openaiBody({
+        providerId: 'openai',
+        model: 'gpt-5',
+        messages: [
+          {
+            role: 'user',
+            content: 'so sánh',
+            parts: [
+              { type: 'image', name: 'a.png', mime: 'image/png', base64: 'QUJD' },
+              { type: 'pdf', name: 'plan.pdf', base64: 'UERG' },
+            ],
+          },
+        ],
+        profile: { kind: 'api_key', credential: 'sk-o' },
+      }),
+    )
+    const msg = body.messages[0]
+    expect(msg.content[0]).toEqual({
+      type: 'image_url',
+      image_url: { url: 'data:image/png;base64,QUJD' },
+    })
+    expect(msg.content[1].text).toContain('[attached: plan.pdf — not readable by this model]')
+    expect(msg.content[1].text).toContain('so sánh')
+  })
+})
+
 describe('B5 — reasoning_effort per level and model', () => {
   it('levels map to low/medium/high on reasoning models', () => {
     expect(openaiReasoningEffort({ model: 'gpt-5', thinking: 'low' })).toBe('low')

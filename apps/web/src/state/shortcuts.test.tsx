@@ -5,7 +5,9 @@ import { renderApp } from '../test/util'
 beforeEach(() => localStorage.clear())
 
 describe('global keyboard shortcuts', () => {
-  it('⌘K opens the command palette and Escape closes it', async () => {
+  // generous timeout: the file's FIRST test bears the whole import/transform
+  // cost under coverage instrumentation on slow parallel runs
+  it('⌘K opens the command palette and Escape closes it', { timeout: 15_000 }, async () => {
     await renderApp()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })

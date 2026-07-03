@@ -35,9 +35,33 @@ export function openaiBody(req: ResolvedChatRequest): string {
   const effort = openaiReasoningEffort(req)
   return JSON.stringify({
     model: req.model,
+    // B1 — images ride as data-URL image_url parts; PDFs are not readable
+    // through Chat Completions, so they degrade into a bracketed note the
+    // model can acknowledge honestly
     messages: [
       ...(req.system?.trim() ? [{ role: 'system', content: req.system }] : []),
-      ...req.messages.map((m) => ({ role: m.role, content: m.content })),
+      ...req.messages.map((m) => {
+        const images = (m.parts ?? []).filter((p) => p.type === 'image')
+        const unread = (m.parts ?? []).filter((p) => p.type === 'pdf')
+        const text = [
+          ...unread.map((p) => `[attached: ${p.name} — not readable by this model]`),
+          m.content,
+        ]
+          .filter(Boolean)
+          .join('\n\n')
+        return images.length
+          ? {
+              role: m.role,
+              content: [
+                ...images.map((p) => ({
+                  type: 'image_url',
+                  image_url: { url: `data:${p.mime};base64,${p.base64}` },
+                })),
+                { type: 'text', text },
+              ],
+            }
+          : { role: m.role, content: text }
+      }),
     ],
     stream: true,
     stream_options: { include_usage: true },
