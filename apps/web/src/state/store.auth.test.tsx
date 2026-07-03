@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
-import { deleteAccount, fetchMe, signIn, signOut, signUp, updateMe } from '../services/auth'
+import {
+  deleteAccount,
+  fetchMe,
+  signIn,
+  signInSocial,
+  signInSocialPopup,
+  signOut,
+  signUp,
+  updateMe,
+} from '../services/auth'
 
 vi.mock('../services/auth', () => ({
   // like the real service, a successful sign-in/up stores the bearer token
@@ -14,6 +23,11 @@ vi.mock('../services/auth', () => ({
     return null
   }),
   signInSocial: vi.fn(async () => null),
+  // like the real popup: landing on /oauth-done stores the bearer token
+  signInSocialPopup: vi.fn(async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    return 'ok'
+  }),
   adoptSocialSession: vi.fn(async () => false),
   fetchMe: vi.fn(async () => ({
     id: 'u1',
@@ -76,6 +90,47 @@ describe('store — real auth wiring (BE1)', () => {
     })
     expect(updateMe).toHaveBeenCalledTimes(1)
     expect(updateMe).toHaveBeenCalledWith({ assistantName: 'Bee' })
+  })
+
+  it('popup OAuth: ok adopts in place; a first-ever account routes to onboarding', async () => {
+    vi.mocked(fetchMe).mockResolvedValueOnce({
+      id: 'u-social',
+      name: 'Google User',
+      email: 'social@kinal.co',
+      assistantName: null,
+    })
+    const { result, router } = await renderStore({ path: '/login' })
+    let err: string | null = 'pending'
+    await act(async () => {
+      err = await result.current.v.socialLogin('google')
+    })
+    expect(err).toBeNull()
+    expect(result.current.s.userEmail).toBe('social@kinal.co')
+    expect(router.state.location.pathname).toBe('/onboarding')
+  })
+
+  it('popup OAuth: a blocker falls back to the classic redirect; abandoning is silent', async () => {
+    vi.mocked(signInSocialPopup).mockResolvedValueOnce('blocked')
+    const { result, router } = await renderStore({ path: '/login' })
+    await act(async () => {
+      await result.current.v.socialLogin('github')
+    })
+    expect(signInSocial).toHaveBeenCalledWith('github')
+
+    vi.mocked(signInSocialPopup).mockResolvedValueOnce('closed')
+    let err: string | null = 'pending'
+    await act(async () => {
+      err = await result.current.v.socialLogin('google')
+    })
+    expect(err).toBeNull()
+    expect(router.state.location.pathname).toBe('/login')
+
+    // a concrete error message from the popup flow reaches the form
+    vi.mocked(signInSocialPopup).mockResolvedValueOnce('Provider not found')
+    await act(async () => {
+      err = await result.current.v.socialLogin('google')
+    })
+    expect(err).toBe('Provider not found')
   })
 
   it('D4 — deleting the account wipes local state and lands on /login', async () => {

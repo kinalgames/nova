@@ -167,6 +167,15 @@ Design/Product:
 Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 (accepted-risk); nâng actions Node 24 runner.
 
+## LUẬT TEST TÀI KHOẢN (user chỉ đạo 2026-07-03)
+
+- Smoke live trên dev CHỈ dùng tài khoản cố định tester@nova.dev —
+  KHÔNG tạo account tạm trên dev nữa.
+- Test DESTRUCTIVE (xoá account, wipe…) chạy trên môi trường isolated
+  (wrangler dev local) — không đụng dev/prod.
+- UX: KHÔNG dùng full-redirect phá context cho các tương tác — OAuth
+  đã chuyển sang POPUP (fallback redirect khi popup bị chặn).
+
 ## BẪY ĐÃ CẮN — đọc trước khi gõ lệnh
 
 - **OpenAI chặn region colo Worker**: smoke từ dev (colo gần VN) →

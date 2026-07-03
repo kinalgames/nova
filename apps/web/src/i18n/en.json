@@ -233,6 +233,7 @@
     "who": "THANH"
   },
   "auth": {
+    "oauthFinishing": "Finishing sign-in…",
     "loginTitle": "Sign in",
     "signupTitle": "Create account",
     "loginSub": "Continue to your workspace.",

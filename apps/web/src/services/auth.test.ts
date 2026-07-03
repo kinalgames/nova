@@ -7,6 +7,7 @@ import {
   getToken,
   signIn,
   signInSocial,
+  signInSocialPopup,
   signOut,
   signUp,
   updateMe,
@@ -152,6 +153,61 @@ describe('social sign-in', () => {
   it('surfaces the server error when the provider is not configured', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ message: 'Provider not found' }, 400)))
     expect(await signInSocial('github')).toBe('Provider not found')
+  })
+
+  it('POPUP flow: ok when the popup closes with a token; closed when abandoned', async () => {
+    vi.useFakeTimers()
+    const popup = { closed: false, close: vi.fn(), location: { href: '' } }
+    vi.stubGlobal('open', vi.fn(() => popup))
+    vi.stubGlobal('fetch', vi.fn(async () => json({ url: 'https://accounts.google.com/x' })))
+    const p = signInSocialPopup('google')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(popup.location.href).toContain('accounts.google.com')
+    localStorage.setItem('nova.auth.token', 'tok-pop')
+    popup.closed = true
+    await vi.advanceTimersByTimeAsync(500)
+    expect(await p).toBe('ok')
+
+    // abandoned: closes without a token
+    localStorage.clear()
+    const popup2 = { closed: false, close: vi.fn(), location: { href: '' } }
+    vi.stubGlobal('open', vi.fn(() => popup2))
+    const p2 = signInSocialPopup('github')
+    await vi.advanceTimersByTimeAsync(0)
+    popup2.closed = true
+    await vi.advanceTimersByTimeAsync(500)
+    expect(await p2).toBe('closed')
+    vi.useRealTimers()
+  })
+
+  it('POPUP flow: a blocker yields "blocked"; a server error closes the popup', async () => {
+    vi.stubGlobal('open', vi.fn(() => null))
+    expect(await signInSocialPopup('google')).toBe('blocked')
+
+    const popup = { closed: false, close: vi.fn(), location: { href: '' } }
+    vi.stubGlobal('open', vi.fn(() => popup))
+    vi.stubGlobal('fetch', vi.fn(async () => json({ message: 'Provider not found' }, 400)))
+    expect(await signInSocialPopup('github')).toBe('Provider not found')
+    expect(popup.close).toHaveBeenCalled()
+
+    // a 200 without a url is a server bug — surfaced, popup closed
+    const popup2 = { closed: false, close: vi.fn(), location: { href: '' } }
+    vi.stubGlobal('open', vi.fn(() => popup2))
+    vi.stubGlobal('fetch', vi.fn(async () => json({})))
+    expect(typeof (await signInSocialPopup('google'))).toBe('string')
+    expect(popup2.close).toHaveBeenCalled()
+  })
+
+  it('POPUP flow: a popup left open past 5 minutes times out as abandoned', async () => {
+    vi.useFakeTimers()
+    const popup = { closed: false, close: vi.fn(), location: { href: '' } }
+    vi.stubGlobal('open', vi.fn(() => popup))
+    vi.stubGlobal('fetch', vi.fn(async () => json({ url: 'https://gh.io/x' })))
+    const p = signInSocialPopup('github')
+    await vi.advanceTimersByTimeAsync(5 * 60_000 + 500)
+    expect(await p).toBe('closed')
+    expect(popup.close).toHaveBeenCalled()
+    vi.useRealTimers()
   })
 
   it('adoptSocialSession exchanges the cookie session for a bearer token once', async () => {

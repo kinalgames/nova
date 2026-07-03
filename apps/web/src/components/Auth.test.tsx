@@ -17,6 +17,8 @@ vi.mock('../services/auth', () => ({
   signOut: vi.fn(async () => {}),
   getToken: () => localStorage.getItem('nova.auth.token'),
   signInSocial: vi.fn(async () => null),
+  // popup UX: 'closed' = user abandoned — the button flow ends silently
+  signInSocialPopup: vi.fn(async () => 'closed' as const),
   adoptSocialSession: vi.fn(async () => false),
 }))
 
@@ -26,20 +28,20 @@ describe('<Auth> — social sign-in', () => {
   // one provider per test — the first click sets a shared busy state that
   // disables both buttons, so clicking the second in the same render races
   // the mock's finally() re-enable
-  it('the Google button kicks off the OAuth flow', async () => {
-    const { signInSocial } = await import('../services/auth')
+  it('the Google button kicks off the OAuth POPUP flow', async () => {
+    const { signInSocialPopup } = await import('../services/auth')
     const user = makeUser()
     await renderApp(undefined, { path: '/login' })
     await user.click(await screen.findByRole('button', { name: /google/i }))
-    expect(signInSocial).toHaveBeenCalledWith('google')
+    expect(signInSocialPopup).toHaveBeenCalledWith('google')
   })
 
-  it('the GitHub button kicks off the OAuth flow', async () => {
-    const { signInSocial } = await import('../services/auth')
+  it('the GitHub button kicks off the OAuth POPUP flow', async () => {
+    const { signInSocialPopup } = await import('../services/auth')
     const user = makeUser()
     await renderApp(undefined, { path: '/login' })
     await user.click(await screen.findByRole('button', { name: /github/i }))
-    expect(signInSocial).toHaveBeenCalledWith('github')
+    expect(signInSocialPopup).toHaveBeenCalledWith('github')
   })
 })
 

@@ -29,7 +29,7 @@ interface AppOpts {
 
 /** auth/onboarding screens live in the real world; everything else the unit
  * suite exercises is the seeded showcase — the demo tree */
-const REAL_WORLD = ['/login', '/signup', '/onboarding']
+const REAL_WORLD = ['/login', '/signup', '/onboarding', '/oauth-done']
 const demoPath = (path: string) =>
   path.startsWith('/demo') || REAL_WORLD.some((p) => path === p || path.startsWith(`${p}?`))
     ? path

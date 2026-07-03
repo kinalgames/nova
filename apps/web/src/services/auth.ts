@@ -126,6 +126,53 @@ export async function signInSocial(provider: 'google' | 'github'): Promise<strin
 }
 
 /**
+ * UX: OAuth in a POPUP — the main window keeps all its state; the popup
+ * lands on /oauth-done, adopts the bearer into (same-origin) localStorage
+ * and closes itself. Resolves 'ok' | 'closed' (user abandoned — not an
+ * error) | 'blocked' (popup blocker — caller falls back to the redirect)
+ * | an error message.
+ */
+export async function signInSocialPopup(
+  provider: 'google' | 'github',
+): Promise<'ok' | 'closed' | 'blocked' | string> {
+  // must open SYNCHRONOUSLY inside the click gesture — blockers eat late opens
+  const popup = window.open('about:blank', 'nova-oauth', 'width=480,height=640')
+  if (!popup) return 'blocked'
+  try {
+    const res = await call('/api/auth/sign-in/social', {
+      provider,
+      callbackURL: `${window.location.origin}/oauth-done`,
+    })
+    if (!res.ok) {
+      popup.close()
+      return await errorOf(res)
+    }
+    const data = (await res.json()) as { url?: string }
+    if (!data.url) {
+      popup.close()
+      return i18n.t('errors.httpStatus', { status: res.status })
+    }
+    popup.location.href = data.url
+  } catch {
+    popup.close()
+    return i18n.t('errors.network')
+  }
+  return new Promise((resolve) => {
+    const startedAt = Date.now()
+    const timer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(timer)
+        resolve(getToken() ? 'ok' : 'closed')
+      } else if (Date.now() - startedAt > 5 * 60_000) {
+        clearInterval(timer)
+        popup.close()
+        resolve('closed')
+      }
+    }, 400)
+  })
+}
+
+/**
  * After an OAuth redirect the session lives in a cookie only — exchange it
  * for the bearer token the app runs on. True when a token was adopted.
  */

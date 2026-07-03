@@ -54,9 +54,12 @@ import {
   fetchMe,
   getToken,
   signIn,
+  signInSocial,
+  signInSocialPopup,
   signOut,
   signUp,
   updateMe,
+  type SessionUser,
 } from '../services/auth'
 import { buildSystemPrompt } from '../services/prompt'
 import { TOKEN_KEY } from '../services/token'
@@ -558,6 +561,39 @@ export function StoreProvider({
       })
     }
   }, [demo, set])
+
+  /** adopt a signed-in profile into local state — resets the device when a
+   *  DIFFERENT account was here before (never mix two users' local data) */
+  const adoptAccount = useCallback(
+    (me: SessionUser) => {
+      const persisted = loadPersisted()
+      if (persisted.accountId && persisted.accountId !== me.id) {
+        try {
+          localStorage.removeItem(PERSIST_KEY)
+        } catch {
+          /* ignore */
+        }
+        __resetSync()
+        set(() => ({
+          ...initialState(false),
+          accountId: me.id,
+          userName: me.name,
+          userEmail: me.email,
+          ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+          hasPassword: me.hasPassword ?? false,
+        }))
+      } else {
+        set({
+          accountId: me.id,
+          userName: me.name,
+          userEmail: me.email,
+          ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+          hasPassword: me.hasPassword ?? false,
+        })
+      }
+    },
+    [set],
+  )
 
   // T8: real mode also pulls the server-side month usage roll-up — the
   // Settings meter then reflects EVERY device, not just this one's threads
@@ -1367,8 +1403,9 @@ export function StoreProvider({
         selectVersion,
         copyMessage,
         setFeedback,
+        adoptAccount,
       }),
-    [s, set, go, goTo, demo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback],
+    [s, set, go, goTo, demo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount],
   )
 
   const store: Store = useMemo(
@@ -1410,6 +1447,7 @@ function deriveValues(
     selectVersion: (id: string, delta: number) => void
     copyMessage: (id: string) => void
     setFeedback: (id: string, val: 'up' | 'down') => void
+    adoptAccount: (me: SessionUser) => void
   },
 ) {
   const {
@@ -1431,6 +1469,7 @@ function deriveValues(
     selectVersion,
     copyMessage,
     setFeedback,
+    adoptAccount,
   } = extra
   const activeConv = nav.activeConv
   const activeConvObj = s.conversations.find((c) => c.id === activeConv)
@@ -2232,39 +2271,29 @@ function deriveValues(
           : await signIn(email, password)
       if (err) return err
       const me = await fetchMe()
-      if (me) {
-        const persisted = loadPersisted()
-        if (persisted.accountId && persisted.accountId !== me.id) {
-          // a DIFFERENT account used this device — never mix two users' local
-          // data: reset to clean defaults, then let the op-log hydrate
-          try {
-            localStorage.removeItem(PERSIST_KEY)
-          } catch {
-            /* ignore */
-          }
-          __resetSync()
-          set(() => ({
-            ...initialState(false),
-            accountId: me.id,
-            userName: me.name,
-            userEmail: me.email,
-            ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-            hasPassword: me.hasPassword ?? false,
-          }))
-        } else {
-          set({
-            accountId: me.id,
-            userName: me.name,
-            userEmail: me.email,
-            ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-            hasPassword: me.hasPassword ?? false,
-          })
-        }
-      }
+      if (me) adoptAccount(me)
       // start syncing this user's op-log immediately — no reload needed
       triggerSyncHydrate?.()
       triggerCredHydrate?.()
       navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
+      return null
+    },
+    // UX: OAuth in a POPUP — this window keeps its state; the popup lands
+    // the bearer in shared localStorage and we adopt it right here. A popup
+    // blocker degrades to the classic full redirect; an abandoned popup is
+    // silence, not an error.
+    socialLogin: async (provider: 'google' | 'github'): Promise<string | null> => {
+      if (!HAS_API) return i18n.t('errors.apiNetwork')
+      const out = await signInSocialPopup(provider)
+      if (out === 'blocked') return await signInSocial(provider)
+      if (out === 'closed') return null
+      if (out !== 'ok') return out
+      const me = await fetchMe()
+      if (me) adoptAccount(me)
+      triggerSyncHydrate?.()
+      triggerCredHydrate?.()
+      // a first-ever social account has no assistant name yet — onboarding
+      navigate(me && me.assistantName === null ? { to: '/onboarding' } : { to: '/' })
       return null
     },
     authTitle: nav.authView === 'signup' ? t('auth.signupTitle') : t('auth.loginTitle'),

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
-import { signInSocial } from '../services/auth'
 
 const INPUT = 'field w-full rounded-md border border-border bg-panel px-3 py-3 text-body'
 
@@ -157,10 +156,13 @@ function SocialButtons() {
   const { t } = useTranslation()
   const [busy, setBusy] = useState<'google' | 'github' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { v } = useStore()
   const start = (provider: 'google' | 'github') => {
     setBusy(provider)
     setError(null)
-    void signInSocial(provider)
+    // popup UX — this window keeps its state; the store adopts the session
+    void v
+      .socialLogin(provider)
       .then((err) => setError(err))
       .finally(() => setBusy(null))
   }

@@ -232,6 +232,7 @@
     "who": "THÀNH"
   },
   "auth": {
+    "oauthFinishing": "Đang hoàn tất đăng nhập…",
     "loginTitle": "Đăng nhập",
     "signupTitle": "Tạo tài khoản",
     "loginSub": "Tiếp tục tới không gian làm việc của bạn.",
