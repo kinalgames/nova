@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import { act, waitFor } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
 import { streamChat, type StreamHandlers } from '../services/llm'
-import { rejectUpload, uploadFile } from '../services/upload'
+import { deleteFile, rejectUpload, uploadFile } from '../services/upload'
+import { fromLinear } from './thread'
 import type { ChatProxyRequest } from '@nova/shared'
 
 const calls: ChatProxyRequest[] = []
@@ -20,6 +21,7 @@ vi.mock('../services/llm', () => ({
 
 vi.mock('../services/upload', () => ({
   MAX_FILES: 4,
+  deleteFile: vi.fn(async () => true),
   rejectUpload: vi.fn(() => null),
   uploadFile: vi.fn(async (_f: File, onProgress: (pct: number) => void) => {
     onProgress(50)
@@ -33,6 +35,7 @@ beforeEach(() => {
   vi.mocked(streamChat).mockClear()
   vi.mocked(rejectUpload).mockClear()
   vi.mocked(uploadFile).mockClear()
+  vi.mocked(deleteFile).mockClear()
 })
 afterEach(() => vi.useRealTimers())
 
@@ -157,6 +160,86 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(
       result.current.v.sent.find((m) => m.role === 'user')!.blocks.some((b) => b.type === 'files'),
     ).toBe(false)
+  })
+
+  it('B1 — deleting a conversation deletes its server attachments and its tray', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.set((x) => ({
+        conversations: [{ id: 'cx', title: 'X', projectId: 'chung' }, ...x.conversations],
+        threads: {
+          ...x.threads,
+          cx: fromLinear([
+            {
+              id: 'm1',
+              role: 'user',
+              who: 'B',
+              blocks: [
+                { type: 'text', text: 'hi' },
+                { type: 'files', items: [{ kind: 'image', name: 'a.png', fileId: 'srv-7' }] },
+              ],
+            },
+          ]),
+        },
+        staged: { ...x.staged, cx: [{ id: 's1', kind: 'pdf', name: 'p.pdf', size: '1 KB' }] },
+      })),
+    )
+    vi.useFakeTimers()
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'cx')!.del())
+    await act(async () => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(deleteFile).toHaveBeenCalledWith('srv-7')
+    expect(result.current.s.threads.cx).toBeUndefined()
+    expect(result.current.s.staged.cx).toBeUndefined()
+    expect(result.current.s.conversations.some((c) => c.id === 'cx')).toBe(false)
+  })
+
+  it('demo world: deleting a conversation clears its error card, revokes object\n     URLs and never calls the server', async () => {
+    const { result } = await renderStore()
+    URL.revokeObjectURL = vi.fn()
+    await act(async () =>
+      result.current.set((x) => ({
+        threads: {
+          ...x.threads,
+          c2: fromLinear([
+            {
+              id: 'm1',
+              role: 'user',
+              who: 'B',
+              blocks: [
+                {
+                  type: 'files',
+                  items: [{ kind: 'image', name: 'a.png', fileId: 'srv-x', url: 'blob:z' }],
+                },
+              ],
+            },
+          ]),
+        },
+        errorConv: 'c2',
+        errorDetail: 'x',
+        errorAction: 'retry' as const,
+      })),
+    )
+    vi.useFakeTimers()
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'c2')!.del())
+    await act(async () => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(deleteFile).not.toHaveBeenCalled()
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:z')
+    expect(result.current.s.errorConv).toBeNull()
+    expect(result.current.s.errorDetail).toBeNull()
+  })
+
+  it('demo world: deleteAccount is a hard no-op', async () => {
+    const { result } = await renderStore()
+    let ok = true
+    await act(async () => {
+      ok = await result.current.v.deleteAccount()
+    })
+    expect(ok).toBe(false)
   })
 
   it('B1 — a failed upload flips into an error pill and the 4-file cap toasts', async () => {

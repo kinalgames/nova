@@ -77,9 +77,9 @@ function StagedItem({ f }: { f: StagedFile }) {
         >
           {b.label}
         </span>
-        <div>
-          <div className="text-small">{f.name}</div>
-          <div className={`text-eyebrow ${f.error ? 'text-danger' : 'text-muted'}`}>
+        <div className="min-w-0">
+          <div className="max-w-[180px] truncate text-small">{f.name}</div>
+          <div className={`max-w-[180px] truncate text-eyebrow ${f.error ? 'text-danger' : 'text-muted'}`}>
             {f.error ?? (f.progress !== undefined ? `${f.progress}%` : f.size)}
           </div>
         </div>

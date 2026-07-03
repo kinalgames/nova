@@ -247,6 +247,9 @@ export interface NovaState {
   userEmail?: string
   /** id of the signed-in account — guards against mixing two users' local data */
   accountId?: string
+  /** D4 — session-derived: the account has a password credential (email
+   *  sign-up). Social-only accounts hide the change-password form. */
+  hasPassword?: boolean
   /** what the assistant is called — drives the NOVA label */
   assistantName: string
   /** the user's own system instructions — prepended to every live chat */

@@ -33,6 +33,22 @@ export interface UploadedFile {
   mime: string
 }
 
+/** delete a server attachment (bytes + metadata) — fail-soft cleanup used
+ *  when its conversation is deleted */
+export async function deleteFile(id: string): Promise<boolean> {
+  try {
+    const token = getToken()
+    const res = await fetch(`${API_BASE}/v1/files/${id}`, {
+      method: 'DELETE',
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 /** resolves to the stored metadata, or null on any failure (fail-soft) */
 export function uploadFile(
   file: File,

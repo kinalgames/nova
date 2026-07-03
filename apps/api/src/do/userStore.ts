@@ -93,6 +93,13 @@ export class UserStore extends DurableObject {
       const since = Number(url.searchParams.get('since') ?? '0') || 0
       return Response.json(this.pull(since))
     }
+    if (req.method === 'POST' && url.pathname === '/wipe') {
+      // D4 account deletion — drop every record AND the schema; a later
+      // write from a fresh account with the same id would re-ensure()
+      await this.ctx.storage.deleteAll()
+      this.ensured = false
+      return Response.json({ ok: true })
+    }
     if (req.method === 'POST' && url.pathname === '/ops') {
       const body = (await req.json()) as { ops?: SyncOp[] }
       const ops = (body.ops ?? []).filter(

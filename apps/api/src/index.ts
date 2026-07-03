@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { drizzle } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
-import { user } from './db/schema'
+import { account, user } from './db/schema'
 import type { ChatProxyRequest, ProfileKind } from '@nova/shared'
 import {
   ProviderConfigError,
@@ -65,7 +65,7 @@ app.use(
     origin: (o) => o,
     credentials: true,
     allowHeaders: ['content-type', 'authorization', 'x-file-name'],
-    allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     // cross-origin dev must be able to READ these (same-origin always can):
     // retry-after drives the client back-off, x-request-id the error card
     exposeHeaders: ['x-request-id', 'retry-after'],
@@ -111,7 +111,38 @@ const meShape = (u: { id: string; name: string; email: string }) => ({
 app.get('/v1/me', async (c) => {
   const session = await sessionOf(c)
   if (!session) return problem(401, 'unauthenticated', 'No valid session')
-  return c.json({ user: meShape(session.user) })
+  // D4 — social-only accounts carry no password credential; the client
+  // hides the change-password form for them
+  let hasPassword = false
+  try {
+    const rows = await drizzle(c.env.DB)
+      .select({ p: account.providerId })
+      .from(account)
+      .where(eq(account.userId, session.user.id))
+    hasPassword = rows.some((r) => r.p === 'credential')
+  } catch {
+    // no D1 in the unit harness — the probe stays usable either way
+  }
+  return c.json({ user: { ...meShape(session.user), hasPassword } })
+})
+
+// D4 — full account deletion: R2 attachment bytes, the sync op-log in the
+// user's Durable Object, then the D1 user row (FK cascade removes sessions,
+// oauth accounts, sealed credentials and attachment metadata). Irreversible.
+app.delete('/v1/me', async (c) => {
+  const session = await sessionOf(c)
+  if (!session) return problem(401, 'unauthenticated', 'No valid session')
+  const uid = session.user.id
+  let cursor: string | undefined
+  do {
+    const listed = await c.env.ATTACH.list({ prefix: `att/${uid}/`, cursor })
+    if (listed.objects.length) await c.env.ATTACH.delete(listed.objects.map((o) => o.key))
+    cursor = listed.truncated ? listed.cursor : undefined
+  } while (cursor)
+  await userStub(c.env, uid).fetch('https://do/wipe', { method: 'POST' })
+  await drizzle(c.env.DB).delete(user).where(eq(user.id, uid))
+  console.log(JSON.stringify({ level: 'info', msg: 'account_deleted', id: c.get('requestId'), uid }))
+  return c.json({ ok: true })
 })
 
 // Track D: persists the assistant's name onto the account. The column doubles

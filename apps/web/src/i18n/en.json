@@ -56,6 +56,24 @@
     "inputAria": "Message Nova",
     "inputPlaceholder": "Message Nova…"
   },
+  "account": {
+    "pwRow": "Password",
+    "pwChange": "Change password…",
+    "pwCurrent": "Current password",
+    "pwNew": "New password",
+    "pwRepeat": "Repeat new password",
+    "pwSave": "Save password",
+    "pwMismatch": "The passwords do not match",
+    "pwTooShort": "At least 8 characters",
+    "pwChanged": "Password changed",
+    "socialOnly": "Signed in with Google/GitHub — this account has no password",
+    "deleteTitle": "Delete account",
+    "deleteHelp": "Permanently removes the account, synced conversations, attachments and stored keys. This cannot be undone.",
+    "deleteArm": "Delete account…",
+    "deleteConfirmLabel": "Type your email to confirm",
+    "deleteConfirm": "Delete forever",
+    "deleteFailed": "Account deletion failed — try again later"
+  },
   "upload": {
     "unsupported": "Unsupported file type",
     "tooLargeImage": "Images are capped at 5MB",

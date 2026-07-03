@@ -253,11 +253,13 @@ function General() {
       <div className="flex items-center gap-3 px-0.5 py-3">
         <div className="size-[38px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
         <div className="min-w-0 flex-1">
-          <div className="text-body">{v.userName}</div>
-          <div className="text-small text-muted">{v.userEmail} · {t('user.plan')}</div>
+          <div className="truncate text-body">{v.userName}</div>
+          <div className="truncate text-small text-muted">{v.userEmail} · {t('user.plan')}</div>
         </div>
         <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint">{t('nav.logout')}</button>
       </div>
+      <PasswordSection />
+      <DangerZone />
     </>
   )
 }
@@ -448,6 +450,151 @@ function Providers() {
         <button type="button" className="flex cursor-pointer items-center gap-1.5 border-none bg-transparent py-1 text-small text-faint"><Icon n="plus" size={13} /> {t('settings.addCustom')}</button>
       )}
     </>
+  )
+}
+
+/** D4 — inline change-password. Email accounts get the form; social-only
+ *  accounts see a note instead. Hidden entirely outside a real session. */
+function PasswordSection() {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [cur, setCur] = useState('')
+  const [nw, setNw] = useState('')
+  const [re, setRe] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  if (!v.accountDeletable) return null
+  const FIELD = 'field w-full rounded-sm border border-border bg-panel px-3 py-2 text-body'
+  const submit = async () => {
+    if (nw.length < 8) {
+      setErr(t('account.pwTooShort'))
+      return
+    }
+    if (nw !== re) {
+      setErr(t('account.pwMismatch'))
+      return
+    }
+    setBusy(true)
+    const e = await v.changePassword(cur, nw)
+    setBusy(false)
+    if (e) {
+      setErr(e)
+      return
+    }
+    setOpen(false)
+    setCur('')
+    setNw('')
+    setRe('')
+    setErr(null)
+  }
+  return (
+    <div className="border-t border-border px-0.5 py-3">
+      {/* wraps on narrow screens — the note/button drops under the label */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <span className="text-body">{t('account.pwRow')}</span>
+        {v.hasPassword ? (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="shrink-0 cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-text-2"
+          >
+            {t('account.pwChange')}
+          </button>
+        ) : (
+          <span className="min-w-0 text-small leading-normal text-muted">
+            {t('account.socialOnly')}
+          </span>
+        )}
+      </div>
+      {open && v.hasPassword && (
+        <div className="mt-3 flex flex-col gap-2">
+          <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} aria-label={t('account.pwCurrent')} placeholder={t('account.pwCurrent')} className={FIELD} />
+          <input type="password" value={nw} onChange={(e) => setNw(e.target.value)} aria-label={t('account.pwNew')} placeholder={t('account.pwNew')} className={FIELD} />
+          <input type="password" value={re} onChange={(e) => setRe(e.target.value)} aria-label={t('account.pwRepeat')} placeholder={t('account.pwRepeat')} className={FIELD} />
+          {err && <div className="text-small text-danger">{err}</div>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void submit()}
+              className="cursor-pointer rounded-sm border-none bg-ink px-3 py-1.5 text-small text-bg disabled:cursor-default disabled:opacity-60"
+            >
+              {t('account.pwSave')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setErr(null)
+              }}
+              className="cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-muted"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** D4 — irreversible account deletion behind a typed-email confirmation */
+function DangerZone() {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const [armed, setArmed] = useState(false)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  if (!v.accountDeletable) return null
+  const match = email.trim().toLowerCase() === v.userEmail.toLowerCase()
+  return (
+    <div className="mt-2 rounded-md border border-danger-line px-4 py-3">
+      <div className="text-body text-danger-text">{t('account.deleteTitle')}</div>
+      <div className="mt-0.5 text-small leading-normal text-muted">{t('account.deleteHelp')}</div>
+      {armed ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <label className="font-mono text-micro tracking-[.12em] text-faint" htmlFor="del-email">
+            {t('account.deleteConfirmLabel')}
+          </label>
+          <input
+            id="del-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="field w-full rounded-sm border border-border bg-panel px-3 py-2 text-body"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!match || busy}
+              onClick={async () => {
+                setBusy(true)
+                await v.deleteAccount()
+                setBusy(false)
+              }}
+              className="cursor-pointer rounded-sm border-none bg-danger-strong px-3 py-1.5 text-small text-on-ink disabled:cursor-default disabled:opacity-50"
+            >
+              {t('account.deleteConfirm')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setArmed(false)}
+              className="cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-muted"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setArmed(true)}
+          className="mt-3 cursor-pointer rounded-sm border border-danger-line bg-transparent px-3 py-1.5 text-small text-danger"
+        >
+          {t('account.deleteArm')}
+        </button>
+      )}
+    </div>
   )
 }
 

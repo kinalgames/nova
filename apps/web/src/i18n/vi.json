@@ -56,6 +56,24 @@
     "inputAria": "Nhắn cho Nova",
     "inputPlaceholder": "Nhắn cho Nova…"
   },
+  "account": {
+    "pwRow": "Mật khẩu",
+    "pwChange": "Đổi mật khẩu…",
+    "pwCurrent": "Mật khẩu hiện tại",
+    "pwNew": "Mật khẩu mới",
+    "pwRepeat": "Nhập lại mật khẩu mới",
+    "pwSave": "Lưu mật khẩu",
+    "pwMismatch": "Mật khẩu nhập lại không khớp",
+    "pwTooShort": "Mật khẩu tối thiểu 8 ký tự",
+    "pwChanged": "Đã đổi mật khẩu",
+    "socialOnly": "Đăng nhập qua Google/GitHub — tài khoản không dùng mật khẩu",
+    "deleteTitle": "Xoá tài khoản",
+    "deleteHelp": "Xoá vĩnh viễn tài khoản, hội thoại đã đồng bộ, tệp đính kèm và khoá đã lưu trên máy chủ. Không thể hoàn tác.",
+    "deleteArm": "Xoá tài khoản…",
+    "deleteConfirmLabel": "Nhập email của bạn để xác nhận",
+    "deleteConfirm": "Xoá vĩnh viễn",
+    "deleteFailed": "Xoá tài khoản thất bại — thử lại sau"
+  },
   "upload": {
     "unsupported": "Định dạng không hỗ trợ",
     "tooLargeImage": "Ảnh tối đa 5MB",

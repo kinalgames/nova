@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
-import { fetchMe, signIn, signOut, signUp, updateMe } from '../services/auth'
+import { deleteAccount, fetchMe, signIn, signOut, signUp, updateMe } from '../services/auth'
 
 vi.mock('../services/auth', () => ({
   // like the real service, a successful sign-in/up stores the bearer token
@@ -23,6 +23,8 @@ vi.mock('../services/auth', () => ({
   })),
   signOut: vi.fn(async () => {}),
   updateMe: vi.fn(async () => true),
+  changePassword: vi.fn(async () => null),
+  deleteAccount: vi.fn(async () => true),
   getToken: () => localStorage.getItem('nova.auth.token'),
 }))
 
@@ -74,6 +76,21 @@ describe('store — real auth wiring (BE1)', () => {
     })
     expect(updateMe).toHaveBeenCalledTimes(1)
     expect(updateMe).toHaveBeenCalledWith({ assistantName: 'Bee' })
+  })
+
+  it('D4 — deleting the account wipes local state and lands on /login', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    localStorage.setItem('nova.flow.settings.v5', '{"userName":"X"}')
+    const { result, router } = await renderStore({ path: '/onboarding' })
+    let ok = false
+    await act(async () => {
+      ok = await result.current.v.deleteAccount()
+    })
+    expect(ok).toBe(true)
+    expect(deleteAccount).toHaveBeenCalled()
+    expect(localStorage.getItem('nova.auth.token')).toBeNull()
+    expect(localStorage.getItem('nova.flow.settings.v5')).toBeNull()
+    expect(router.state.location.pathname).toBe('/login')
   })
 
   it('signup derives the name from the email and lands on onboarding', async () => {

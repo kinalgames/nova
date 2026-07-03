@@ -115,6 +115,20 @@ files.get('/:id', async (c) => {
   })
 })
 
+// deleting a conversation client-side also deletes its attachment refs —
+// bytes first, then the metadata row (the row is the authz anchor)
+files.delete('/:id', async (c) => {
+  const uid = await userIdOf(c.env, c.req.raw)
+  if (!uid) return problem(401, 'unauthenticated', 'No valid session')
+  const row = await loadAttachmentRow(c.env, uid, c.req.param('id'))
+  if (!row) return problem(404, 'not_found', 'No such attachment')
+  await c.env.ATTACH.delete(row.r2Key)
+  await drizzle(c.env.DB)
+    .delete(attachment)
+    .where(and(eq(attachment.id, row.id), eq(attachment.userId, uid)))
+  return c.json({ ok: true })
+})
+
 /** owner-checked metadata lookup — shared with the chat's vision resolver */
 export async function loadAttachmentRow(
   env: FilesEnv,

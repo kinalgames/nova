@@ -13,6 +13,8 @@ export interface SessionUser {
   name: string
   email: string
   assistantName: string | null
+  /** D4 — false for social-only accounts (no password credential) */
+  hasPassword?: boolean
 }
 
 async function call(path: string, body?: unknown, method?: string): Promise<Response> {
@@ -64,6 +66,34 @@ export async function fetchMe(): Promise<SessionUser | null> {
     return data.user
   } catch {
     return null
+  }
+}
+
+/** D4 — change the password (email accounts only); other sessions are
+ *  revoked. Returns null on success, an error message otherwise. */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<string | null> {
+  try {
+    const res = await call('/api/auth/change-password', {
+      currentPassword,
+      newPassword,
+      revokeOtherSessions: true,
+    })
+    return res.ok ? null : await errorOf(res)
+  } catch {
+    return i18n.t('errors.network')
+  }
+}
+
+/** D4 — irreversibly delete the account (R2 + DO + D1). True on success. */
+export async function deleteAccount(): Promise<boolean> {
+  try {
+    const res = await call('/v1/me', undefined, 'DELETE')
+    return res.ok
+  } catch {
+    return false
   }
 }
 

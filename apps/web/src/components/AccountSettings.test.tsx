@@ -63,6 +63,102 @@ describe('Settings — profile & data controls (Track D)', () => {
   })
 })
 
+describe('D4 — account security & deletion', () => {
+  it('password form validates locally; danger zone unlocks on the typed email', async () => {
+    const user = makeUser()
+    localStorage.setItem('nova.auth.token', 'tok')
+    // '/new' keeps its search params (the index route redirects and drops them)
+    await renderApp(undefined, {
+      path: '/new?settings=general',
+      world: 'real',
+      storeInit: { hasPassword: true, userEmail: 'test@kinal.co' },
+    })
+    const dialog = await screen.findByRole('dialog')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Đổi mật khẩu…' }))
+    await user.type(within(dialog).getByLabelText('Mật khẩu mới'), 'matkhau123')
+    await user.type(within(dialog).getByLabelText('Nhập lại mật khẩu mới'), 'khac-nhau')
+    await user.click(within(dialog).getByRole('button', { name: 'Lưu mật khẩu' }))
+    expect(within(dialog).getByText('Mật khẩu nhập lại không khớp')).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Xoá tài khoản…' }))
+    const confirm = within(dialog).getByRole('button', { name: 'Xoá vĩnh viễn' })
+    expect(confirm).toBeDisabled()
+    await user.type(
+      within(dialog).getByLabelText('Nhập email của bạn để xác nhận'),
+      'test@kinal.co',
+    )
+    expect(confirm).toBeEnabled()
+
+    // both flows can be walked back
+    await user.click(within(dialog).getAllByRole('button', { name: 'Hủy' })[1])
+    expect(within(dialog).getByRole('button', { name: 'Xoá tài khoản…' })).toBeInTheDocument()
+    await user.click(within(dialog).getAllByRole('button', { name: 'Hủy' })[0])
+    expect(within(dialog).queryByLabelText('Mật khẩu mới')).not.toBeInTheDocument()
+  })
+})
+
+describe('D4 — password submit outcomes & deletion failure', () => {
+  const openSettings = () =>
+    renderApp(undefined, {
+      path: '/new?settings=general',
+      world: 'real',
+      storeInit: { hasPassword: true, userEmail: 'test@kinal.co' },
+    })
+
+  it('too-short passwords never leave the client; success closes and toasts', async () => {
+    const user = makeUser()
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { store } = await openSettings()
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Đổi mật khẩu…' }))
+    await user.type(within(dialog).getByLabelText('Mật khẩu mới'), 'ngan')
+    await user.click(within(dialog).getByRole('button', { name: 'Lưu mật khẩu' }))
+    expect(within(dialog).getByText('Mật khẩu tối thiểu 8 ký tự')).toBeInTheDocument()
+
+    // a working server closes the form and toasts
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"status":true}', { status: 200 })))
+    await user.type(within(dialog).getByLabelText('Mật khẩu hiện tại'), 'mk-cu-123')
+    await user.clear(within(dialog).getByLabelText('Mật khẩu mới'))
+    await user.type(within(dialog).getByLabelText('Mật khẩu mới'), 'mk-moi-12345')
+    await user.type(within(dialog).getByLabelText('Nhập lại mật khẩu mới'), 'mk-moi-12345')
+    await user.click(within(dialog).getByRole('button', { name: 'Lưu mật khẩu' }))
+    expect(within(dialog).queryByLabelText('Mật khẩu mới')).not.toBeInTheDocument()
+    expect(store().s.toast).toBe('Đã đổi mật khẩu')
+    vi.unstubAllGlobals()
+  })
+
+  it('a failing server keeps the account and toasts the failure', async () => {
+    const user = makeUser()
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { store } = await openSettings()
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Xoá tài khoản…' }))
+    await user.type(
+      within(dialog).getByLabelText('Nhập email của bạn để xác nhận'),
+      'test@kinal.co',
+    )
+    // the global fetch stub answers 503 — deletion must fail soft
+    await user.click(within(dialog).getByRole('button', { name: 'Xoá vĩnh viễn' }))
+    expect(store().s.toast).toBe('Xoá tài khoản thất bại — thử lại sau')
+    expect(localStorage.getItem('nova.auth.token')).toBe('tok')
+  })
+
+  it('social-only accounts see a note instead of the password form', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    await renderApp(undefined, {
+      path: '/new?settings=general',
+      world: 'real',
+      storeInit: { hasPassword: false, userEmail: 'test@kinal.co' },
+    })
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByText('Đăng nhập qua Google/GitHub — tài khoản không dùng mật khẩu'),
+    ).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Đổi mật khẩu…' })).not.toBeInTheDocument()
+  })
+})
+
 describe('Cheatsheet — shortcuts dialog', () => {
   it('opens from the shortcuts bar, lists real shortcuts, closes on Escape', async () => {
     const user = makeUser()

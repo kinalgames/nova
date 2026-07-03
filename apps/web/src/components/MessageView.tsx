@@ -139,9 +139,9 @@ function ImageTile({ f }: { f: MsgAttachment }) {
           : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)',
       }}
     >
-      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[linear-gradient(transparent,rgba(0,0,0,.45))] px-2 py-1.5">
-        <span className="text-eyebrow text-white">{f.name}</span>
-        <Icon n="expand" size={13} className="text-white" />
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-[linear-gradient(transparent,rgba(0,0,0,.45))] px-2 py-1.5">
+        <span className="min-w-0 truncate text-eyebrow text-white">{f.name}</span>
+        <Icon n="expand" size={13} className="shrink-0 text-white" />
       </div>
     </button>
   )
@@ -157,8 +157,8 @@ function FilePill({ f }: { f: MsgAttachment }) {
         {b.label}
       </span>
       <div className="min-w-0">
-        <div className="text-small">{f.name}</div>
-        {f.meta && <div className="text-eyebrow text-muted">{f.meta}</div>}
+        <div className="max-w-[200px] truncate text-small">{f.name}</div>
+        {f.meta && <div className="truncate text-eyebrow text-muted">{f.meta}</div>}
       </div>
     </button>
   )

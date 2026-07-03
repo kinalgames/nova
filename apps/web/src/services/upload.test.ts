@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { rejectUpload, uploadFile, IMAGE_MAX, DOC_MAX } from './upload'
+import { deleteFile, rejectUpload, uploadFile, IMAGE_MAX, DOC_MAX } from './upload'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -23,6 +23,27 @@ describe('B1 — client-side upload validation', () => {
     expect(rejectUpload(fakeFile('big.pdf', 'application/pdf', DOC_MAX + 1))).toBe(
       'upload.tooLargeDoc',
     )
+  })
+})
+
+describe('B1 — deleteFile cleanup', () => {
+  it('DELETEs by id with the bearer and fails soft', async () => {
+    localStorage.setItem('nova.auth.token', 'tok-9')
+    const fetchMock = vi.fn(async () => new Response('{"ok":true}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await deleteFile('f-1')).toBe(true)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toContain('/v1/files/f-1')
+    expect(init.method).toBe('DELETE')
+    expect((init.headers as Record<string, string>).authorization).toBe('Bearer tok-9')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline')
+      }),
+    )
+    expect(await deleteFile('f-1')).toBe(false)
+    localStorage.removeItem('nova.auth.token')
   })
 })
 

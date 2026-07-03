@@ -1,5 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { adoptSocialSession, fetchMe, getToken, signIn, signInSocial, signOut, signUp, updateMe } from './auth'
+import {
+  adoptSocialSession,
+  changePassword,
+  deleteAccount,
+  fetchMe,
+  getToken,
+  signIn,
+  signInSocial,
+  signOut,
+  signUp,
+  updateMe,
+} from './auth'
 
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.unstubAllGlobals())
@@ -62,6 +73,37 @@ describe('auth service', () => {
     expect(url).toContain('/v1/me')
     expect(init.method).toBe('PATCH')
     expect(JSON.parse(init.body as string)).toEqual({ assistantName: 'Bee' })
+  })
+
+  it('D4 — changePassword posts the trio and revokes other sessions', async () => {
+    const fetchMock = vi.fn(async () => json({ status: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await changePassword('old-pass', 'new-pass-123')).toBeNull()
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toContain('/api/auth/change-password')
+    expect(JSON.parse(init.body as string)).toEqual({
+      currentPassword: 'old-pass',
+      newPassword: 'new-pass-123',
+      revokeOtherSessions: true,
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => json({ message: 'Invalid password' }, 400)))
+    expect(await changePassword('wrong', 'new-pass-123')).toBe('Invalid password')
+  })
+
+  it('D4 — deleteAccount DELETEs /v1/me and fails soft', async () => {
+    const fetchMock = vi.fn(async () => json({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await deleteAccount()).toBe(true)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toContain('/v1/me')
+    expect(init.method).toBe('DELETE')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline')
+      }),
+    )
+    expect(await deleteAccount()).toBe(false)
   })
 
   it('updateMe is false on a server error or network failure', async () => {

@@ -48,10 +48,20 @@ import {
 import { loadPersisted, PERSIST_KEY, persistKeyFor } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { HAS_API, streamChat } from '../services/llm'
-import { fetchMe, getToken, signIn, signOut, signUp, updateMe } from '../services/auth'
+import {
+  changePassword as changePasswordApi,
+  deleteAccount as deleteAccountApi,
+  fetchMe,
+  getToken,
+  signIn,
+  signOut,
+  signUp,
+  updateMe,
+} from '../services/auth'
 import { buildSystemPrompt } from '../services/prompt'
+import { TOKEN_KEY } from '../services/token'
 import { generateTitle } from '../services/title'
-import { MAX_FILES, rejectUpload, uploadFile } from '../services/upload'
+import { MAX_FILES, deleteFile, rejectUpload, uploadFile } from '../services/upload'
 import {
   addCredential,
   deleteCredential,
@@ -536,6 +546,7 @@ export function StoreProvider({
         userName: me.name,
         userEmail: me.email,
         ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+        hasPassword: me.hasPassword ?? false,
       }))
     } else {
       set({
@@ -543,6 +554,7 @@ export function StoreProvider({
         userName: me.name,
         userEmail: me.email,
         ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+        hasPassword: me.hasPassword ?? false,
       })
     }
   }, [demo, set])
@@ -1256,15 +1268,39 @@ export function StoreProvider({
       delTimers.current[id] = setTimeout(() => {
         delete delTimers.current[id]
         const next = sRef.current.conversations.filter((k) => k.id !== id)[0]?.id ?? ''
+        // deleting a conversation deletes EVERY ref it holds: server-side
+        // attachments (R2 bytes + D1 rows, fail-soft), session object URLs,
+        // and its staged tray — nothing may leak
+        const th = sRef.current.threads[id]
+        if (th) {
+          for (const m of Object.values(th.byId)) {
+            for (const b of m.blocks) {
+              if (b.type !== 'files') continue
+              for (const f of b.items) {
+                if (f.fileId && HAS_API && !demo) void deleteFile(f.fileId)
+                if (f.url?.startsWith('blob:')) URL.revokeObjectURL(f.url)
+              }
+            }
+          }
+        }
+        for (const f of sRef.current.staged[id] ?? [])
+          if (f.url?.startsWith('blob:')) URL.revokeObjectURL(f.url)
         set((x) => {
           const conversations = x.conversations.filter((k) => k.id !== id)
           const threads = { ...x.threads }
           delete threads[id]
+          const staged = { ...x.staged }
+          delete staged[id]
           return {
             conversations,
             threads,
+            staged,
             activeConv: x.activeConv === id ? next : x.activeConv,
             deleting: x.deleting.filter((d) => d !== id),
+            // an error card pinned to the deleted conversation dies with it
+            ...(x.errorConv === id
+              ? { errorDetail: null, errorRequestId: null, errorAction: null, errorConv: null }
+              : {}),
           }
         })
         // if the deleted conversation is the one in the URL, leave it
@@ -2150,6 +2186,32 @@ function deriveValues(
     showAuth: nav.authView !== null,
     loggedIn: nav.authView === null,
     isLogin: nav.authView !== 'signup',
+    // D4 — account security & deletion
+    hasPassword: s.hasPassword ?? false,
+    accountDeletable: HAS_API && !demo && !!s.userEmail,
+    changePassword: async (current: string, next: string): Promise<string | null> => {
+      const err = await changePasswordApi(current, next)
+      if (!err) showToast(t('account.pwChanged'))
+      return err
+    },
+    deleteAccount: async (): Promise<boolean> => {
+      if (!HAS_API || demo) return false
+      const ok = await deleteAccountApi()
+      if (!ok) {
+        showToast(t('account.deleteFailed'))
+        return false
+      }
+      // the server side is gone — leave nothing local behind either
+      try {
+        localStorage.removeItem(PERSIST_KEY)
+        localStorage.removeItem(TOKEN_KEY)
+      } catch {
+        /* storage unavailable — navigation still resets the app */
+      }
+      __resetSync()
+      navigate({ to: '/login' })
+      return true
+    },
     logout: async () => {
       // revoke BEFORE navigating — /login's bootstrap re-adopts any cookie
       // session that is still alive, which would undo the logout (demo never
@@ -2187,6 +2249,7 @@ function deriveValues(
             userName: me.name,
             userEmail: me.email,
             ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+            hasPassword: me.hasPassword ?? false,
           }))
         } else {
           set({
@@ -2194,6 +2257,7 @@ function deriveValues(
             userName: me.name,
             userEmail: me.email,
             ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+            hasPassword: me.hasPassword ?? false,
           })
         }
       }
