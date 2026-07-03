@@ -42,6 +42,25 @@ const sseResponse = (frames: string[]) => {
 }
 
 describe('llm service — SSE client', () => {
+  it('attaches the bearer token so the chat is session-attributed (B3)', async () => {
+    vi.stubGlobal('localStorage', { getItem: () => 'tok-123' })
+    const fetchMock = vi.fn(async () => sseResponse(['data: {"type":"message_stop"}\n\n']))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = make()
+    await streamChat(req, s.h)
+    const init = (fetchMock.mock.calls[0] as unknown[])[1] as { headers: Record<string, string> }
+    expect(init.headers.authorization).toBe('Bearer tok-123')
+  })
+
+  it('omits the authorization header when no session token exists', async () => {
+    const fetchMock = vi.fn(async () => sseResponse(['data: {"type":"message_stop"}\n\n']))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = make()
+    await streamChat(req, s.h)
+    const init = (fetchMock.mock.calls[0] as unknown[])[1] as { headers: Record<string, string> }
+    expect(init.headers.authorization).toBeUndefined()
+  })
+
   it('parses deltas across chunk boundaries and finishes with usage', async () => {
     vi.stubGlobal(
       'fetch',

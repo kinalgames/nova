@@ -3,6 +3,7 @@
 // a NON-DEMO auth profile exists for the routed provider.
 
 import type { ChatProxyRequest } from '@nova/shared'
+import { getToken } from './token'
 import i18n from '../i18n'
 
 /** API origin PREFIX — dev points at local wrangler; the deployed Worker
@@ -27,11 +28,17 @@ export async function streamChat(
   h: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
+  // B3: the relay requires a session — attach the bearer so every chat is
+  // attributed to the signed-in user (metering + per-user protections)
+  const token = getToken()
   let res: Response
   try {
     res = await fetch(`${API_BASE}/v1/chat`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(req),
       signal,
     })

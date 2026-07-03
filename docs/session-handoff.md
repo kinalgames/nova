@@ -99,9 +99,12 @@ TODO theo thứ tự, và bẫy đã cắn.
 Backend:
 - **B1 R2 upload thật** (LỚN) — đính kèm hiện fake (staged local,
   không upload); R2 creds đã có trong .dev.vars. Kèm BE4 share `/share/:id`.
-- **B3 Rate-limit** (VỪA, ƯU TIÊN trước khi public) — URL đang mở,
-  ai cũng signup + gọi được. Cân nhắc native ratelimit binding (paid,
-  config `unsafe`) vs KV vs đếm trong UserStore DO (chính xác per-user).
+- ~~B3 Rate-limit~~ ĐÃ XONG 2026-07-03: Workers Rate Limiting binding
+  GA (key `ratelimits`, wrangler ≥ 4.36) — RL_AUTH 10/60s · RL_CHAT
+  30/60s · RL_API 120/60s, keyed IP, fail-open có log, namespace_id
+  riêng từng env (1xxx/2xxx/3xxx). KÈM: /v1/chat bắt buộc session
+  (chặn open relay — user duyệt); streamChat gắn bearer
+  (`services/token.ts` tách riêng tránh import cycle).
 - **B5 Thinking-level → API thật** (VỪA) — chip Suy nghĩ chưa truyền
   reasoning/thinking param tới provider (anthropic thinking, gemini
   thinkingConfig, openai reasoning_effort).

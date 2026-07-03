@@ -1,7 +1,37 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { pickProfile } from '@nova/shared'
-import app from './index'
+import app, { type Env } from './index'
+import type { RateLimiter } from './ratelimit'
 
+// a controllable fake session — B3 made /v1/chat session-gated, so the
+// provider-dispatch tests need a signed-in caller without a real D1
+const authState = vi.hoisted(() => ({
+  session: null as null | {
+    user: { id: string; name: string; email: string }
+    session: { token: string }
+  },
+}))
+
+vi.mock('./auth', () => ({
+  createAuth: () => ({
+    handler: async () => new Response(null, { status: 404 }),
+    api: { getSession: async () => authState.session },
+  }),
+}))
+
+const asUser = () => {
+  authState.session = {
+    user: { id: 'u-test', name: 'Tester', email: 'tester@kinal.co' },
+    session: { token: 'sess-tok' },
+  }
+}
+
+/** partial bindings for app.request's third argument */
+const env = (o: Partial<Env>) => o as Env
+
+beforeEach(() => {
+  authState.session = null
+})
 afterEach(() => vi.unstubAllGlobals())
 
 describe('nova-api skeleton', () => {
@@ -19,6 +49,7 @@ describe('nova-api skeleton', () => {
   })
 
   it('POST /v1/chat validates the request shape', async () => {
+    asUser()
     const res = await app.request('/v1/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -30,6 +61,7 @@ describe('nova-api skeleton', () => {
   })
 
   it('POST /v1/chat proxies a stream and transforms it to the Nova contract', async () => {
+    asUser()
     const enc = new TextEncoder()
     const upstream = new ReadableStream<Uint8Array>({
       start(c) {
@@ -66,6 +98,7 @@ describe('nova-api skeleton', () => {
   })
 
   it('POST /v1/chat maps upstream 429 to rate_limited and keeps retry-after', async () => {
+    asUser()
     vi.stubGlobal(
       'fetch',
       vi.fn(
@@ -108,6 +141,7 @@ describe('nova-api skeleton', () => {
 
 describe('T6 — multi-provider dispatch', () => {
   it('routes a gemini api_key chat to generativelanguage and transforms the stream', async () => {
+    asUser()
     const enc = new TextEncoder()
     const upstream = new ReadableStream<Uint8Array>({
       start(c) {
@@ -141,6 +175,7 @@ describe('T6 — multi-provider dispatch', () => {
   })
 
   it('routes an openai chat with the Bearer key to chat completions', async () => {
+    asUser()
     const fetchMock = vi.fn(
       async () => new Response(new ReadableStream({ start: (c) => c.close() }), { status: 200 }),
     )
@@ -162,6 +197,7 @@ describe('T6 — multi-provider dispatch', () => {
   })
 
   it('rejects an account credential for a provider that only takes api keys', async () => {
+    asUser()
     const res = await app.request('/v1/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -177,6 +213,7 @@ describe('T6 — multi-provider dispatch', () => {
   })
 
   it('rejects an unknown providerId', async () => {
+    asUser()
     const res = await app.request('/v1/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -191,6 +228,7 @@ describe('T6 — multi-provider dispatch', () => {
   })
 
   it('maps an unusable ollama endpoint to 400 invalid_credential, not a 502', async () => {
+    asUser()
     const res = await app.request('/v1/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -224,6 +262,7 @@ describe('BE3 — sealed BYOK surface', () => {
   })
 
   it('a chat with BOTH credential sources is rejected', async () => {
+    asUser()
     const res = await app.request('/v1/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -239,6 +278,7 @@ describe('BE3 — sealed BYOK surface', () => {
   })
 
   it('a chat with NEITHER credential source is rejected', async () => {
+    asUser()
     const res = await app.request('/v1/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -281,6 +321,69 @@ describe('BE3 — sealed BYOK surface', () => {
         credentialId: 'does-not-matter',
       }),
     })
+    expect(res.status).toBe(401)
+  })
+})
+
+describe('B3 — rate limiting + chat session gate', () => {
+  const deny: RateLimiter = { limit: async () => ({ success: false }) }
+  const grant: RateLimiter = { limit: async () => ({ success: true }) }
+
+  it('an anonymous chat is 401 even with an inline profile — never an open relay', async () => {
+    const res = await app.request('/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: { kind: 'api_key', credential: 'sk-x' },
+      }),
+    })
+    expect(res.status).toBe(401)
+  })
+
+  it('a rate-limited chat is 429 with retry-after, before any other work', async () => {
+    const res = await app.request(
+      '/v1/chat',
+      { method: 'POST', body: '{}' },
+      env({ RL_CHAT: deny }),
+    )
+    expect(res.status).toBe(429)
+    expect(res.headers.get('retry-after')).toBe('60')
+    expect(((await res.json()) as { code: string }).code).toBe('rate_limited')
+  })
+
+  it('auth POSTs are limited; GETs (OAuth callbacks) ride free', async () => {
+    const post = await app.request(
+      '/api/auth/sign-in/email',
+      { method: 'POST', body: '{}' },
+      env({ RL_AUTH: deny }),
+    )
+    expect(post.status).toBe(429)
+    const get = await app.request('/api/auth/callback/google', {}, env({ RL_AUTH: deny }))
+    expect(get.status).not.toBe(429)
+  })
+
+  it('other /v1 routes ride RL_API', async () => {
+    const res = await app.request('/v1/me', {}, env({ RL_API: deny }))
+    expect(res.status).toBe(429)
+  })
+
+  it('a granted or missing limiter never blocks — fail open', async () => {
+    const ok = await app.request('/v1/me', {}, env({ RL_API: grant }))
+    expect(ok.status).toBe(401) // falls through to the session gate
+    const none = await app.request('/v1/me', {})
+    expect(none.status).toBe(401)
+  })
+
+  it('a limiter crash fails open, never a 500', async () => {
+    const broken: RateLimiter = {
+      limit: async () => {
+        throw new Error('binding exploded')
+      },
+    }
+    const res = await app.request('/v1/me', {}, env({ RL_API: broken }))
     expect(res.status).toBe(401)
   })
 })

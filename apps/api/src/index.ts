@@ -12,13 +12,14 @@ import {
   type ProviderEnv,
 } from './providers'
 import { createAuth } from './auth'
+import { limitAuth, limitV1, type RateLimitEnv } from './ratelimit'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
 import { tapNovaUsage, usage, type UsageEnv } from './usage'
 import type { SyncOp } from '@nova/shared'
 
 export { UserStore } from './do/userStore'
 
-interface Env extends CredentialsEnv, ProviderEnv, UsageEnv {
+export interface Env extends CredentialsEnv, ProviderEnv, UsageEnv, RateLimitEnv {
   USER_STORE: DurableObjectNamespace
 }
 
@@ -48,6 +49,11 @@ app.use(
     allowMethods: ['GET', 'POST', 'OPTIONS'],
   }),
 )
+
+// B3: layer-1 abuse shields — registered AFTER cors so CORS preflights are
+// answered before they can burn rate-limit budget (see ratelimit.ts)
+app.use('/v1/*', limitV1)
+app.use('/api/auth/*', limitAuth)
 
 // Better Auth owns everything under /api/auth/* (per-request instance —
 // isolates are reused, module state would leak across requests)
@@ -186,6 +192,10 @@ app.post('/v1/sync', async (c) => {
 })
 
 app.post('/v1/chat', async (c) => {
+  // B3: chat REQUIRES a session — the relay must never be an anonymous
+  // proxy for arbitrary provider traffic
+  const uid = await userIdOf(c)
+  if (!uid) return problem(401, 'unauthenticated', 'Chat requires a signed-in session')
   let body: unknown
   try {
     body = await c.req.json()
@@ -200,12 +210,8 @@ app.post('/v1/chat', async (c) => {
       'Expected {providerId, model, messages[], credentialId | profile{kind, credential}} with a kind the provider supports',
     )
 
-  // one session probe serves both credential resolution and usage metering
-  const uid = await userIdOf(c)
-
-  // BE3: resolve a stored credential — session-gated, unsealed in memory only
+  // BE3: resolve a stored credential — unsealed in memory only
   if (req.credentialId) {
-    if (!uid) return problem(401, 'unauthenticated', 'A stored credential needs a session')
     const stored = await openCredential(c.env, uid, req.credentialId)
     if (!stored) return problem(404, 'credential_not_found', 'No such stored credential')
     if (stored.providerId !== req.providerId)
@@ -247,11 +253,11 @@ app.post('/v1/chat', async (c) => {
   if (!upstream.body) return problem(502, 'upstream_empty', 'Provider returned no stream')
 
   // T8: meter the reply — one AE datapoint per message_stop, attributed to
-  // the session user (unattributable anonymous chats are not metered)
+  // the session user (every chat carries a session since B3)
   let novaStream = adapter.stream(upstream.body)
   // optional chain: hono's c.env is undefined under app.request without env
   const dataset = (c.env as Env | undefined)?.USAGE
-  if (uid && dataset) {
+  if (dataset) {
     novaStream = tapNovaUsage(novaStream, (u) =>
       dataset.writeDataPoint({
         blobs: [req.providerId, req.model, profile.kind],

@@ -15,7 +15,7 @@
 | Search & RAG | **Vectorize** (CF-native vector index; embeddings via Workers AI free tier or BYOK provider) for semantic search over conversations/project files + **D1 FTS5** for keyword search — replaces the pgvector role; vector↔relational joins happen at the app layer (fine at per-user scale) |
 | Repo | **npm workspaces** monorepo: `apps/web` · `apps/api` · `packages/shared` (pnpm was blocked by a corepack EPERM on the dev machine; npm→pnpm later is a cheap lockfile swap) |
 | Dependency principle | **Cloudflare-only infrastructure + self-written/OSS code** (owner directive, tightened): NO third-party SaaS at all — storage/queues/analytics all Cloudflare (free tiers), libraries only OSS (Hono, Better Auth, Drizzle). The single unavoidable external dependency is the LLM providers themselves — BYOK, user-owned. |
-| API | REST `/v1`, cursor pagination, RFC 7807 errors + `code` + `request_id`, per-user rate limits (KV) |
+| API | REST `/v1`, cursor pagination, RFC 7807 errors + `code` + `request_id`, rate limits qua Workers Rate Limiting binding (B3 ĐÃ SHIP — xem dưới) |
 | Chat streaming | `POST /v1/conversations/:id/messages` → SSE: `message_start · block_delta · block_stop · message_stop · error` — maps 1:1 onto the client Message/Block model |
 | BYOK | provider keys write-only, AES-GCM envelope encryption at rest (master key = Worker secret), decrypt only in-Worker at proxy time, never logged, never returned |
 | Migration | `POST /v1/import` accepts the client persist-slice (**current shape: v5** — `state/persist.ts` is the contract) to lift localStorage users onto the server |
@@ -183,7 +183,15 @@ single reload on `vite:preloadError`) · update-available toast
   Still to come in BE3 proper: rotation server-side.
 - **BE4 — files & share**: R2 presigned uploads for project files +
   attachments; real share links (`/share/:id` read-only page).
-- **BE5 — hardening**: rate limits, observability (structured logs +
+- **B3 — rate limiting (SHIPPED 2026-07-03)**: Workers Rate Limiting
+  binding (GA), per-colo approximate, keyed theo IP (`src/ratelimit.ts`).
+  `RL_AUTH` 10/60s POST `/api/auth/*` · `RL_CHAT` 30/60s POST `/v1/chat` ·
+  `RL_API` 120/60s các `/v1/*` còn lại. Vượt → 429 RFC 7807 +
+  `retry-after: 60`. Fail-open có log khi binding thiếu/lỗi. Kèm theo:
+  **/v1/chat BẮT BUỘC session** (401 khi anonymous — relay không bao giờ
+  là open proxy); client gắn bearer vào streamChat (`services/token.ts`).
+  Quota chính xác per-user (DO counter) để dành khi có billing.
+- **BE5 — hardening (phần còn lại)**: observability (structured logs +
   request_id end-to-end), backup/restore drill, load test, security review
   (BYOK path especially).
 

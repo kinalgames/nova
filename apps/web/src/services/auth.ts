@@ -3,7 +3,10 @@
 // native clients) authenticate the same way. No API_BASE → demo mode.
 
 import { API_BASE } from './llm'
+import { getToken, TOKEN_KEY } from './token'
 import i18n from '../i18n'
+
+export { getToken } from './token'
 
 export interface SessionUser {
   id: string
@@ -11,10 +14,6 @@ export interface SessionUser {
   email: string
   assistantName: string | null
 }
-
-const TOKEN_KEY = 'nova.auth.token'
-
-export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
 
 async function call(path: string, body?: unknown, method?: string): Promise<Response> {
   const token = getToken()
