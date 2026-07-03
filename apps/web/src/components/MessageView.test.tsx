@@ -9,7 +9,7 @@ beforeEach(() => localStorage.clear())
 const msg = (id: string, role: Message['role'], text: string): Message => ({
   id,
   role,
-  who: role === 'user' ? 'MINH' : 'NOVA',
+  who: role === 'user' ? 'THÀNH' : 'NOVA',
   blocks: [{ type: 'text', text }],
 })
 

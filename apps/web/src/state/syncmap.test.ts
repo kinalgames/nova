@@ -5,7 +5,7 @@ import type { Persisted } from './persist'
 
 const slice: Persisted = {
   theme: 'dark',
-  userName: 'Minh',
+  userName: 'Thành',
   projects: [
     { id: 'chung', name: 'Chung', description: '', accent: 'x', isDefault: true, presets: { code: false, design: false, research: false, writing: false, data: false } },
   ],
@@ -24,7 +24,7 @@ describe('syncmap — slice ↔ records', () => {
     ])
     const back = fromRecords(records)
     expect(back.theme).toBe('dark')
-    expect(back.userName).toBe('Minh')
+    expect(back.userName).toBe('Thành')
     expect(back.conversations?.[0].title).toBe('Một')
     expect(back.threads?.c1).toEqual(slice.threads?.c1)
     // settings record never smuggles the heavy collections

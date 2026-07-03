@@ -104,10 +104,13 @@ export async function adoptSocialSession(): Promise<boolean> {
 }
 
 export async function signOut(): Promise<void> {
-  localStorage.removeItem(TOKEN_KEY)
+  // revoke FIRST (bearer + cookie still attached) — clearing the token before
+  // the call would leave the server session alive, and a live cookie session
+  // gets re-adopted by the /login bootstrap, making logout impossible
   try {
     await call('/api/auth/sign-out', {})
   } catch {
     /* local sign-out is enough offline */
   }
+  localStorage.removeItem(TOKEN_KEY)
 }

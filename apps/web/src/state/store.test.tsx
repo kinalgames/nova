@@ -133,7 +133,7 @@ describe('store — composer send', () => {
     act(() => result.current.set({ draft: 'Tóm tắt giúp mình' }))
     act(() => result.current.v.send())
     // user message in flight
-    expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
+    expect(result.current.v.sent.at(-1)?.who).toBe('THÀNH')
     expect(msgText(result.current.v.sent.at(-1))).toBe('Tóm tắt giúp mình')
     expect(result.current.s.typing).toBe(true)
     expect(result.current.s.draft).toBe('')

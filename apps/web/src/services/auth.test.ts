@@ -13,7 +13,7 @@ describe('auth service', () => {
       'fetch',
       vi.fn(async () => json({ token: 't' }, 200, { 'set-auth-token': 'bearer-123' })),
     )
-    expect(await signIn('a@b.vn', 'password1')).toBeNull()
+    expect(await signIn('test@kinal.co', 'password1')).toBeNull()
     expect(getToken()).toBe('bearer-123')
   })
 
@@ -22,13 +22,13 @@ describe('auth service', () => {
       'fetch',
       vi.fn(async () => json({ message: 'User already exists' }, 422)),
     )
-    expect(await signUp('A', 'a@b.vn', 'password1')).toBe('User already exists')
+    expect(await signUp('A', 'test@kinal.co', 'password1')).toBe('User already exists')
   })
 
   it('network failure returns a friendly message instead of throwing', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
-    expect(await signIn('a@b.vn', 'password1')).toBe('Không kết nối được máy chủ')
-    expect(await signUp('A', 'a@b.vn', 'password1')).toBe('Không kết nối được máy chủ')
+    expect(await signIn('test@kinal.co', 'password1')).toBe('Không kết nối được máy chủ')
+    expect(await signUp('A', 'test@kinal.co', 'password1')).toBe('Không kết nối được máy chủ')
     expect(await fetchMe()).toBeNull()
     // sign-out still clears the local token when the server is unreachable
     localStorage.setItem('nova.auth.token', 't')
@@ -38,17 +38,17 @@ describe('auth service', () => {
 
   it('an error body without a message falls back to the status code', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({}, 500)))
-    expect(await signIn('a@b.vn', 'password1')).toBe('Lỗi 500')
+    expect(await signIn('test@kinal.co', 'password1')).toBe('Lỗi 500')
   })
 
   it('fetchMe sends the stored bearer and returns the user', async () => {
     localStorage.setItem('nova.auth.token', 'bearer-xyz')
     const fetchMock = vi.fn(async () =>
-      json({ user: { id: 'u1', name: 'Minh', email: 'a@b.vn', assistantName: null } }),
+      json({ user: { id: 'u1', name: 'Thành', email: 'test@kinal.co', assistantName: null } }),
     )
     vi.stubGlobal('fetch', fetchMock)
     const me = await fetchMe()
-    expect(me?.name).toBe('Minh')
+    expect(me?.name).toBe('Thành')
     const headers = (fetchMock.mock.calls[0] as unknown[])[1] as { headers: Record<string, string> }
     expect(headers.headers.authorization).toBe('Bearer bearer-xyz')
   })
@@ -63,6 +63,16 @@ describe('auth service', () => {
 })
 
 describe('social sign-in', () => {
+  it('signOut revokes with the bearer still attached, then clears the token', async () => {
+    localStorage.setItem('nova.auth.token', 'live-tok')
+    const fetchMock = vi.fn(async () => json({}))
+    vi.stubGlobal('fetch', fetchMock)
+    await signOut()
+    const init = (fetchMock.mock.calls[0] as unknown[])[1] as { headers: Record<string, string> }
+    expect(init.headers.authorization).toBe('Bearer live-tok')
+    expect(getToken()).toBeNull()
+  })
+
   it('requests the OAuth URL with the provider and a same-origin callback', async () => {
     const fetchMock = vi.fn(async () => json({ url: 'https://accounts.google.com/o/oauth2/x' }))
     vi.stubGlobal('fetch', fetchMock)

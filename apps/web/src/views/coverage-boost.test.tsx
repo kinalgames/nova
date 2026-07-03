@@ -12,7 +12,7 @@ describe('conversation — appended messages & typing', () => {
         activeConv: 'c1',
         threads: {
           c1: fromLinear([
-            { id: 'b1', role: 'user', who: 'MINH', blocks: [{ type: 'text', text: 'Câu hỏi của mình' }] },
+            { id: 'b1', role: 'user', who: 'THÀNH', blocks: [{ type: 'text', text: 'Câu hỏi của mình' }] },
             { id: 'b2', role: 'assistant', who: 'NOVA', blocks: [{ type: 'text', text: 'Nova trả lời đây' }] },
           ]),
         },

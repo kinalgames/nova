@@ -55,10 +55,8 @@
       ],
       "durable_objects": {
         "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
-      }
-      // AE binding đợi bật Analytics Engine trong dashboard (1 click) — khi xong,
-      // bỏ comment và redeploy:
-      // ,"analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage_dev" }]
+      },
+      "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage_dev" }]
     },
     "production": {
       "name": "nova",
@@ -84,8 +82,8 @@
       ],
       "durable_objects": {
         "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
-      }
-      // ,"analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage" }]
+      },
+      "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage" }]
     }
   }
 }

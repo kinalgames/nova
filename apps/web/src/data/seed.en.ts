@@ -36,7 +36,7 @@ export const seedEn: SeedData = {
   ],
   profiles: {
     claude: [
-      { id: 'pf-claude-acc', name: 'Personal', kind: 'account', credential: 'minh@studio.vn', status: 'active', demo: true },
+      { id: 'pf-claude-acc', name: 'Personal', kind: 'account', credential: 'thanh@kinal.co', status: 'active', demo: true },
       { id: 'pf-claude-key', name: 'Backup', kind: 'api_key', credential: 'sk-ant-••••••••  4f2a', status: 'active', demo: true },
     ],
     gemini: [],
@@ -163,7 +163,7 @@ export const seedEn: SeedData = {
   },
   threads: {
     c1: [
-      msg('c1-1', 'user', 'MINH', [
+      msg('c1-1', 'user', 'THANH', [
         {
           type: 'text',
           text: 'Check whether this moodboard fits the Aurora positioning. Reference the brief too.',
@@ -190,7 +190,7 @@ export const seedEn: SeedData = {
           ],
         },
       ]),
-      msg('c1-3', 'user', 'MINH', [
+      msg('c1-3', 'user', 'THANH', [
         {
           type: 'text',
           text: 'Now compare the competitor benchmarks against my survey and save a summary to *plan.md*.',
@@ -264,7 +264,7 @@ export const seedEn: SeedData = {
       ),
     ],
     c2: [
-      msg('c2-1', 'user', 'MINH', [
+      msg('c2-1', 'user', 'THANH', [
         { type: 'text', text: 'Write the opening section for the Aurora landing page.' },
       ]),
       msg('c2-2', 'assistant', 'NOVA', [
@@ -276,7 +276,7 @@ export const seedEn: SeedData = {
       ]),
     ],
     c3: [
-      msg('c3-1', 'user', 'MINH', [
+      msg('c3-1', 'user', 'THANH', [
         { type: 'text', text: 'Plan six weeks of content before launch.' },
       ]),
       msg('c3-2', 'assistant', 'NOVA', [
@@ -288,7 +288,7 @@ export const seedEn: SeedData = {
       ]),
     ],
     c4: [
-      msg('c4-1', 'user', 'MINH', [{ type: 'text', text: 'Summarize the user survey for me.' }]),
+      msg('c4-1', 'user', 'THANH', [{ type: 'text', text: 'Summarize the user survey for me.' }]),
     ],
   },
 }

@@ -163,8 +163,10 @@
 
   /* type */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-body: 'Geist Sans', 'Geist', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* Inter/JetBrains Mono: full Vietnamese subsets — Geist lacked them, so
+     diacritics fell back to Segoe UI and mixed typefaces mid-word */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   /* motion — paper is calm: quiet durations, one easing */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);

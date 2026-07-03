@@ -500,6 +500,39 @@ export function StoreProvider({
     set({ profiles })
   }, [demo, set])
 
+  // Social OAuth lands with a fresh token but NOTHING persisted about the
+  // account — boot resolves the session user once and adopts it (and heals
+  // stale info for every login kind). Mirrors submitAuth's account guard.
+  const hydrateUser = useCallback(async () => {
+    if (demo || !API_BASE || !getToken()) return
+    const me = await fetchMe()
+    if (!me) return
+    const prev = sRef.current
+    if (prev.accountId && prev.accountId !== me.id) {
+      // a DIFFERENT account used this device — never mix two users' local data
+      try {
+        localStorage.removeItem(PERSIST_KEY)
+      } catch {
+        /* ignore */
+      }
+      __resetSync()
+      set(() => ({
+        ...initialState(false),
+        accountId: me.id,
+        userName: me.name,
+        userEmail: me.email,
+        ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+      }))
+    } else {
+      set({
+        accountId: me.id,
+        userName: me.name,
+        userEmail: me.email,
+        ...(me.assistantName ? { assistantName: me.assistantName } : {}),
+      })
+    }
+  }, [demo, set])
+
   // T8: real mode also pulls the server-side month usage roll-up — the
   // Settings meter then reflects EVERY device, not just this one's threads
   const hydrateUsage = useCallback(async () => {
@@ -516,13 +549,14 @@ export function StoreProvider({
     // microtask: runs right after this commit (deterministic, unlike a
     // setTimeout macrotask) so the async hydrate never sets state mid-render
     queueMicrotask(() => {
+      void hydrateUser()
       void hydrateCredentials()
       void hydrateUsage()
     })
     return () => {
       triggerCredHydrate = null
     }
-  }, [hydrateCredentials, hydrateUsage])
+  }, [hydrateCredentials, hydrateUsage, hydrateUser])
 
   // E1: poll /version.json for a newer deploy — on mount, on focus, and every
   // minute. Skipped under vitest (the check itself is unit-tested in isolation).
@@ -1937,8 +1971,11 @@ function deriveValues(
     showAuth: nav.authView !== null,
     loggedIn: nav.authView === null,
     isLogin: nav.authView !== 'signup',
-    logout: () => {
-      if (API_BASE) void signOut()
+    logout: async () => {
+      // revoke BEFORE navigating — /login's bootstrap re-adopts any cookie
+      // session that is still alive, which would undo the logout (demo never
+      // touches the real auth server)
+      if (API_BASE && !demo) await signOut()
       set({ userEmail: undefined })
       __resetSync() // the next login re-hydrates/imports from scratch
       navigate({ to: '/login' })

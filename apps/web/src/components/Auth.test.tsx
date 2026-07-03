@@ -23,13 +23,22 @@ vi.mock('../services/auth', () => ({
 beforeEach(() => localStorage.clear())
 
 describe('<Auth> — social sign-in', () => {
-  it('the Google and GitHub buttons kick off the OAuth flow', async () => {
+  // one provider per test — the first click sets a shared busy state that
+  // disables both buttons, so clicking the second in the same render races
+  // the mock's finally() re-enable
+  it('the Google button kicks off the OAuth flow', async () => {
     const { signInSocial } = await import('../services/auth')
     const user = makeUser()
     await renderApp(undefined, { path: '/login' })
     await user.click(await screen.findByRole('button', { name: /google/i }))
     expect(signInSocial).toHaveBeenCalledWith('google')
-    await user.click(screen.getByRole('button', { name: /github/i }))
+  })
+
+  it('the GitHub button kicks off the OAuth flow', async () => {
+    const { signInSocial } = await import('../services/auth')
+    const user = makeUser()
+    await renderApp(undefined, { path: '/login' })
+    await user.click(await screen.findByRole('button', { name: /github/i }))
     expect(signInSocial).toHaveBeenCalledWith('github')
   })
 })
@@ -41,7 +50,7 @@ describe('<Auth> — email validation', () => {
     const submit = await screen.findByRole('button', { name: 'Tiếp tục' })
     await user.click(submit)
     expect(await screen.findByRole('alert')).toHaveTextContent(/Email/)
-    await user.type(screen.getByLabelText('Email'), 'minh@aurora.studio')
+    await user.type(screen.getByLabelText('Email'), 'test@kinal.co')
     await user.type(screen.getByLabelText('Mật khẩu'), 'secret123')
     await user.click(submit)
     await waitFor(() =>

@@ -93,7 +93,7 @@ export type MsgState = 'streaming' | 'error' | 'approval'
 export interface Message {
   id: string
   role: 'user' | 'assistant'
-  /** display label, e.g. MINH / NOVA */
+  /** display label, e.g. THÀNH / NOVA */
   who: string
   /** tree edge — undefined for a root message (managed by state/thread.ts) */
   parentId?: string
@@ -217,7 +217,7 @@ export interface NovaState {
   archivedOpen: boolean
   /** the keyboard-shortcuts cheatsheet dialog is open (ephemeral) */
   cheatsheet: boolean
-  /** display name of the user — drives the MINH label and greetings */
+  /** display name of the user — drives the THÀNH label and greetings */
   userName: string
   /** signed-in account email — absent until a real session exists */
   userEmail?: string

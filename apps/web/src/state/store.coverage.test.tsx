@@ -358,7 +358,7 @@ describe('store — streaming chat engine', () => {
     await act(async () => result.current.set({ draft: 'Viết email cho mình' }))
     await act(async () => result.current.v.send())
     // user message lands immediately; assistant is "thinking"
-    expect(result.current.v.sent.at(-1)?.who).toBe('MINH')
+    expect(result.current.v.sent.at(-1)?.who).toBe('THÀNH')
     expect(result.current.s.typing).toBe(true)
     // after the thinking pause, an empty Nova bubble appears and starts filling
     await act(async () => vi.advanceTimersByTime(700))

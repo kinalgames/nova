@@ -36,7 +36,7 @@ export const seedVi: SeedData = {
   ],
   profiles: {
     claude: [
-      { id: 'pf-claude-acc', name: 'Cá nhân', kind: 'account', credential: 'minh@studio.vn', status: 'active', demo: true },
+      { id: 'pf-claude-acc', name: 'Cá nhân', kind: 'account', credential: 'thanh@kinal.co', status: 'active', demo: true },
       { id: 'pf-claude-key', name: 'Dự phòng', kind: 'api_key', credential: 'sk-ant-••••••••  4f2a', status: 'active', demo: true },
     ],
     gemini: [],
@@ -163,7 +163,7 @@ export const seedVi: SeedData = {
   },
   threads: {
     c1: [
-      msg('c1-1', 'user', 'MINH', [
+      msg('c1-1', 'user', 'THÀNH', [
         {
           type: 'text',
           text: 'Xem giúp mình moodboard này có hợp với định vị Aurora không? Tham chiếu cả brief.',
@@ -190,7 +190,7 @@ export const seedVi: SeedData = {
           ],
         },
       ]),
-      msg('c1-3', 'user', 'MINH', [
+      msg('c1-3', 'user', 'THÀNH', [
         {
           type: 'text',
           text: 'Giờ đối chiếu benchmark đối thủ với khảo sát của mình, rồi lưu bản tóm tắt vào *plan.md*.',
@@ -264,7 +264,7 @@ export const seedVi: SeedData = {
       ),
     ],
     c2: [
-      msg('c2-1', 'user', 'MINH', [
+      msg('c2-1', 'user', 'THÀNH', [
         { type: 'text', text: 'Viết giúp mình đoạn mở đầu cho trang đích Aurora.' },
       ]),
       msg('c2-2', 'assistant', 'NOVA', [
@@ -276,7 +276,7 @@ export const seedVi: SeedData = {
       ]),
     ],
     c3: [
-      msg('c3-1', 'user', 'MINH', [
+      msg('c3-1', 'user', 'THÀNH', [
         { type: 'text', text: 'Lên lịch nội dung sáu tuần trước ra mắt.' },
       ]),
       msg('c3-2', 'assistant', 'NOVA', [
@@ -288,7 +288,7 @@ export const seedVi: SeedData = {
       ]),
     ],
     c4: [
-      msg('c4-1', 'user', 'MINH', [
+      msg('c4-1', 'user', 'THÀNH', [
         { type: 'text', text: 'Tóm tắt khảo sát người dùng giúp mình.' },
       ]),
     ],

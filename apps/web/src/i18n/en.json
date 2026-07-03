@@ -197,11 +197,11 @@
     "stream": "Stream error"
   },
   "user": {
-    "name": "Minh Tran",
-    "firstName": "Minh",
-    "demoEmail": "minh@aurora.studio",
+    "name": "Thanh Tran",
+    "firstName": "Thanh",
+    "demoEmail": "thanh@kinal.co",
     "plan": "Pro plan",
-    "who": "MINH"
+    "who": "THANH"
   },
   "auth": {
     "loginTitle": "Sign in",

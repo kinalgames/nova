@@ -53,7 +53,7 @@ describe('groupConvs — date-grouped recents', () => {
 const msg = (id: string, role: Message['role'], text: string): Message => ({
   id,
   role,
-  who: role === 'user' ? 'MINH' : 'NOVA',
+  who: role === 'user' ? 'THÀNH' : 'NOVA',
   blocks: [{ type: 'text', text }],
 })
 
@@ -64,7 +64,7 @@ describe('export serializers', () => {
   it('markdown carries the title and the visible exchange', () => {
     const md = exportMarkdown(c, thread)
     expect(md).toContain('# Kế hoạch Đà Lạt')
-    expect(md).toContain('## MINH')
+    expect(md).toContain('## THÀNH')
     expect(md).toContain('Câu hỏi')
     expect(md).toContain('## NOVA')
     expect(md).toContain('Trả lời')

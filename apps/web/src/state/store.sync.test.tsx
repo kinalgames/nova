@@ -29,7 +29,7 @@ beforeEach(() => {
   localStorage.setItem(
     PERSIST_KEY,
     JSON.stringify({
-      userName: 'Minh Trần',
+      userName: 'Thành Trần',
       activeConv: 'c1',
       conversations: [{ id: 'c1', title: 'Cục bộ', projectId: 'chung', updatedAt: 1 }],
       threads: { c1: { byId: {}, children: {}, selected: {} } },
@@ -73,7 +73,7 @@ describe('store — op-log sync wiring (BE2)', () => {
     await waitFor(() => expect(result.current.s.threads.c9).toBeDefined())
     // no settings record → local defaults untouched, seeded data intact
     expect(result.current.s.theme).toBe('light')
-    expect(result.current.s.userName).toBe('Minh Trần')
+    expect(result.current.s.userName).toBe('Thành Trần')
     expect(result.current.s.conversations.length).toBeGreaterThan(0)
   })
 
@@ -95,7 +95,7 @@ describe('store — op-log sync wiring (BE2)', () => {
 
     localStorage.setItem('nova.auth.token', 'tok') // what a real sign-in stores
     await act(async () => {
-      await result.current.v.submitAuth('minh@test.vn', 'password1')
+      await result.current.v.submitAuth('test@kinal.co', 'password1')
     })
     await waitFor(() => expect(pullOps).toHaveBeenCalled(), { timeout: 4000 })
   })

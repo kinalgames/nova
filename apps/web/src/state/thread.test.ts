@@ -16,7 +16,7 @@ import type { Message } from './types'
 const m = (id: string, role: Message['role'] = 'user', text = id): Message => ({
   id,
   role,
-  who: role === 'user' ? 'MINH' : 'NOVA',
+  who: role === 'user' ? 'THÀNH' : 'NOVA',
   blocks: [{ type: 'text', text }],
 })
 

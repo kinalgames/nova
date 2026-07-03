@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
 import { fetchMe, signIn, signOut, signUp } from '../services/auth'
 
@@ -17,8 +17,8 @@ vi.mock('../services/auth', () => ({
   adoptSocialSession: vi.fn(async () => false),
   fetchMe: vi.fn(async () => ({
     id: 'u1',
-    name: 'Minh Thật',
-    email: 'minh@test.vn',
+    name: 'Thành Thật',
+    email: 'test@kinal.co',
     assistantName: 'Trợ lý',
   })),
   signOut: vi.fn(async () => {}),
@@ -37,11 +37,11 @@ describe('store — real auth wiring (BE1)', () => {
     const { result, router } = await renderStore({ path: '/login' })
     let err: string | null = 'pending'
     await act(async () => {
-      err = await result.current.v.submitAuth('minh@test.vn', 'password1')
+      err = await result.current.v.submitAuth('test@kinal.co', 'password1')
     })
     expect(err).toBeNull()
-    expect(signIn).toHaveBeenCalledWith('minh@test.vn', 'password1')
-    expect(result.current.s.userName).toBe('Minh Thật')
+    expect(signIn).toHaveBeenCalledWith('test@kinal.co', 'password1')
+    expect(result.current.s.userName).toBe('Thành Thật')
     expect(result.current.s.assistantName).toBe('Trợ lý')
     expect(router.state.location.pathname).not.toBe('/login')
   })
@@ -49,9 +49,9 @@ describe('store — real auth wiring (BE1)', () => {
   it('signup derives the name from the email and lands on onboarding', async () => {
     const { result } = await renderStore({ path: '/signup' })
     await act(async () => {
-      await result.current.v.submitAuth('lan.phuong@test.vn', 'password1')
+      await result.current.v.submitAuth('lan.phuong@kinal.co', 'password1')
     })
-    expect(signUp).toHaveBeenCalledWith('lan.phuong', 'lan.phuong@test.vn', 'password1')
+    expect(signUp).toHaveBeenCalledWith('lan.phuong', 'lan.phuong@kinal.co', 'password1')
     expect(result.current.v.isOnboarding).toBe(true)
   })
 
@@ -59,12 +59,12 @@ describe('store — real auth wiring (BE1)', () => {
     vi.mocked(fetchMe).mockResolvedValueOnce({
       id: 'u2',
       name: 'Lan',
-      email: 'lan@test.vn',
+      email: 'lan@kinal.co',
       assistantName: null,
     })
     const { result } = await renderStore({ path: '/login' })
     await act(async () => {
-      await result.current.v.submitAuth('lan@test.vn', 'password1')
+      await result.current.v.submitAuth('lan@kinal.co', 'password1')
     })
     expect(result.current.s.userName).toBe('Lan')
     expect(result.current.s.assistantName).toBe('Nova')
@@ -75,7 +75,7 @@ describe('store — real auth wiring (BE1)', () => {
     const { result, router } = await renderStore({ path: '/login' })
     const before = result.current.s.userName
     await act(async () => {
-      await result.current.v.submitAuth('minh@test.vn', 'password1')
+      await result.current.v.submitAuth('test@kinal.co', 'password1')
     })
     expect(result.current.s.userName).toBe(before)
     expect(router.state.location.pathname).not.toBe('/login')
@@ -86,16 +86,27 @@ describe('store — real auth wiring (BE1)', () => {
     const { result, router } = await renderStore({ path: '/login' })
     let err: string | null = null
     await act(async () => {
-      err = await result.current.v.submitAuth('minh@test.vn', 'sai-roi-123')
+      err = await result.current.v.submitAuth('test@kinal.co', 'sai-roi-123')
     })
     expect(err).toBe('Sai mật khẩu')
     expect(router.state.location.pathname).toBe('/login')
   })
 
   it('logout signs out server-side too', async () => {
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'real' })
     await act(async () => result.current.v.logout())
     expect(signOut).toHaveBeenCalled()
     expect(fetchMe).toBeDefined()
+  })
+
+  it('a social login (token, nothing persisted) adopts the account at boot', async () => {
+    // the OAuth callback flow stores ONLY the bearer token then reloads —
+    // boot must resolve the session user itself
+    localStorage.setItem('nova.auth.token', 'tok-social')
+    const { result } = await renderStore({ world: 'real' })
+    await waitFor(() => expect(result.current.s.userName).toBe('Thành Thật'))
+    expect(result.current.s.userEmail).toBe('test@kinal.co')
+    expect(result.current.s.accountId).toBe('u1')
+    expect(result.current.s.assistantName).toBe('Trợ lý')
   })
 })
