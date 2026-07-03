@@ -75,7 +75,8 @@ import {
   type ServerCredential,
 } from '../services/credentials'
 import { fetchMonthUsage } from '../services/usage'
-import { pullOps, pushOps } from '../services/sync'
+import { pullOps, pushOps, startLiveSync, SYNC_SRC } from '../services/sync'
+import type { SyncOp } from '@nova/shared'
 import { diffRecords, fromRecords, toRecords, type SyncRecord } from './syncmap'
 import { humanErrorDetail } from '../services/errors'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
@@ -157,11 +158,28 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined
 // mirrors what the server holds so each persist push sends only the diff.
 let syncedRecords: SyncRecord[] | null = null
 let syncPushTimer: ReturnType<typeof setTimeout> | undefined
+// B7 — the op-log position this client has fully applied; frames whose
+// `from` matches apply in place, anything ahead triggers a delta pull
+let syncCursor = 0
+let syncPullInFlight = false
 const syncReady = () => Boolean(HAS_API && getToken())
+
+/** fold a batch of ops into the local record mirror (pure) */
+function mergeMirror(base: SyncRecord[] | null, ops: SyncOp[]): SyncRecord[] {
+  const map = new Map((base ?? []).map((r) => [`${r.table}:${r.id}`, r]))
+  for (const op of ops) {
+    const k = `${op.table}:${op.id}`
+    if (op.kind === 'del') map.delete(k)
+    else map.set(k, { table: op.table, id: op.id, value: op.value })
+  }
+  return [...map.values()]
+}
 
 /** test-only: reset the module-level sync mirror between renders */
 export function __resetSync() {
   syncedRecords = null
+  syncCursor = 0
+  syncPullInFlight = false
   clearTimeout(syncPushTimer)
 }
 
@@ -432,7 +450,10 @@ export function StoreProvider({
         const ops = diffRecords(syncedRecords ?? [], next)
         if (ops.length === 0) return
         void pushOps(ops).then((seq) => {
-          if (seq !== null) syncedRecords = next
+          if (seq !== null) {
+            syncedRecords = next
+            syncCursor = Math.max(syncCursor, seq)
+          }
         })
       }, 800)
     }
@@ -477,20 +498,31 @@ export function StoreProvider({
     }
   }, [set])
 
-  // BE2: hydrate from the per-user op-log once a session exists. Server state
-  // wins for records it has; a fresh server gets the local data pushed up
-  // (that IS the localStorage import path).
-  const hydrateSync = useCallback(() => {
-    if (demo || !syncReady()) return () => {}
-    let stop = false
-    void pullOps(0).then((res) => {
-      if (stop || !res) return
-      const remote = res.ops
+  // B7 — merge a batch of remote ops into live state. The record MIRROR
+  // updates FIRST (synchronously): the persist-effect diffs against it, so a
+  // pre-updated mirror means the applied batch never echoes back up.
+  const applyRemoteOps = useCallback(
+    (ops: SyncOp[]) => {
+      if (ops.length === 0) return
+      syncedRecords = mergeMirror(syncedRecords, ops)
+      const puts = ops
         .filter((o) => o.kind === 'put')
         .map((o) => ({ table: o.table, id: o.id, value: o.value }))
-      if (remote.length > 0) {
-        const slice = fromRecords(remote)
-        set((x) => ({
+      const delConvs = new Set(
+        ops.filter((o) => o.kind === 'del' && o.table === 'conversation').map((o) => o.id),
+      )
+      const delThreads = new Set(
+        ops.filter((o) => o.kind === 'del' && o.table === 'thread').map((o) => o.id),
+      )
+      const delProjects = new Set(
+        ops.filter((o) => o.kind === 'del' && o.table === 'project').map((o) => o.id),
+      )
+      const slice = fromRecords(puts)
+      set((x) => {
+        const threads = { ...x.threads, ...(slice.threads ?? {}) }
+        for (const id of delConvs) delete threads[id]
+        for (const id of delThreads) delete threads[id]
+        return {
           ...('theme' in slice ? { theme: slice.theme } : {}),
           userName: slice.userName ?? x.userName,
           userEmail: slice.userEmail ?? x.userEmail,
@@ -505,24 +537,58 @@ export function StoreProvider({
           systemPrompt: slice.systemPrompt ?? x.systemPrompt,
           tools: slice.tools ?? x.tools,
           presetDefault: slice.presetDefault ?? x.presetDefault,
-          projects: slice.projects ?? x.projects,
-          conversations: slice.conversations ?? x.conversations,
-          threads: slice.threads ? sanitizeThreads({ ...x.threads, ...slice.threads }) : x.threads,
-        }))
-        syncedRecords = remote
+          projects: (slice.projects ?? x.projects).filter((p) => !delProjects.has(p.id)),
+          conversations: (slice.conversations ?? x.conversations).filter(
+            (k) => !delConvs.has(k.id),
+          ),
+          threads: sanitizeThreads(threads),
+        }
+      })
+    },
+    [set],
+  )
+
+  // B7 — catch up from the cursor (single-flight; frames during the pull
+  // re-trigger via their own gap check)
+  const pullDelta = useCallback(() => {
+    if (syncPullInFlight) return
+    syncPullInFlight = true
+    void pullOps(syncCursor).then((res) => {
+      syncPullInFlight = false
+      if (!res) return
+      applyRemoteOps(res.ops)
+      syncCursor = Math.max(syncCursor, res.seq)
+    })
+  }, [applyRemoteOps])
+
+  // BE2: hydrate from the per-user op-log once a session exists. Server state
+  // wins for records it has; a fresh server gets the local data pushed up
+  // (that IS the localStorage import path).
+  const hydrateSync = useCallback(() => {
+    if (demo || !syncReady()) return () => {}
+    let stop = false
+    void pullOps(0).then((res) => {
+      if (stop || !res) return
+      if (res.ops.length > 0) {
+        syncedRecords = []
+        applyRemoteOps(res.ops)
+        syncCursor = Math.max(syncCursor, res.seq)
       } else {
         // empty server → import everything local
         const local = toRecords(persistSliceOf(sRef.current))
         syncedRecords = []
         void pushOps(diffRecords([], local)).then((seq) => {
-          if (seq !== null) syncedRecords = local
+          if (seq !== null) {
+            syncedRecords = local
+            syncCursor = Math.max(syncCursor, seq)
+          }
         })
       }
     })
     return () => {
       stop = true
     }
-  }, [set])
+  }, [applyRemoteOps])
 
   useEffect(() => {
     triggerSyncHydrate = hydrateSync
@@ -532,6 +598,33 @@ export function StoreProvider({
       cancel()
     }
   }, [hydrateSync])
+
+  // B7 — live sync: one hibernating WebSocket to the user's DO. In-order
+  // frames apply directly; anything ahead of the cursor pulls the delta; our
+  // own pushes come back tagged src === SYNC_SRC and only advance the cursor.
+  useEffect(() => {
+    if (demo || !syncReady()) return
+    return startLiveSync({
+      onFrame: (f) => {
+        if (f.type === 'hello') {
+          if (f.seq > syncCursor) pullDelta()
+          return
+        }
+        if (f.src === SYNC_SRC) {
+          if (f.from === syncCursor) syncCursor = f.seq
+          else if (f.seq > syncCursor) pullDelta()
+          return
+        }
+        if (f.from === syncCursor) {
+          applyRemoteOps(f.ops)
+          syncCursor = f.seq
+        } else if (f.seq > syncCursor) {
+          pullDelta()
+        }
+      },
+    })
+    // s.accountId: login/logout flips syncReady — reconnect under the new identity
+  }, [demo, s.accountId, applyRemoteOps, pullDelta])
 
   // BE3: real mode reads provider credentials from the server (sealed BYOK).
   // The first hydration MIGRATES any client-held real profiles up once — the

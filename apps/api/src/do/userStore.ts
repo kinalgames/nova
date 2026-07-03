@@ -5,12 +5,19 @@
 // to per-message ops later without changing the envelope.
 
 import { DurableObject } from 'cloudflare:workers'
-import type { SyncOp, SyncPullResponse, SyncTable } from '@nova/shared'
+import type { SyncOp, SyncPullResponse, SyncTable, SyncWsFrame } from '@nova/shared'
 
 const TABLES: SyncTable[] = ['settings', 'project', 'conversation', 'thread']
 
 export class UserStore extends DurableObject {
   private ensured = false
+
+  constructor(ctx: DurableObjectState, env: unknown) {
+    super(ctx, env as never)
+    // B7 — keepalive without waking the object: the runtime answers pings
+    // itself, so idle sockets cost nothing (hibernation stays engaged)
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'))
+  }
 
   private ensure() {
     if (this.ensured) return
@@ -86,9 +93,36 @@ export class UserStore extends DurableObject {
     return row.s
   }
 
+  /** push one frame to every connected tab/device of this user */
+  private broadcast(frame: SyncWsFrame) {
+    const msg = JSON.stringify(frame)
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.send(msg)
+      } catch {
+        // a dying socket drops its frame; the client's cursor gap-check pulls
+      }
+    }
+  }
+
   /** internal HTTP surface consumed by the Worker routes */
   override async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url)
+    if (req.method === 'GET' && url.pathname === '/ws') {
+      if (req.headers.get('upgrade')?.toLowerCase() !== 'websocket')
+        return new Response('expected websocket', { status: 426 })
+      this.ensure()
+      const pair = new WebSocketPair()
+      const [client, server] = Object.values(pair) as [WebSocket, WebSocket]
+      this.ctx.acceptWebSocket(server)
+      // announce the head so a behind cursor pulls its delta immediately
+      server.send(JSON.stringify({ type: 'hello', seq: this.headSeq() } satisfies SyncWsFrame))
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+        headers: { 'sec-websocket-protocol': 'nova-sync' },
+      })
+    }
     if (req.method === 'GET' && url.pathname === '/ops') {
       const since = Number(url.searchParams.get('since') ?? '0') || 0
       return Response.json(this.pull(since))
@@ -98,10 +132,11 @@ export class UserStore extends DurableObject {
       // write from a fresh account with the same id would re-ensure()
       await this.ctx.storage.deleteAll()
       this.ensured = false
+      for (const ws of this.ctx.getWebSockets()) ws.close(1000, 'account wiped')
       return Response.json({ ok: true })
     }
     if (req.method === 'POST' && url.pathname === '/ops') {
-      const body = (await req.json()) as { ops?: SyncOp[] }
+      const body = (await req.json()) as { ops?: SyncOp[]; src?: string }
       const ops = (body.ops ?? []).filter(
         (o) =>
           (o.kind === 'put' || o.kind === 'del') &&
@@ -109,7 +144,19 @@ export class UserStore extends DurableObject {
           typeof o.id === 'string' &&
           o.id.length > 0,
       )
-      return Response.json({ seq: this.apply(ops) })
+      this.ensure()
+      const from = this.headSeq()
+      const seq = this.apply(ops)
+      // B7 — fan the batch out live; the origin skips it by src
+      if (ops.length > 0)
+        this.broadcast({
+          type: 'ops',
+          from,
+          seq,
+          ...(typeof body.src === 'string' ? { src: body.src } : {}),
+          ops,
+        })
+      return Response.json({ seq })
     }
     return new Response('not found', { status: 404 })
   }

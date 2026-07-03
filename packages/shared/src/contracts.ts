@@ -68,6 +68,16 @@ export interface SyncPullResponse {
   ops: SyncOp[]
 }
 
+/** B7 — one live-sync frame pushed by the user's Durable Object over the
+ *  hibernating WebSocket. `hello` announces the head seq on connect (a
+ *  cursor behind it pulls the delta). `ops` is a batch someone just applied:
+ *  a client whose cursor equals `from` applies it directly; anyone else
+ *  pulls GET /v1/sync?since=cursor. `src` echoes the pusher's per-tab id so
+ *  the origin tab skips its own echo. */
+export type SyncWsFrame =
+  | { type: 'hello'; seq: number }
+  | { type: 'ops'; from: number; seq: number; src?: string; ops: SyncOp[] }
+
 /** request body of POST /v1/chat — the provider proxy contract.
  *  Exactly ONE of `credentialId` (BE3: server-side sealed BYOK, requires a
  *  session) or `profile` (transitional: client-held credential in transit)

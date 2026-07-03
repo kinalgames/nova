@@ -441,3 +441,24 @@ describe('B3 — rate limiting + chat session gate', () => {
     expect(res.status).toBe(401)
   })
 })
+
+describe('B7 — live sync socket gate', () => {
+  it('refuses a plain HTTP request (426) and an unauthenticated upgrade (401)', async () => {
+    const plain = await app.request('/v1/sync/ws', {}, env({}))
+    expect(plain.status).toBe(426)
+    // no token in the subprotocol list → 401 before any DO is touched
+    const noToken = await app.request(
+      '/v1/sync/ws',
+      { headers: { upgrade: 'websocket' } },
+      env({}),
+    )
+    expect(noToken.status).toBe(401)
+    // a token the auth layer rejects (logged-out state) → 401 as well
+    const badToken = await app.request(
+      '/v1/sync/ws',
+      { headers: { upgrade: 'websocket', 'sec-websocket-protocol': 'nova-sync, bad' } },
+      env({}),
+    )
+    expect(badToken.status).toBe(401)
+  })
+})

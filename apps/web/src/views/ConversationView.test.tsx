@@ -160,4 +160,19 @@ describe('ConversationView — demo content is scoped to the demo conversation',
     expect(screen.getByRole('button', { name: /Đăng nhập để bắt đầu/ })).toBeInTheDocument()
     expect(screen.queryByText(/Hỏi bất cứ điều gì/)).not.toBeInTheDocument()
   })
+
+  it('signed-in without a provider: the full nudge CTA goes to providers', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    await renderApp(undefined, {
+      world: 'real',
+      path: '/chat/r1',
+      storeInit: {
+        accountId: 'acc-1',
+        conversations: [{ id: 'r1', title: 'Mới', projectId: 'chung', updatedAt: 1 }],
+        threads: {},
+      },
+    })
+    expect(await screen.findByText(/Kết nối nhà cung cấp/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Thêm nhà cung cấp/ })).toBeInTheDocument()
+  })
 })

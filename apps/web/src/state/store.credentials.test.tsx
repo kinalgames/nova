@@ -36,6 +36,8 @@ vi.mock('../services/llm', () => ({
 vi.mock('../services/sync', () => ({
   pullOps: vi.fn(async () => ({ seq: 0, ops: [] })),
   pushOps: vi.fn(async () => 1),
+  startLiveSync: vi.fn(() => () => {}),
+  SYNC_SRC: 'test-src',
 }))
 
 const row = (over: Partial<ServerCredential> = {}): ServerCredential => ({

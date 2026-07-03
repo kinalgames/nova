@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
-import { pullOps, pushOps } from '../services/sync'
+import { pullOps, pushOps, startLiveSync } from '../services/sync'
 import { __resetSync } from './store'
 import { PERSIST_KEY } from './persist'
-import type { SyncOp } from '@nova/shared'
+import type { SyncOp, SyncWsFrame } from '@nova/shared'
 
 vi.mock('../services/sync', () => ({
   pullOps: vi.fn(async () => ({ seq: 0, ops: [] as SyncOp[] })),
   pushOps: vi.fn(async () => 1),
+  startLiveSync: vi.fn(() => () => {}),
+  SYNC_SRC: 'test-src',
 }))
 
 // login flow inside this file must not hit the network
@@ -112,5 +114,96 @@ describe('store — op-log sync wiring (BE2)', () => {
     expect(ops.some((o) => o.table === 'settings')).toBe(true)
     // untouched collections are not re-sent
     expect(ops.some((o) => o.table === 'thread')).toBe(false)
+  })
+})
+
+describe('B7 — live frames over the sync socket', () => {
+  const lastHandler = (): ((f: SyncWsFrame) => void) =>
+    (vi.mocked(startLiveSync).mock.calls.at(-1)![0] as { onFrame: (f: SyncWsFrame) => void })
+      .onFrame
+
+  it('an in-order ops frame applies puts and dels straight into state', async () => {
+    const { result } = await renderStore({ world: 'real' })
+    await waitFor(() => expect(startLiveSync).toHaveBeenCalled())
+    await waitFor(() => expect(pushOps).toHaveBeenCalled()) // hydrate primed → cursor = 1
+    const onFrame = lastHandler()
+    await act(async () =>
+      onFrame({
+        type: 'ops',
+        from: 1,
+        seq: 3,
+        ops: [
+          { kind: 'put', table: 'conversation', id: 'zz', value: { id: 'zz', title: 'Từ thiết bị khác', projectId: 'chung', updatedAt: 9 }, at: 9 },
+          { kind: 'put', table: 'thread', id: 'zz', value: { byId: { m1: { id: 'm1', role: 'user', who: 'T', blocks: [{ type: 'text', text: 'xin chào' }] } }, children: { '': ['m1'] }, selected: {} }, at: 9 },
+        ],
+      }),
+    )
+    expect(result.current.s.conversations.find((c) => c.id === 'zz')?.title).toBe('Từ thiết bị khác')
+    expect(result.current.s.threads.zz).toBeTruthy()
+    // a later in-order frame deletes it everywhere — conv row AND thread
+    await act(async () =>
+      onFrame({
+        type: 'ops',
+        from: 3,
+        seq: 4,
+        ops: [
+          { kind: 'del', table: 'conversation', id: 'zz', at: 10 },
+          { kind: 'del', table: 'thread', id: 'zz', at: 10 },
+        ],
+      }),
+    )
+    expect(result.current.s.conversations.find((c) => c.id === 'zz')).toBeUndefined()
+    expect(result.current.s.threads.zz).toBeUndefined()
+    // in-order frames never needed a pull — only the boot hydrate pulled
+    expect(pullOps).toHaveBeenCalledTimes(1)
+  })
+
+  it('own echoes advance silently; gaps and ahead-hellos pull the delta', async () => {
+    const { result } = await renderStore({ world: 'real' })
+    await waitFor(() => expect(startLiveSync).toHaveBeenCalled())
+    await waitFor(() => expect(pushOps).toHaveBeenCalled())
+    const onFrame = lastHandler()
+    const pulls = () => vi.mocked(pullOps).mock.calls.length
+    const before = result.current.s.conversations.length
+    // own echo (src === SYNC_SRC): nothing applies, nothing pulls
+    await act(async () =>
+      onFrame({
+        type: 'ops',
+        from: 1,
+        seq: 2,
+        src: 'test-src',
+        ops: [
+          { kind: 'put', table: 'conversation', id: 'echo', value: { id: 'echo', title: 'echo', projectId: 'chung', updatedAt: 1 }, at: 1 },
+        ],
+      }),
+    )
+    expect(result.current.s.conversations.length).toBe(before)
+    const basePulls = pulls()
+    // a frame far AHEAD of the cursor → catch-up pull, ops NOT applied blindly
+    await act(async () => onFrame({ type: 'ops', from: 90, seq: 91, ops: [] }))
+    expect(pulls()).toBe(basePulls + 1)
+    // a hello announcing a head ahead of the cursor → pull as well
+    await act(async () => onFrame({ type: 'hello', seq: 120 }))
+    expect(pulls()).toBe(basePulls + 2)
+  })
+
+  it('stale or duplicate frames are ignored outright — no apply, no pull', async () => {
+    const { result } = await renderStore({ world: 'real' })
+    await waitFor(() => expect(startLiveSync).toHaveBeenCalled())
+    await waitFor(() => expect(pushOps).toHaveBeenCalled()) // cursor = 1
+    const onFrame = lastHandler()
+    const basePulls = vi.mocked(pullOps).mock.calls.length
+    const before = result.current.s.conversations.length
+    // duplicate of something already applied (seq ≤ cursor)
+    await act(async () =>
+      onFrame({ type: 'ops', from: 0, seq: 1, ops: [
+        { kind: 'put', table: 'conversation', id: 'stale', value: { id: 'stale', title: 'cũ', projectId: 'chung', updatedAt: 1 }, at: 1 },
+      ] }),
+    )
+    // stale own echo and an old hello — all three change nothing
+    await act(async () => onFrame({ type: 'ops', from: 5, seq: 1, src: 'test-src', ops: [] }))
+    await act(async () => onFrame({ type: 'hello', seq: 0 }))
+    expect(result.current.s.conversations.length).toBe(before)
+    expect(vi.mocked(pullOps).mock.calls.length).toBe(basePulls)
   })
 })

@@ -253,9 +253,9 @@ app.get('/v1/sync', async (c) => {
 app.post('/v1/sync', async (c) => {
   const uid = await userIdOf(c)
   if (!uid) return problem(401, 'unauthenticated', 'No valid session')
-  let body: { ops?: SyncOp[] }
+  let body: { ops?: SyncOp[]; src?: string }
   try {
-    body = (await c.req.json()) as { ops?: SyncOp[] }
+    body = (await c.req.json()) as { ops?: SyncOp[]; src?: string }
   } catch {
     return problem(400, 'invalid_json', 'Body must be JSON')
   }
@@ -263,9 +263,31 @@ app.post('/v1/sync', async (c) => {
   const res = await userStub(c.env, uid).fetch('https://do/ops', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ops: body.ops }),
+    body: JSON.stringify({
+      ops: body.ops,
+      ...(typeof body.src === 'string' ? { src: body.src.slice(0, 32) } : {}),
+    }),
   })
   return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json' } })
+})
+
+// B7 — live sync socket. Browsers cannot set an Authorization header on a
+// WebSocket, so the bearer rides the subprotocol list:
+//   new WebSocket(url, ['nova-sync', token])
+// We validate it here, then hand the upgrade to the user's Durable Object
+// (hibernation-friendly: idle sockets cost nothing).
+app.get('/v1/sync/ws', async (c) => {
+  if (c.req.header('upgrade')?.toLowerCase() !== 'websocket')
+    return problem(426, 'upgrade_required', 'This endpoint speaks WebSocket')
+  const protos = (c.req.header('sec-websocket-protocol') ?? '').split(',').map((s) => s.trim())
+  const token = protos[0] === 'nova-sync' && protos[1] ? protos[1] : null
+  if (!token) return problem(401, 'unauthenticated', 'Missing sync token')
+  const session = await createAuth(c.env)
+    .api.getSession({ headers: new Headers({ authorization: `Bearer ${token}` }) })
+    .catch(() => null)
+  const uid = session?.user.id
+  if (!uid) return problem(401, 'unauthenticated', 'Invalid sync token')
+  return userStub(c.env, uid).fetch(new Request('https://do/ws', c.req.raw))
 })
 
 app.post('/v1/chat', async (c) => {
