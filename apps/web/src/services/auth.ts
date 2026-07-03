@@ -16,10 +16,10 @@ const TOKEN_KEY = 'nova.auth.token'
 
 export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
 
-async function call(path: string, body?: unknown): Promise<Response> {
+async function call(path: string, body?: unknown, method?: string): Promise<Response> {
   const token = getToken()
   const res = await fetch(`${API_BASE}${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
+    method: method ?? (body === undefined ? 'GET' : 'POST'),
     headers: {
       ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -65,6 +65,17 @@ export async function fetchMe(): Promise<SessionUser | null> {
     return data.user
   } catch {
     return null
+  }
+}
+
+/** persist profile fields onto the account — true on success. Setting the
+ *  assistant name also marks onboarding as completed (see /v1/me PATCH). */
+export async function updateMe(fields: { assistantName: string }): Promise<boolean> {
+  try {
+    const res = await call('/v1/me', fields, 'PATCH')
+    return res.ok
+  } catch {
+    return false
   }
 }
 

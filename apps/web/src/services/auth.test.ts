@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { adoptSocialSession, fetchMe, getToken, signIn, signInSocial, signOut, signUp } from './auth'
+import { adoptSocialSession, fetchMe, getToken, signIn, signInSocial, signOut, signUp, updateMe } from './auth'
 
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.unstubAllGlobals())
@@ -51,6 +51,29 @@ describe('auth service', () => {
     expect(me?.name).toBe('Thành')
     const headers = (fetchMock.mock.calls[0] as unknown[])[1] as { headers: Record<string, string> }
     expect(headers.headers.authorization).toBe('Bearer bearer-xyz')
+  })
+
+  it('updateMe PATCHes the assistant name and reports success', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const fetchMock = vi.fn(async () => json({ user: { assistantName: 'Bee' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await updateMe({ assistantName: 'Bee' })).toBe(true)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toContain('/v1/me')
+    expect(init.method).toBe('PATCH')
+    expect(JSON.parse(init.body as string)).toEqual({ assistantName: 'Bee' })
+  })
+
+  it('updateMe is false on a server error or network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ code: 'invalid_assistant_name' }, 400)))
+    expect(await updateMe({ assistantName: '' })).toBe(false)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline')
+      }),
+    )
+    expect(await updateMe({ assistantName: 'Bee' })).toBe(false)
   })
 
   it('an expired session yields null, and signOut clears the token', async () => {

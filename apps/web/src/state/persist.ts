@@ -33,6 +33,7 @@ export interface Persisted {
   stickyProfile?: NovaState['stickyProfile']
   tools?: NovaState['tools']
   styles?: NovaState['styles']
+  systemPrompt?: string
   projects?: NovaState['projects']
   presetDefault?: Record<PresetId, boolean>
   conversations?: NovaState['conversations']

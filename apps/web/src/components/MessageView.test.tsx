@@ -22,7 +22,9 @@ const seed = (thread: ReturnType<typeof linear>) => async () =>
   renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: thread } }))
 
 describe('version navigator ‹ i/n ›', () => {
-  it('walks between reply versions and clamps at the edges', async () => {
+  // generous timeout: the file's FIRST test bears the whole import/transform
+  // cost under coverage instrumentation on slow parallel runs
+  it('walks between reply versions and clamps at the edges', { timeout: 15_000 }, async () => {
     const user = makeUser()
     await seed(forked())()
 

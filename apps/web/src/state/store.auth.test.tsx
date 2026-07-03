@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
 import { renderStore } from '../test/util'
-import { fetchMe, signIn, signOut, signUp } from '../services/auth'
+import { fetchMe, signIn, signOut, signUp, updateMe } from '../services/auth'
 
 vi.mock('../services/auth', () => ({
   // like the real service, a successful sign-in/up stores the bearer token
@@ -22,6 +22,7 @@ vi.mock('../services/auth', () => ({
     assistantName: 'Trợ lý',
   })),
   signOut: vi.fn(async () => {}),
+  updateMe: vi.fn(async () => true),
   getToken: () => localStorage.getItem('nova.auth.token'),
 }))
 
@@ -30,7 +31,9 @@ beforeEach(() => {
   vi.mocked(signIn).mockClear()
   vi.mocked(signUp).mockClear()
   vi.mocked(signOut).mockClear()
+  vi.mocked(updateMe).mockClear()
 })
+afterEach(() => vi.useRealTimers())
 
 describe('store — real auth wiring (BE1)', () => {
   it('login submits credentials, adopts the server profile and navigates home', async () => {
@@ -44,6 +47,33 @@ describe('store — real auth wiring (BE1)', () => {
     expect(result.current.s.userName).toBe('Thành Thật')
     expect(result.current.s.assistantName).toBe('Trợ lý')
     expect(router.state.location.pathname).not.toBe('/login')
+  })
+
+  it('completeOnboarding writes the name to the account — the durable marker social logins check', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.v.completeOnboarding({
+        assistantName: '  Bee  ',
+        styles: { concise: true, warm: true, formal: false, humor: false },
+        slot: 'fast',
+      }),
+    )
+    expect(updateMe).toHaveBeenCalledWith({ assistantName: 'Bee' })
+  })
+
+  it('renaming the assistant in Settings PATCHes the server once, debounced', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    vi.useFakeTimers()
+    act(() => result.current.v.setAssistantName('B'))
+    act(() => result.current.v.setAssistantName('Be'))
+    act(() => result.current.v.setAssistantName('Bee'))
+    await act(async () => {
+      vi.advanceTimersByTime(800)
+    })
+    expect(updateMe).toHaveBeenCalledTimes(1)
+    expect(updateMe).toHaveBeenCalledWith({ assistantName: 'Bee' })
   })
 
   it('signup derives the name from the email and lands on onboarding', async () => {

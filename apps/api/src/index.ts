@@ -1,5 +1,8 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { drizzle } from 'drizzle-orm/d1'
+import { eq } from 'drizzle-orm'
+import { user } from './db/schema'
 import type { ChatProxyRequest, ProfileKind } from '@nova/shared'
 import {
   ProviderConfigError,
@@ -33,7 +36,7 @@ app.use(
     origin: (o) => o,
     credentials: true,
     allowHeaders: ['content-type', 'authorization'],
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
   }),
 )
 app.use(
@@ -50,19 +53,45 @@ app.use(
 // isolates are reused, module state would leak across requests)
 app.on(['GET', 'POST'], '/api/auth/*', (c) => createAuth(c.env).handler(c.req.raw))
 
+/** resolve the session; an auth-backend hiccup is "no session", never a 500 */
+async function sessionOf(c: { env: Env; req: { raw: Request } }) {
+  try {
+    return await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
+  } catch {
+    return null
+  }
+}
+
+/** the public shape of an account — secrets and auth internals never leave */
+const meShape = (u: { id: string; name: string; email: string }) => ({
+  id: u.id,
+  name: u.name,
+  email: u.email,
+  assistantName: (u as { assistantName?: string | null }).assistantName ?? null,
+})
+
 // session probe — works with the web session cookie OR a bearer token
 app.get('/v1/me', async (c) => {
-  const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
+  const session = await sessionOf(c)
   if (!session) return problem(401, 'unauthenticated', 'No valid session')
-  return c.json({
-    user: {
-      id: session.user.id,
-      name: session.user.name,
-      email: session.user.email,
-      assistantName:
-        (session.user as { assistantName?: string | null }).assistantName ?? null,
-    },
-  })
+  return c.json({ user: meShape(session.user) })
+})
+
+// Track D: persists the assistant's name onto the account. The column doubles
+// as the "onboarding completed" marker that social sign-ins check — a null
+// assistantName routes the first OAuth login through /onboarding.
+app.patch('/v1/me', async (c) => {
+  const session = await sessionOf(c)
+  if (!session) return problem(401, 'unauthenticated', 'No valid session')
+  const body = (await c.req.json().catch(() => null)) as { assistantName?: unknown } | null
+  const name = typeof body?.assistantName === 'string' ? body.assistantName.trim() : ''
+  if (name.length === 0 || name.length > 60)
+    return problem(400, 'invalid_assistant_name', 'assistantName must be 1-60 characters')
+  await drizzle(c.env.DB)
+    .update(user)
+    .set({ assistantName: name, updatedAt: new Date() })
+    .where(eq(user.id, session.user.id))
+  return c.json({ user: { ...meShape(session.user), assistantName: name } })
 })
 
 // Social OAuth lands with a session COOKIE only (the redirect cannot deliver
@@ -70,14 +99,7 @@ app.get('/v1/me', async (c) => {
 // bearer token the client architecture runs on. The bearer plugin accepts the
 // raw session token, which is exactly what sign-in's set-auth-token carries.
 app.get('/v1/session-token', async (c) => {
-  let token: string | null = null
-  try {
-    const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
-    token = session?.session.token ?? null
-  } catch {
-    // fail CLOSED: an auth-backend hiccup is "no session", never a 500
-    token = null
-  }
+  const token = (await sessionOf(c))?.session.token ?? null
   if (!token) return problem(401, 'unauthenticated', 'No valid session')
   return c.json({ token })
 })
@@ -131,13 +153,7 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
 
 // — BE2: per-user op-log sync —
 async function userIdOf(c: { env: Env; req: { raw: Request } }): Promise<string | null> {
-  try {
-    const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
-    return session?.user.id ?? null
-  } catch {
-    // fail CLOSED: an auth-backend hiccup is "no session", never a 500
-    return null
-  }
+  return (await sessionOf(c))?.user.id ?? null
 }
 
 const userStub = (env: Env, userId: string) =>

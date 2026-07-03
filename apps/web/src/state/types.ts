@@ -233,6 +233,8 @@ export interface NovaState {
   accountId?: string
   /** what the assistant is called — drives the NOVA label */
   assistantName: string
+  /** the user's own system instructions — prepended to every live chat */
+  systemPrompt: string
   presetDefault: Record<PresetId, boolean>
   /** staged attachments, keyed by conversation id (per-conversation tray) */
   staged: Record<string, StagedFile[]>

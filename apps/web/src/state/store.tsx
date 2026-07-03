@@ -48,7 +48,8 @@ import {
 import { loadPersisted, PERSIST_KEY, persistKeyFor } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { HAS_API, streamChat } from '../services/llm'
-import { fetchMe, getToken, signIn, signOut, signUp } from '../services/auth'
+import { fetchMe, getToken, signIn, signOut, signUp, updateMe } from '../services/auth'
+import { buildSystemPrompt } from '../services/prompt'
 import {
   addCredential,
   deleteCredential,
@@ -145,6 +146,9 @@ let triggerSyncHydrate: (() => void) | null = null
 // BE3: login also re-hydrates the server-side credential list
 let triggerCredHydrate: (() => void) | null = null
 
+/** debounce for the assistant-name server PATCH (see setAssistantName) */
+let nameSaveTimer: ReturnType<typeof setTimeout> | undefined
+
 /** the persisted slice of the store — single source for localStorage + sync */
 function persistSliceOf(s: NovaState): import('./persist').Persisted {
   return {
@@ -165,6 +169,7 @@ function persistSliceOf(s: NovaState): import('./persist').Persisted {
     stickyProfile: s.stickyProfile,
     tools: s.tools,
     styles: s.styles,
+    systemPrompt: s.systemPrompt,
     projects: s.projects,
     presetDefault: s.presetDefault,
     conversations: s.conversations,
@@ -258,6 +263,7 @@ function initialState(demo: boolean): NovaState {
     theme: p.theme ?? 'light',
     focusDur: p.focusDur ?? '25',
     styles: p.styles ?? { concise: true, warm: false, formal: false, humor: false },
+    systemPrompt: p.systemPrompt ?? '',
     activeSlot: p.activeSlot ?? 'smart',
     slots: sanitizeSlots(p.slots),
     tools: p.tools ?? { web: true, fetch: true, files: true, bash: true },
@@ -394,6 +400,7 @@ export function StoreProvider({
     s.stickyProfile,
     s.tools,
     s.styles,
+    s.systemPrompt,
     s.projects,
     s.presetDefault,
     s.conversations,
@@ -440,6 +447,7 @@ export function StoreProvider({
           autoRotate: slice.autoRotate ?? x.autoRotate,
           stickyProfile: slice.stickyProfile ?? x.stickyProfile,
           styles: slice.styles ?? x.styles,
+          systemPrompt: slice.systemPrompt ?? x.systemPrompt,
           tools: slice.tools ?? x.tools,
           presetDefault: slice.presetDefault ?? x.presetDefault,
           projects: slice.projects ?? x.projects,
@@ -789,7 +797,14 @@ export function StoreProvider({
           {
             providerId: ref.providerId,
             model: ref.modelId,
-            system: instructions || undefined,
+            // the persona is composed HERE — name, style toggles and the
+            // user's own instructions become one real system prompt
+            system: buildSystemPrompt({
+              assistantName: prev.assistantName,
+              styles: prev.styles,
+              customPrompt: prev.systemPrompt,
+              projectInstructions: instructions || undefined,
+            }),
             messages: turns,
             // server-backed profiles chat by id — the secret stays sealed
             // server-side; transitional local profiles still send inline
@@ -1897,7 +1912,16 @@ function deriveValues(
     userFirstName: s.userName.trim().split(/\s+/)[0] || s.userName,
     setUserName: (name: string) => set({ userName: name }),
     assistantName: s.assistantName,
-    setAssistantName: (name: string) => set({ assistantName: name }),
+    setAssistantName: (name: string) => {
+      set({ assistantName: name })
+      // keep the server column in step (it feeds /v1/me and the onboarding
+      // marker) — debounced so typing doesn't storm PATCH requests
+      if (!HAS_API || demo || !getToken()) return
+      clearTimeout(nameSaveTimer)
+      nameSaveTimer = setTimeout(() => void updateMe({ assistantName: name.trim() || 'Nova' }), 800)
+    },
+    systemPrompt: s.systemPrompt,
+    setSystemPrompt: (text: string) => set({ systemPrompt: text }),
     exportAllData: () =>
       downloadFile('nova-data.json', localStorage.getItem(persistKeyFor(demo)) ?? '{}', 'application/json'),
     /* v8 ignore next 4 — hard navigation, not reachable from the unit env */
@@ -2005,11 +2029,12 @@ function deriveValues(
       styles: NovaState['styles']
       slot: SlotId
     }) => {
-      set({
-        assistantName: opts.assistantName.trim() || 'Nova',
-        styles: opts.styles,
-        activeSlot: opts.slot,
-      })
+      const assistantName = opts.assistantName.trim() || 'Nova'
+      set({ assistantName, styles: opts.styles, activeSlot: opts.slot })
+      // the server column is the durable onboarding marker — social logins
+      // route through /onboarding until it is set (fire-and-forget: the
+      // op-log sync still carries the name for every device either way)
+      if (HAS_API && !demo && getToken()) void updateMe({ assistantName })
       navigate({ to: '/' })
     },
     showAuth: nav.authView !== null,

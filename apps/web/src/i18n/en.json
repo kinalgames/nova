@@ -293,7 +293,7 @@
     "skillsHelp": "Each skill teaches Nova how to do one kind of work. You can also enable them per project.",
     "systemSection": "SYSTEM INSTRUCTIONS",
     "systemHelp": "How Nova replies in every conversation. Edit freely at any time.",
-    "systemSample": "Reply concisely and get to the point. Prefer bullet points. Confident but never showy. Ask back when a request is ambiguous instead of guessing."
+    "systemPlaceholder": "e.g. Reply concisely and get to the point. Prefer bullet points. Ask back when a request is ambiguous instead of guessing."
   },
   "quiet": {
     "header": "FOCUS · {{clock}}",

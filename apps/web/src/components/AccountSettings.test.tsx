@@ -1,8 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
+import { updateMe } from '../services/auth'
 
-beforeEach(() => localStorage.clear())
+// the onboarding submit persists the name server-side — stub ONLY that call
+vi.mock('../services/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/auth')>()),
+  updateMe: vi.fn(async () => true),
+}))
+
+beforeEach(() => {
+  localStorage.clear()
+  vi.mocked(updateMe).mockClear()
+})
 
 describe('Settings — profile & data controls (Track D)', () => {
   // generous timeout: per-keystroke typing through the full app re-render is
@@ -21,6 +31,15 @@ describe('Settings — profile & data controls (Track D)', () => {
     await user.clear(asBox)
     await user.type(asBox, 'Bee')
     expect(store().s.assistantName).toBe('Bee')
+  })
+
+  it('the system prompt is editable from Settings → Trợ lý and lands in the store', { timeout: 15_000 }, async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, { path: '/chat/c1?settings=assistant' })
+    const dialog = await screen.findByRole('dialog')
+    const box = within(dialog).getByLabelText('HƯỚNG DẪN HỆ THỐNG')
+    await user.type(box, 'Luôn xưng em.')
+    expect(store().s.systemPrompt).toBe('Luôn xưng em.')
   })
 
   it('export downloads a json; clear asks for confirmation first', async () => {
@@ -74,5 +93,7 @@ describe('Onboarding — choices persist for real', () => {
     expect(store().s.assistantName).toBe('Bee')
     expect(store().s.styles.warm).toBe(true)
     expect(store().s.activeSlot).toBe('fast')
+    // and the durable server-side marker was written
+    expect(updateMe).toHaveBeenCalledWith({ assistantName: 'Bee' })
   })
 })

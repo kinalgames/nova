@@ -475,11 +475,18 @@ function Assistant() {
         ))}
       </div>
 
-      <div className={`${LABEL} mb-2`}>{t('settings.systemSection')}</div>
-      <div className="mb-3 text-ui leading-normal text-muted">{t('settings.systemHelp')}</div>
-      <div className="rounded-md border border-border bg-panel px-4 py-4 text-body leading-relaxed text-text">
-        {t('settings.systemSample')}
+      <div className={`${LABEL} mb-2`}>
+        <label htmlFor="as-system">{t('settings.systemSection')}</label>
       </div>
+      <div className="mb-3 text-ui leading-normal text-muted">{t('settings.systemHelp')}</div>
+      <textarea
+        id="as-system"
+        value={v.systemPrompt}
+        onChange={(e) => v.setSystemPrompt(e.target.value)}
+        placeholder={t('settings.systemPlaceholder')}
+        rows={5}
+        className="field w-full resize-y rounded-md border border-border bg-panel px-4 py-3 text-body leading-relaxed text-text"
+      />
     </>
   )
 }

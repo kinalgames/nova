@@ -292,7 +292,7 @@
     "skillsHelp": "Mỗi kỹ năng dạy Nova cách làm một loại việc. Bạn cũng có thể bật riêng cho từng dự án.",
     "systemSection": "HƯỚNG DẪN HỆ THỐNG",
     "systemHelp": "Cách Nova trả lời trong mọi cuộc trò chuyện. Bạn có thể chỉnh tự do bất cứ lúc nào.",
-    "systemSample": "Trả lời ngắn gọn, đi thẳng vấn đề. Ưu tiên gạch đầu dòng. Giọng tự tin nhưng không phô trương. Hỏi lại khi yêu cầu mơ hồ thay vì đoán."
+    "systemPlaceholder": "Ví dụ: Trả lời ngắn gọn, đi thẳng vấn đề. Ưu tiên gạch đầu dòng. Hỏi lại khi yêu cầu mơ hồ thay vì đoán."
   },
   "quiet": {
     "header": "TẬP TRUNG · {{clock}}",

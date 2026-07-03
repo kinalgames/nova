@@ -2,6 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { renderStore } from '../test/util'
 
+// onboarding/rename persist the assistant name server-side — stub ONLY that
+// call so the suite never attempts a real network round-trip
+vi.mock('../services/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/auth')>()),
+  updateMe: vi.fn(async () => true),
+}))
+
 function setup() {
   return renderStore()
 }
@@ -9,7 +16,9 @@ beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
 
 describe('store — organization (Track B)', () => {
-  it('archives a conversation out of recents and restores it', async () => {
+  // generous timeout: the file's FIRST test bears the whole import/transform
+  // cost under coverage instrumentation on slow parallel runs
+  it('archives a conversation out of recents and restores it', { timeout: 15_000 }, async () => {
     const { result } = await setup()
     const c2 = () => result.current.v.sideConvs.find((c) => c.id === 'c2')
     await act(async () => c2()!.archive())

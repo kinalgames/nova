@@ -261,6 +261,15 @@ describe('BE3 — sealed BYOK surface', () => {
     expect(res.status).toBe(401)
   })
 
+  it('PATCH /v1/me without a session is 401', async () => {
+    const res = await app.request('/v1/me', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ assistantName: 'Bee' }),
+    })
+    expect(res.status).toBe(401)
+  })
+
   it('a stored-credential chat without a session is 401', async () => {
     const res = await app.request('/v1/chat', {
       method: 'POST',

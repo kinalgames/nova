@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { adoptSocialSession, getToken } from '../services/auth'
+import { adoptSocialSession, fetchMe, getToken } from '../services/auth'
 import { Auth } from '../components/Auth'
 
 export const Route = createFileRoute('/login')({
@@ -18,9 +18,14 @@ export const Route = createFileRoute('/login')({
  */
 function LoginPage() {
   useEffect(() => {
-    void adoptSocialSession().then((adopted) => {
-      /* v8 ignore next — hard navigation, not reachable from the unit env */
-      if (adopted) window.location.replace('/')
+    void adoptSocialSession().then(async (adopted) => {
+      if (!adopted) return
+      /* v8 ignore start — hard navigation, not reachable from the unit env */
+      // a null assistantName means this account never completed onboarding —
+      // route the first social sign-in through it exactly once (D2)
+      const me = await fetchMe()
+      window.location.replace(me && me.assistantName === null ? '/onboarding' : '/')
+      /* v8 ignore stop */
     })
   }, [])
   return <Auth />

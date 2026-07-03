@@ -112,9 +112,17 @@ Backend:
 Design/Product:
 - **D1 Tools web/fetch/files/bash là MOCK** (RẤT LỚN — định hướng
   sản phẩm, cần owner chọn scope thật).
-- **D2 Onboarding cho social login** (NHỎ-VỪA) — user Google mới bỏ
-  qua màn chọn tên trợ lý; cần PATCH /v1/me lưu assistantName
-  server-side + login route quyết định theo assistantName null.
+- ~~D2 Onboarding cho social login~~ ĐÃ XONG 2026-07-03: `PATCH
+  /v1/me` (drizzle update `user.assistant_name`, validate 1-60 ký tự;
+  cột = marker "đã onboard") · login.tsx route social first-login →
+  /onboarding khi `assistantName === null` · completeOnboarding +
+  đổi tên trong Settings (debounce 800ms) đều PATCH để cột không
+  lệch với op-log sync (tránh race hydrateUser vs hydrateSync).
+- ~~Persona → system prompt THẬT~~ ĐÃ XONG 2026-07-03:
+  `services/prompt.ts` (buildSystemPrompt: tên trợ lý + 4 style toggle
+  → directive + custom prompt + project instructions, mỗi phần 1
+  section) · state mới `systemPrompt` (persist + op-log sync) · tab
+  Trợ lý: textarea editable thay text tĩnh (`settings.systemPlaceholder`).
 - D3 auto-title hội thoại bằng LLM · D4 account settings (đổi mật
   khẩu/xoá tài khoản) · D5 email verify/reset (cần chọn email
   provider — hỏi owner vì đụng nguyên tắc CF-only) · D6 R4 iOS +

@@ -35,7 +35,9 @@ async function withRealProfile() {
 }
 
 describe('real provider routing (nova-api proxy)', () => {
-  it('a non-demo profile routes the send through the proxy with real usage', async () => {
+  // generous timeout: the file's FIRST test bears the whole import/transform
+  // cost under coverage instrumentation on slow parallel runs
+  it('a non-demo profile routes the send through the proxy with real usage', { timeout: 15_000 }, async () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'chào Nova' }))
     await act(async () => result.current.v.send())
@@ -55,6 +57,26 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(calls[0].profile?.credential).toBe('sk-ant-real-123')
     expect(calls[0].messages.at(-1)).toEqual({ role: 'user', content: 'chào Nova' })
     expect(calls[0].model).toBe('claude-opus-4-8')
+    // the persona rides along as a REAL system prompt on every live send
+    expect(calls[0].system).toContain('You are Nova')
+    expect(calls[0].system).toContain('concise')
+  })
+
+  it('the system prompt reflects name, style toggles and custom instructions', async () => {
+    const { result } = await withRealProfile()
+    await act(async () =>
+      result.current.set({
+        assistantName: 'Bee',
+        styles: { concise: false, warm: true, formal: false, humor: false },
+        systemPrompt: 'Luôn xưng "em" với người dùng.',
+      }),
+    )
+    await act(async () => result.current.set({ draft: 'chào' }))
+    await act(async () => result.current.v.send())
+    expect(calls[0].system).toContain('You are Bee')
+    expect(calls[0].system).toContain('warm, friendly')
+    expect(calls[0].system).not.toContain('concise')
+    expect(calls[0].system).toContain('Luôn xưng "em" với người dùng.')
   })
 
   it('a non-claude provider routes live too — providerId follows the routed slot', async () => {
