@@ -16,6 +16,11 @@ export default defineConfig({
     // on 2-core CI. Correctness beats the ~seconds saved.
     pool: 'threads',
     isolate: true,
+    // Under coverage instrumentation on loaded machines, the FIRST test of a
+    // file pays the whole import/transform bill and regularly blows the 5s
+    // default — a recurring pure-flake class (every isolated rerun passes).
+    // 15s does not mask real hangs: genuine regressions still fail loudly.
+    testTimeout: 15_000,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'text', 'html'],

@@ -108,6 +108,8 @@ files.get('/:id', async (c) => {
       'content-type': row.mime,
       'content-disposition': `inline; filename*=UTF-8''${encodeURIComponent(row.name)}`,
       'cache-control': 'private, max-age=3600',
+      // whitelisted mimes only — and the browser must never second-guess them
+      'x-content-type-options': 'nosniff',
       etag: obj.httpEtag,
     },
   })

@@ -47,6 +47,9 @@ export function uploadFile(
       xhr.setRequestHeader('x-file-name', encodeURIComponent(file.name))
       xhr.setRequestHeader('content-type', file.type || 'application/octet-stream')
       xhr.withCredentials = true
+      // a stalled network must fail soft, never hang the tray forever
+      xhr.timeout = 60_000
+      xhr.ontimeout = () => resolve(null)
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
       }

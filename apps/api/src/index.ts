@@ -64,8 +64,11 @@ app.use(
   cors({
     origin: (o) => o,
     credentials: true,
-    allowHeaders: ['content-type', 'authorization'],
+    allowHeaders: ['content-type', 'authorization', 'x-file-name'],
     allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+    // cross-origin dev must be able to READ these (same-origin always can):
+    // retry-after drives the client back-off, x-request-id the error card
+    exposeHeaders: ['x-request-id', 'retry-after'],
   }),
 )
 app.use(

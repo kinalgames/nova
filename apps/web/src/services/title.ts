@@ -48,7 +48,9 @@ export async function generateTitle(opts: {
       model: TITLE_MODEL[opts.providerId] ?? opts.model,
       system: INSTRUCTION,
       thinking: 'off',
-      maxTokens: 24,
+      // roomy enough for reasoning models whose internal tokens count toward
+      // the completion cap (gpt-5 'minimal' still spends a few)
+      maxTokens: 64,
       messages: [
         {
           role: 'user',

@@ -48,7 +48,7 @@ describe('generateTitle', () => {
     expect(title).toBe('Kế hoạch ra mắt Aurora')
     expect(calls[0].model).toBe('claude-haiku-4-5')
     expect(calls[0].thinking).toBe('off')
-    expect(calls[0].maxTokens).toBe(24)
+    expect(calls[0].maxTokens).toBe(64)
     expect(calls[0].system).toContain('title')
     expect(calls[0].profile?.credential).toBe('sk-x')
   })

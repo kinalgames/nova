@@ -90,7 +90,7 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(vi.mocked(streamChat)).toHaveBeenCalledTimes(2)
     expect(calls[1].model).toBe('claude-haiku-4-5')
     expect(calls[1].thinking).toBe('off')
-    expect(calls[1].maxTokens).toBe(24)
+    expect(calls[1].maxTokens).toBe(64)
     // the SECOND send in the now-named conversation stays a single call
     await act(async () => result.current.set({ draft: 'tiếp tục đi' }))
     await act(async () => result.current.v.send())

@@ -408,6 +408,17 @@ describe('B3 — rate limiting + chat session gate', () => {
     expect(res.status).toBe(429)
   })
 
+  it('uploads share the heavy RL_CHAT budget; downloads stay on RL_API', async () => {
+    const up = await app.request(
+      '/v1/files',
+      { method: 'POST', body: 'x' },
+      env({ RL_CHAT: deny, RL_API: grant }),
+    )
+    expect(up.status).toBe(429)
+    const down = await app.request('/v1/files/some-id', {}, env({ RL_CHAT: deny, RL_API: grant }))
+    expect(down.status).toBe(401) // passed the limiter, stopped by the session gate
+  })
+
   it('a granted or missing limiter never blocks — fail open', async () => {
     const ok = await app.request('/v1/me', {}, env({ RL_API: grant }))
     expect(ok.status).toBe(401) // falls through to the session gate

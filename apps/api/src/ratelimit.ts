@@ -72,7 +72,11 @@ export const limitV1: MiddlewareHandler<{ Bindings: RateLimitEnv }> = async (c, 
   // silently; a PRESENT env with a missing binding is a config defect and logs
   const env = c.env as RateLimitEnv | undefined
   if (!env) return next()
-  const name = c.req.path === '/v1/chat' ? ('RL_CHAT' as const) : ('RL_API' as const)
+  // uploads share the CHAT budget — 120/min of 10MB writes to R2 would be a
+  // storage-cost vector; 30/min is still far beyond real use
+  const heavy =
+    c.req.path === '/v1/chat' || (c.req.path === '/v1/files' && c.req.method === 'POST')
+  const name = heavy ? ('RL_CHAT' as const) : ('RL_API' as const)
   if (!(await allow(env[name], ipOf(c.req.raw), name))) return tooMany()
   return next()
 }
