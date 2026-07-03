@@ -130,7 +130,7 @@ Backend:
   `reasoning_effort` (off→minimal chỉ gpt-5*, o-series omit);
   ollama: chưa (B6). Gemini transform đã cộng thoughtsTokenCount vào
   outputTokens từ trước — metering đúng sẵn.
-- B4 structured logging request_id · B6 ollama client-direct · B7 sync
+- ~~B4 structured logging~~ ĐÃ XONG 2026-07-03: middleware x-request-id (cf-ray ưu tiên, UUID fallback) trên MỌI response + log JSON mỗi request (method/path/status/ms, skip healthz) + log ‘chat’ per call (provider/model/status/uid/thinking/atts, không content) · client hiện ‘req ‹id›’ trong error card để correlate với wrangler tail. CÒN: B6 ollama client-direct · B7 sync
   cursor/live-push · CI deploy-dev.yml ĐÃ CÓ (chờ GH secret
   CLOUDFLARE_API_TOKEN) · AE_SQL_TOKEN chờ user tạo.
 

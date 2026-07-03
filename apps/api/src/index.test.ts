@@ -48,6 +48,28 @@ describe('nova-api skeleton', () => {
     expect(res.status).toBe(404)
   })
 
+  it('B4 — every response carries x-request-id (cf-ray when present)', async () => {
+    const rayed = await app.request('/healthz', { headers: { 'cf-ray': 'ray-abc-123' } })
+    expect(rayed.headers.get('x-request-id')).toBe('ray-abc-123')
+    const fallback = await app.request('/v1/me')
+    expect(fallback.status).toBe(401)
+    expect(fallback.headers.get('x-request-id')).toBeTruthy()
+  })
+
+  it('B4 — API requests emit one structured log line', async () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    await app.request('/v1/me', { headers: { 'cf-ray': 'ray-log-1' } })
+    const line = spy.mock.calls
+      .map((args) => String(args[0]))
+      .find((s) => s.includes('"msg":"req"') && s.includes('ray-log-1'))
+    expect(line).toBeTruthy()
+    const parsed = JSON.parse(line!) as { path: string; status: number; ms: number }
+    expect(parsed.path).toBe('/v1/me')
+    expect(parsed.status).toBe(401)
+    expect(parsed.ms).toBeGreaterThanOrEqual(0)
+    spy.mockRestore()
+  })
+
   it('POST /v1/chat rejects an invalid thinking level', async () => {
     asUser()
     const res = await app.request('/v1/chat', {

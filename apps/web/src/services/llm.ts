@@ -19,7 +19,15 @@ export const HAS_API: boolean = import.meta.env.PROD || API_BASE !== ''
 export interface StreamHandlers {
   onDelta: (text: string) => void
   onDone: (usage: { inputTokens: number; outputTokens: number }) => void
-  onError: (code: string, message: string, status?: number, retryAfterSec?: number) => void
+  onError: (
+    code: string,
+    message: string,
+    status?: number,
+    retryAfterSec?: number,
+    /** B4 — server correlation id; the error card surfaces it so a user
+     *  report can be matched to the worker's structured logs */
+    requestId?: string,
+  ) => void
 }
 
 /** POST /v1/chat and forward Nova-contract SSE events to the handlers */
@@ -50,7 +58,13 @@ export async function streamChat(
   if (!res.ok) {
     const retry = Number(res.headers.get('retry-after') ?? '') || undefined
     const body = (await res.json().catch(() => ({}))) as { code?: string; detail?: string }
-    h.onError(body.code ?? 'upstream_error', body.detail ?? res.statusText, res.status, retry)
+    h.onError(
+      body.code ?? 'upstream_error',
+      body.detail ?? res.statusText,
+      res.status,
+      retry,
+      res.headers.get('x-request-id') ?? undefined,
+    )
     return
   }
   const reader = res.body?.getReader()

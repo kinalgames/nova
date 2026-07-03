@@ -190,6 +190,8 @@ export interface NovaState {
   /** live error surfaced in the chat error card (real convs) — the specific
    *  provider message or a no-provider hint; null when there is no error */
   errorDetail: string | null
+  /** B4 — server correlation id of the failed request (error card footer) */
+  errorRequestId: string | null
   /** which recovery the error card offers */
   errorAction: 'providers' | 'retry' | null
   /** the conversation the error belongs to — the card shows only there, so it

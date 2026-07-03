@@ -585,6 +585,10 @@ export function MessageView({
                 {v.advanced && !v.errorDetail && (
                   <span className="font-mono text-eyebrow text-danger-text"> · err 503 · stream_closed</span>
                 )}
+                {/* B4 — correlation id: quote this to match server logs */}
+                {v.errorRequestId && (
+                  <div className="mt-1 font-mono text-eyebrow text-muted">req {v.errorRequestId}</div>
+                )}
               </div>
             </div>
             {v.errorAction === 'providers' ? (

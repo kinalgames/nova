@@ -261,12 +261,14 @@ describe('real provider routing (nova-api proxy)', () => {
 
   it('a non-429 provider error lands in the bubble without a cool-down', async () => {
     ;(streamChat as Mock).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
-      h.onError('upstream_error', 'invalid x-api-key', 401)
+      h.onError('upstream_error', 'invalid x-api-key', 401, undefined, 'ray-9')
     })
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'key sai thử xem' }))
     await act(async () => result.current.v.send())
     expect(result.current.v.errorDetail).toBe('upstream_error: invalid x-api-key')
+    // B4 — the correlation id lands beside the error for support reports
+    expect(result.current.v.errorRequestId).toBe('ray-9')
     expect(result.current.v.isError).toBe(true)
     const prof = result.current.s.profiles.claude.find((f) => f.name === 'Khóa thật')!
     expect(prof.status).not.toBe('limited')

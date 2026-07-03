@@ -94,7 +94,25 @@ describe('llm service — SSE client', () => {
     const seen: unknown[] = []
     s.h.onError = (...args) => seen.push(args)
     await streamChat(req, s.h)
-    expect(seen[0]).toEqual(['rate_limited', 'slow down', 429, 30])
+    expect(seen[0]).toEqual(['rate_limited', 'slow down', 429, 30, undefined])
+  })
+
+  it('B4 — the x-request-id header rides into onError for correlation', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ code: 'unauthenticated', detail: 'No valid session' }), {
+            status: 401,
+            headers: { 'x-request-id': 'ray-777', 'content-type': 'application/json' },
+          }),
+      ),
+    )
+    const s = make()
+    const seen: unknown[] = []
+    s.h.onError = (...args) => seen.push(args)
+    await streamChat(req, s.h)
+    expect(seen[0]).toEqual(['unauthenticated', 'No valid session', 401, undefined, 'ray-777'])
   })
 
   it('an error body that is not JSON falls back to status text defaults', async () => {
@@ -106,7 +124,7 @@ describe('llm service — SSE client', () => {
     const seen: unknown[] = []
     s.h.onError = (...args) => seen.push(args)
     await streamChat(req, s.h)
-    expect(seen[0]).toEqual(['upstream_error', 'Server Error', 500, undefined])
+    expect(seen[0]).toEqual(['upstream_error', 'Server Error', 500, undefined, undefined])
   })
 
   it('a bare message_stop (no usage payload) defaults to zero counts', async () => {

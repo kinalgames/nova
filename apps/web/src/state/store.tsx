@@ -211,6 +211,7 @@ function initialState(demo: boolean): NovaState {
     preview: null,
     respState: 'done',
     errorDetail: null,
+    errorRequestId: null,
     errorAction: null,
     errorConv: null,
     projects:
@@ -724,7 +725,7 @@ export function StoreProvider({
       clearTimeout(t2.current)
       clearInterval(tc.current)
       // a fresh reply clears any prior error card
-      set({ errorDetail: null, errorAction: null, errorConv: null, respState: 'done' })
+      set({ errorDetail: null, errorRequestId: null, errorAction: null, errorConv: null, respState: 'done' })
       const prev = sRef.current
       const proj = prev.projects.find(
         (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
@@ -878,7 +879,7 @@ export function StoreProvider({
                 })
               }
             },
-            onError: (code, message, status, retryAfterSec) => {
+            onError: (code, message, status, retryAfterSec, requestId) => {
               // a rate-limited profile enters its cool-down window — the
               // rotation engine will route the NEXT send to the next profile
               if (status === 429)
@@ -902,6 +903,7 @@ export function StoreProvider({
                 typing: false,
                 respState: 'error',
                 errorDetail: `${code}: ${message}`,
+                errorRequestId: requestId ?? null,
                 errorAction: 'retry',
                 errorConv: conv,
               })
@@ -922,6 +924,7 @@ export function StoreProvider({
           typing: false,
           respState: 'error',
           errorDetail: i18n.t('chat.noProviderBody'),
+          errorRequestId: null,
           errorAction: 'providers',
           errorConv: conv,
           threads: {
@@ -1474,6 +1477,7 @@ function deriveValues(
       activeConv: id,
       respState: 'done',
       errorDetail: null,
+      errorRequestId: null,
       errorAction: null,
       errorConv: null,
       palette: false,
@@ -2055,6 +2059,7 @@ function deriveValues(
     // the card shows only in the conversation the error belongs to
     errorHere: rs === 'error' && s.errorConv === activeConv,
     errorDetail: s.errorDetail,
+    errorRequestId: s.errorRequestId,
     errorAction: s.errorAction,
     showTrace: rs === 'done' || rs === 'stream',
     traceIconBg: 'var(--accent-soft)',

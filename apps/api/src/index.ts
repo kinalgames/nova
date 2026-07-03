@@ -31,7 +31,31 @@ export interface Env extends CredentialsEnv, ProviderEnv, UsageEnv, RateLimitEnv
 // forward). Conventions locked in docs/backend-architecture.md: REST /v1,
 // RFC 7807 errors, SSE streaming.
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: { requestId: string } }>()
+
+// B4 — request correlation + structured request logs. cf-ray is already
+// unique per edge request; local dev falls back to a UUID. The id rides on
+// EVERY response as x-request-id — the client surfaces it in error cards so
+// a user report can be matched to these log lines.
+app.use('*', async (c, next) => {
+  const requestId = c.req.header('cf-ray') ?? crypto.randomUUID()
+  c.set('requestId', requestId)
+  const t0 = Date.now()
+  await next()
+  c.res.headers.set('x-request-id', requestId)
+  if (c.req.path !== '/healthz')
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        msg: 'req',
+        id: requestId,
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        ms: Date.now() - t0,
+      }),
+    )
+})
 
 // dev CORS: the Vite client on another port; tighten per-env at deploy time.
 // credentials:true → origin must be reflected, never '*'.
@@ -251,6 +275,21 @@ app.post('/v1/chat', async (c) => {
     if (e instanceof ProviderConfigError) return problem(400, 'invalid_credential', e.message)
     return problem(502, 'upstream_unreachable', 'Could not reach the provider')
   }
+
+  // B4 — one structured line per chat call: routing + outcome, never content
+  console.log(
+    JSON.stringify({
+      level: 'info',
+      msg: 'chat',
+      id: c.get('requestId'),
+      providerId: req.providerId,
+      model: req.model,
+      status: upstream.status,
+      uid,
+      thinking: req.thinking ?? null,
+      attachments: req.messages.reduce((n, m) => n + (m.attachments?.length ?? 0), 0),
+    }),
+  )
 
   if (!upstream.ok) {
     const detail = await upstream.text().catch(() => '')
