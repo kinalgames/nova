@@ -143,4 +143,21 @@ describe('ConversationView — demo content is scoped to the demo conversation',
     await renderApp()
     expect(await screen.findByText('demo:')).toBeInTheDocument()
   })
+
+  it('real world without a provider: the empty chat IS the connect card', async () => {
+    localStorage.setItem('nova.auth.token', 'tok') // past the auth gate
+    await renderApp(undefined, {
+      world: 'real',
+      path: '/chat/r1',
+      storeInit: {
+        conversations: [{ id: 'r1', title: 'Mới', projectId: 'chung', updatedAt: 1 }],
+        threads: {},
+      },
+    })
+    // the full nudge replaces the greeting — no silent empty screen
+    expect(await screen.findByText(/Kết nối nhà cung cấp/)).toBeInTheDocument()
+    // anonymous → the CTA asks to sign in first (line-37 branch)
+    expect(screen.getByRole('button', { name: /Đăng nhập để bắt đầu/ })).toBeInTheDocument()
+    expect(screen.queryByText(/Hỏi bất cứ điều gì/)).not.toBeInTheDocument()
+  })
 })

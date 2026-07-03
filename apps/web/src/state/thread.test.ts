@@ -158,3 +158,18 @@ describe('thread — cross-session id collisions (the frozen-app bug)', () => {
     }
   })
 })
+
+describe('thread — hardened walks over broken shapes', () => {
+  it('visiblePath skips a child id that has no byId record', () => {
+    const t: Thread = {
+      byId: { a: m('a') },
+      children: { '': ['a'], a: ['ghost'] },
+      selected: {},
+    }
+    expect(visiblePath(t).map((x) => x.id)).toEqual(['a'])
+    // sanitize drops the ghost edge and reports a changed object
+    const healed = sanitizeThread(t)
+    expect(healed).not.toBe(t)
+    expect(healed.children.a).toBeUndefined()
+  })
+})

@@ -519,18 +519,19 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(prof.limitedUntil).toBeGreaterThanOrEqual(Date.now() + 55_000)
   })
 
-  it('real mode with NO provider shows the error card, never silent nothing', async () => {
+  it('real mode with NO provider: the nudge IS the answer — send blocks softly', async () => {
     const { result } = await renderStore({ world: 'real' })
     // no live profile for the active model → the BYOK nudge shows on chat
     expect(result.current.v.needsProvider).toBe(true)
+    const nonce0 = result.current.s.nudgeNonce
     await act(async () => result.current.set({ draft: 'chào' }))
     await act(async () => result.current.v.send())
-    // a persistent danger card, not a vanished toast
-    expect(result.current.v.isError).toBe(true)
-    expect(result.current.v.errorAction).toBe('providers')
-    expect(result.current.v.errorDetail).toBeTruthy()
-    // an assistant bubble exists to carry the card, and no real call went out
-    expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
+    // the draft SURVIVES — nothing consumed, no message minted, no error card
+    expect(result.current.s.draft).toBe('chào')
+    expect(result.current.v.sent).toHaveLength(0)
+    expect(result.current.v.isError).toBe(false)
+    // the nudge pulsed to pull the eye instead
+    expect(result.current.s.nudgeNonce).toBe(nonce0 + 1)
     expect(vi.mocked(streamChat)).not.toHaveBeenCalled()
   })
 
@@ -543,5 +544,48 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(streamChat).not.toHaveBeenCalled()
     expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
     expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(0)
+  })
+})
+
+describe('BYOK nudge — every mutation path blocks softly when no provider', () => {
+  const seed = () => {
+    const m = (id: string, role: 'user' | 'assistant', text: string) => ({
+      id, role, who: role === 'user' ? 'T' : 'NOVA', blocks: [{ type: 'text' as const, text }],
+    })
+    return {
+      conversations: [{ id: 'r1', title: 'Cũ', projectId: 'chung', updatedAt: 1 }],
+      threads: { r1: fromLinear([m('u1', 'user', 'câu hỏi cũ'), m('a1', 'assistant', 'đáp cũ')]) },
+      activeConv: 'r1',
+    }
+  }
+
+  it('edit-with-change and regenerate pulse the nudge instead of branching', async () => {
+    const { result } = await renderStore({ world: 'real', path: '/chat/r1', storeInit: seed() })
+    expect(result.current.v.needsProvider).toBe(true)
+    const nonce0 = result.current.s.nudgeNonce
+    // edit to DIFFERENT text — still blocked: no provider to re-run against
+    await act(async () => result.current.v.startEdit('u1'))
+    await act(async () => result.current.v.saveEdit('câu hỏi mới'))
+    expect(result.current.v.versions.u1).toEqual({ index: 1, count: 1 })
+    // regenerate — same soft block
+    await act(async () => result.current.v.regenerate('a1'))
+    expect(result.current.v.versions.a1).toEqual({ index: 1, count: 1 })
+    expect(result.current.s.nudgeNonce).toBe(nonce0 + 2)
+    expect(vi.mocked(streamChat)).not.toHaveBeenCalled()
+  })
+
+  it('nudgeGo routes by account state: anonymous → /login, signed-in → providers tab', async () => {
+    const { result } = await renderStore({ world: 'real', path: '/chat/r1', storeInit: seed() })
+    expect(result.current.v.nudgeLogin).toBe(true)
+    await act(async () => result.current.v.nudgeGo())
+    // memory router: assert through nav-derived state, not window.location
+    expect(result.current.v.loggedIn).toBe(false) // authView 'login' is showing
+
+    const { result: r2 } = await renderStore({
+      world: 'real', path: '/chat/r1', storeInit: { ...seed(), accountId: 'acc-1' },
+    })
+    expect(r2.current.v.nudgeLogin).toBe(false)
+    await act(async () => r2.current.v.nudgeGo())
+    expect(r2.current.v.settingsTab).toBe('providers')
   })
 })

@@ -46,3 +46,15 @@ describe('humanErrorDetail — provider bodies become one human sentence', () =>
     expect(humanErrorDetail('x', 'kaboom', 500)).toBe('x: kaboom')
   })
 })
+
+describe('humanErrorDetail — dig edge shapes', () => {
+  it('non-object JSON (array) falls back to the raw string', () => {
+    expect(humanErrorDetail('x', '[1,2]', 500)).toBe('x: [1,2]')
+  })
+  it('object with only a detail wrapper unwraps it', () => {
+    expect(humanErrorDetail('x', '{"detail":"plain text inside"}', 500)).toBe('x: plain text inside')
+  })
+  it('empty object falls back to the original message', () => {
+    expect(humanErrorDetail('x', '{}', 500)).toBe('x: {}')
+  })
+})

@@ -259,6 +259,7 @@ function initialState(demo: boolean): NovaState {
     sidebarCollapsed: false,
     renamingConv: null,
     homeProject: null,
+    nudgeNonce: 0,
     preview: null,
     respState: 'done',
     errorDetail: null,
@@ -1100,10 +1101,24 @@ export function StoreProvider({
     [set, demo, navigate],
   )
 
+  // BYOK gate: with NO live profile for the active model, sending would only
+  // mint a dead error bubble under the message — the ProviderNudge already on
+  // screen IS the notification. Block the mutation, keep the user's draft
+  // intact, and pulse the nudge to pull the eye to the one next step.
+  const nudgeInstead = useCallback((): boolean => {
+    if (demo) return false
+    const st = sRef.current
+    const providerId = st.slots[st.activeSlot].providerId
+    if ((st.profiles[providerId] ?? []).some((f) => !f.demo)) return false
+    set((x) => ({ nudgeNonce: x.nudgeNonce + 1 }))
+    return true
+  }, [set, demo])
+
   const send = useCallback(() => {
     // empty composer is a no-op: never send a message the user didn't write
     const text = sRef.current.draft.trim()
     if (!text) return
+    if (nudgeInstead()) return
     // the URL owns the active conversation. Home has no :convId — a message
     // composed there starts a FRESH conversation (in the composer's visible
     // project) rather than silently appending to the last-open thread
@@ -1177,7 +1192,7 @@ export function StoreProvider({
       const el = scrollRef.current
       if (el) el.scrollTop = el.scrollHeight
     }, 0)
-  }, [set, navigate, streamReply])
+  }, [set, navigate, streamReply, nudgeInstead])
 
   // edit a user message: the edit becomes a sibling VERSION (original stays
   // reachable via ‹ ›), keeps the original attachments, and re-runs the reply
@@ -1194,6 +1209,7 @@ export function StoreProvider({
         set({ editingMsg: null })
         return
       }
+      if (nudgeInstead()) return
       const keep = orig.blocks.filter((b) => b.type === 'files')
       const newId = uid()
       set((x) => ({
@@ -1210,7 +1226,7 @@ export function StoreProvider({
       }))
       streamReply(conv, newId, text.trim())
     },
-    [set, streamReply],
+    [set, streamReply, nudgeInstead],
   )
 
   // regenerate an assistant reply as a sibling version under the same prompt
@@ -1220,12 +1236,13 @@ export function StoreProvider({
       const th = sRef.current.threads[conv]
       const reply = th?.byId[replyId]
       if (!th || !reply || reply.role !== 'assistant' || !reply.parentId) return
+      if (nudgeInstead()) return
       const parent = th.byId[reply.parentId]
       const promptBlock = parent?.blocks.find((b) => b.type === 'text')
       const prompt = promptBlock && promptBlock.type === 'text' ? promptBlock.text : ''
       streamReply(conv, reply.parentId, prompt)
     },
-    [streamReply],
+    [streamReply, nudgeInstead],
   )
 
   const selectVersion = useCallback(
@@ -2141,6 +2158,7 @@ function deriveValues(
     // surfaces “connect a provider” instead of a silent empty screen
     needsProvider:
       !demo && (s.profiles[s.slots[s.activeSlot].providerId] ?? []).filter((f) => !f.demo).length === 0,
+    nudgeNonce: s.nudgeNonce,
     nudgeLogin: !s.accountId,
     nudgeGo: () => {
       if (!s.accountId) {

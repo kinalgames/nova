@@ -417,6 +417,17 @@ button:focus-visible {
     transform: none;
   }
 }
+/* one soft accent ring that fades — the BYOK nudge pulses when a send is
+   blocked because no provider is connected */
+@keyframes nudgeFlash {
+  0% {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 @keyframes pulseRing {
   0% {
     transform: scale(0.7);

@@ -208,6 +208,9 @@ export interface NovaState {
    *  chat (in project)”, consumed at the first send. A conversation is born
    *  on the first MESSAGE, never on intent, so no empty rows pile up. */
   homeProject: string | null
+  /** runtime-only attention pulse for the BYOK nudge — bumped when a send is
+   *  blocked because no provider is connected (never persisted) */
+  nudgeNonce: number
   threads: Record<string, Thread>
   /** message id currently being edited inline, or null */
   editingMsg: string | null
