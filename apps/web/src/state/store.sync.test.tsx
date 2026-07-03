@@ -18,6 +18,8 @@ vi.mock('../services/auth', () => ({
   fetchMe: vi.fn(async () => null),
   signOut: vi.fn(async () => {}),
   getToken: () => localStorage.getItem('nova.auth.token'),
+  signInSocial: vi.fn(async () => null),
+  adoptSocialSession: vi.fn(async () => false),
 }))
 
 beforeEach(() => {

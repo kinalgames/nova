@@ -68,6 +68,41 @@ export async function fetchMe(): Promise<SessionUser | null> {
   }
 }
 
+/** kick off the OAuth redirect — returns an error message, or navigates away */
+export async function signInSocial(provider: 'google' | 'github'): Promise<string | null> {
+  try {
+    const res = await call('/api/auth/sign-in/social', {
+      provider,
+      callbackURL: `${window.location.origin}/login`,
+    })
+    if (!res.ok) return await errorOf(res)
+    const data = (await res.json()) as { url?: string }
+    if (!data.url) return i18n.t('errors.httpStatus', { status: res.status })
+    window.location.href = data.url
+    return null
+  } catch {
+    return i18n.t('errors.network')
+  }
+}
+
+/**
+ * After an OAuth redirect the session lives in a cookie only — exchange it
+ * for the bearer token the app runs on. True when a token was adopted.
+ */
+export async function adoptSocialSession(): Promise<boolean> {
+  if (getToken()) return false
+  try {
+    const res = await call('/v1/session-token')
+    if (!res.ok) return false
+    const data = (await res.json()) as { token?: string }
+    if (!data.token) return false
+    localStorage.setItem(TOKEN_KEY, data.token)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function signOut(): Promise<void> {
   localStorage.removeItem(TOKEN_KEY)
   try {

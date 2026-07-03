@@ -3,6 +3,28 @@
 Đọc file này ĐẦU TIÊN ở session kế. Trạng thái repo, quyết định đã chốt,
 TODO theo thứ tự, và bẫy đã cắn.
 
+## ĐÃ DEPLOY — Cloudflare Workers (2 env, mỗi env 1 Worker serve web + API)
+
+- **dev**: https://nova-dev.kinalgames.workers.dev · **prod**: https://nova.kinalgames.workers.dev
+  (custom domain dự kiến: nova.kinal.co — khi gắn: thêm route, đổi 2 vars
+  BETTER_AUTH_URL/WEB_ORIGIN trong wrangler.jsonc, thêm redirect URI OAuth)
+- Same-origin: Workers Static Assets serve `apps/web/dist` (SPA fallback),
+  `run_worker_first: /v1/* /api/* /healthz`. Client prod build `API_BASE=''`.
+- Deploy: `npm run build --workspace=@nova/web && cd apps/api && npx wrangler
+  deploy --env dev|production`. Migrations: `npx wrangler d1 migrations apply
+  DB --remote --env …`. D1: nova-dev `54de4c43…` / nova `65f66b6c…`.
+- Secrets đã nạp per env: BETTER_AUTH_SECRET, CREDENTIALS_KEY (random riêng
+  từng env), GEMINI_OAUTH_*, GOOGLE_CLIENT_*, GITHUB_CLIENT_* (app riêng
+  per env). CÒN THIẾU: AE_SQL_TOKEN + CF_ACCOUNT_ID (/v1/usage read-back).
+- **AE binding đang tạm comment trong wrangler.jsonc** — chờ user bấm enable
+  Analytics Engine trong dashboard; xong thì bỏ comment 2 dòng + redeploy.
+- Social login: Google (1 client, 3 redirect URI) + GitHub (3 app riêng).
+  Flow: redirect về /login → client adoptSocialSession() đổi cookie → bearer
+  qua GET /v1/session-token → reload vào app. Local social cần đăng nhập
+  cùng origin (cookie SameSite) — test trên cloud là chính.
+- CI auto-deploy dev: CHƯA — cần user tạo CF API token (Workers Scripts:Edit)
+  đặt vào GH secrets rồi thêm workflow.
+
 ## Trạng thái repo
 
 - **CI XANH** (gates + e2e). Push thẳng main, mỗi commit kèm "Verified:".
@@ -14,10 +36,9 @@ TODO theo thứ tự, và bẫy đã cắn.
   `.dev.vars`**). D1 local đã migrate tới `0001` (provider_credential).
   Test user: `minh@test.vn / matkhau-manh-123`.
 - `.dev.vars` (gitignored): BETTER_AUTH_SECRET, R2/CF-Images creds,
-  `CREDENTIALS_KEY` (base64 32B), `GEMINI_OAUTH_CLIENT_ID` +
-  `GEMINI_OAUTH_CLIENT_SECRET` (cặp installed-app CÔNG KHAI của
-  gemini-cli — để trong config vì GitHub push protection chặn literal
-  GOCSPX-… trong source; đã điền sẵn local). Prod: `wrangler secret put`.
+  `CREDENTIALS_KEY`, `GEMINI_OAUTH_CLIENT_ID/SECRET` (cặp công khai
+  gemini-cli), `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET`
+  (app nova-local). Tất cả đã điền sẵn local.
 
 ## Đã ship phiên này
 

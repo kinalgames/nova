@@ -65,6 +65,23 @@ app.get('/v1/me', async (c) => {
   })
 })
 
+// Social OAuth lands with a session COOKIE only (the redirect cannot deliver
+// the set-auth-token header) — this endpoint exchanges that cookie for the
+// bearer token the client architecture runs on. The bearer plugin accepts the
+// raw session token, which is exactly what sign-in's set-auth-token carries.
+app.get('/v1/session-token', async (c) => {
+  let token: string | null = null
+  try {
+    const session = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers })
+    token = session?.session.token ?? null
+  } catch {
+    // fail CLOSED: an auth-backend hiccup is "no session", never a 500
+    token = null
+  }
+  if (!token) return problem(401, 'unauthenticated', 'No valid session')
+  return c.json({ token })
+})
+
 // BE3: sealed BYOK CRUD (session-gated; secrets never round-trip)
 app.route('/v1/credentials', credentials)
 

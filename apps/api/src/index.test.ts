@@ -256,6 +256,11 @@ describe('BE3 — sealed BYOK surface', () => {
     expect(res.status).toBe(401)
   })
 
+  it('GET /v1/session-token without a session is 401', async () => {
+    const res = await app.request('/v1/session-token')
+    expect(res.status).toBe(401)
+  })
+
   it('a stored-credential chat without a session is 401', async () => {
     const res = await app.request('/v1/chat', {
       method: 'POST',

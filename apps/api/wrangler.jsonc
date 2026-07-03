@@ -4,12 +4,11 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-06-20",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": {
-    "enabled": true
-  },
-  // BE1 — D1 for auth/user lookup (thin by design; content lives in per-user
-  // DOs from BE2). Local dev uses wrangler's local sqlite; replace
-  // database_id after `wrangler d1 create nova` for deploys.
+  "observability": { "enabled": true },
+
+  // ── local development (wrangler dev, no --env) ──────────────────────────
+  // The web client runs on Vite (:5173) locally, so no assets here; bindings
+  // use wrangler's local sqlite. Secrets come from .dev.vars.
   "d1_databases": [
     {
       "binding": "DB",
@@ -18,14 +17,75 @@
       "migrations_dir": "drizzle"
     }
   ],
-  // BE2 — one SQLite-backed DO per user: the durable op-log + record store
   "durable_objects": {
     "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
   },
+  // DO migrations are shared across environments (top-level only)
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserStore"] }],
-  // T8 — usage metering: one datapoint per completed proxy chat. Reads go
-  // through the AE SQL REST API (CF_ACCOUNT_ID + AE_SQL_TOKEN secrets).
-  "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage" }]
-  // Later phases: BE4 R2 bucket · BE5 rate-limit KV. Secrets via `wrangler
-  // secret put` / .dev.vars only. After ANY binding change: `npm run cf-typegen`.
+  "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage_local" }],
+
+  // ── deployed environments ───────────────────────────────────────────────
+  // ONE Worker per env serves BOTH the built web app (static assets, SPA
+  // fallback) and the API (run_worker_first routes) — same-origin, so
+  // session cookies and fetches need no CORS gymnastics. Secrets per env via
+  // `wrangler secret put NAME --env <env>`:
+  //   BETTER_AUTH_SECRET · CREDENTIALS_KEY · GEMINI_OAUTH_CLIENT_ID/SECRET ·
+  //   GOOGLE_CLIENT_ID/SECRET · (GITHUB_CLIENT_ID/SECRET khi có) ·
+  //   (AE_SQL_TOKEN + CF_ACCOUNT_ID cho /v1/usage read-back)
+  "env": {
+    "dev": {
+      "name": "nova-dev",
+      "observability": { "enabled": true },
+      "vars": {
+        "BETTER_AUTH_URL": "https://nova-dev.kinalgames.workers.dev",
+        "WEB_ORIGIN": "https://nova-dev.kinalgames.workers.dev"
+      },
+      "assets": {
+        "directory": "../web/dist",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/v1/*", "/api/*", "/healthz"]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nova-dev",
+          "database_id": "54de4c43-d754-4a98-96cb-a6dd31ca4014",
+          "migrations_dir": "drizzle"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
+      }
+      // AE binding đợi bật Analytics Engine trong dashboard (1 click) — khi xong,
+      // bỏ comment và redeploy:
+      // ,"analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage_dev" }]
+    },
+    "production": {
+      "name": "nova",
+      "observability": { "enabled": true },
+      // custom domain sau này: thêm routes nova.kinal.co + đổi 2 vars này +
+      // thêm redirect URI mới vào Google/GitHub OAuth apps
+      "vars": {
+        "BETTER_AUTH_URL": "https://nova.kinalgames.workers.dev",
+        "WEB_ORIGIN": "https://nova.kinalgames.workers.dev"
+      },
+      "assets": {
+        "directory": "../web/dist",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/v1/*", "/api/*", "/healthz"]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nova",
+          "database_id": "65f66b6c-891e-4074-960d-6cc4a3a44d4f",
+          "migrations_dir": "drizzle"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "USER_STORE", "class_name": "UserStore" }]
+      }
+      // ,"analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "nova_usage" }]
+    }
+  }
 }

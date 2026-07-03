@@ -5,7 +5,9 @@ import app from './index'
 // a valid session everywhere — the unauthenticated 401s live in index.test.ts
 vi.mock('./auth', () => ({
   createAuth: () => ({
-    api: { getSession: async () => ({ user: { id: 'u1' } }) },
+    api: {
+      getSession: async () => ({ user: { id: 'u1' }, session: { token: 'sess-tok-u1' } }),
+    },
     handler: async () => new Response('ok'),
   }),
 }))
@@ -107,6 +109,14 @@ describe('T8 — chat proxy writes an Analytics Engine datapoint per reply', () 
     const res = await chat({})
     expect(res.status).toBe(200)
     expect(await res.text()).toContain('"type":"message_stop"')
+  })
+})
+
+describe('social OAuth — cookie session to bearer token exchange', () => {
+  it('GET /v1/session-token returns the session token for a cookie session', async () => {
+    const res = await app.request('/v1/session-token', {}, {})
+    expect(res.status).toBe(200)
+    expect((await res.json()) as { token: string }).toEqual({ token: 'sess-tok-u1' })
   })
 })
 

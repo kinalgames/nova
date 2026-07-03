@@ -15,6 +15,11 @@ export interface AuthEnv {
   BETTER_AUTH_URL?: string
   /** the web client origin allowed to authenticate */
   WEB_ORIGIN?: string
+  /** social login — a provider activates when BOTH its values are set */
+  GOOGLE_CLIENT_ID?: string
+  GOOGLE_CLIENT_SECRET?: string
+  GITHUB_CLIENT_ID?: string
+  GITHUB_CLIENT_SECRET?: string
 }
 
 export function createAuth(env: AuthEnv) {
@@ -25,6 +30,14 @@ export function createAuth(env: AuthEnv) {
     baseURL: env.BETTER_AUTH_URL ?? 'http://localhost:8787',
     trustedOrigins: [env.WEB_ORIGIN ?? 'http://localhost:5173'],
     emailAndPassword: { enabled: true },
+    socialProviders: {
+      ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+        ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
+        : {}),
+      ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
+        ? { github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET } }
+        : {}),
+    },
     user: {
       additionalFields: {
         assistantName: { type: 'string', required: false },

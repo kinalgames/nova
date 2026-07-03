@@ -16,9 +16,23 @@ vi.mock('../services/auth', () => ({
   fetchMe: vi.fn(async () => null),
   signOut: vi.fn(async () => {}),
   getToken: () => localStorage.getItem('nova.auth.token'),
+  signInSocial: vi.fn(async () => null),
+  adoptSocialSession: vi.fn(async () => false),
 }))
 
 beforeEach(() => localStorage.clear())
+
+describe('<Auth> — social sign-in', () => {
+  it('the Google and GitHub buttons kick off the OAuth flow', async () => {
+    const { signInSocial } = await import('../services/auth')
+    const user = makeUser()
+    await renderApp(undefined, { path: '/login' })
+    await user.click(await screen.findByRole('button', { name: /google/i }))
+    expect(signInSocial).toHaveBeenCalledWith('google')
+    await user.click(screen.getByRole('button', { name: /github/i }))
+    expect(signInSocial).toHaveBeenCalledWith('github')
+  })
+})
 
 describe('<Auth> — email validation', () => {
   it('blocks an invalid email, then proceeds on a valid one', async () => {

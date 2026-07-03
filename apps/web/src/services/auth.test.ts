@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fetchMe, getToken, signIn, signOut, signUp } from './auth'
+import { adoptSocialSession, fetchMe, getToken, signIn, signInSocial, signOut, signUp } from './auth'
 
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.unstubAllGlobals())
@@ -59,5 +59,46 @@ describe('auth service', () => {
     expect(await fetchMe()).toBeNull()
     await signOut()
     expect(getToken()).toBeNull()
+  })
+})
+
+describe('social sign-in', () => {
+  it('requests the OAuth URL with the provider and a same-origin callback', async () => {
+    const fetchMock = vi.fn(async () => json({ url: 'https://accounts.google.com/o/oauth2/x' }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await signInSocial('google')).toBeNull()
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toContain('/api/auth/sign-in/social')
+    const body = JSON.parse(init.body as string) as { provider: string; callbackURL: string }
+    expect(body.provider).toBe('google')
+    expect(body.callbackURL).toContain('/login')
+  })
+
+  it('surfaces the server error when the provider is not configured', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ message: 'Provider not found' }, 400)))
+    expect(await signInSocial('github')).toBe('Provider not found')
+  })
+
+  it('adoptSocialSession exchanges the cookie session for a bearer token once', async () => {
+    const fetchMock = vi.fn(async () => json({ token: 'sess-tok-1' }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await adoptSocialSession()).toBe(true)
+    expect(getToken()).toBe('sess-tok-1')
+    // a second call is a no-op — the token already exists
+    expect(await adoptSocialSession()).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('adoptSocialSession is false without a cookie session (401) or on network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json({ code: 'unauthenticated' }, 401)))
+    expect(await adoptSocialSession()).toBe(false)
+    expect(getToken()).toBeNull()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline')
+      }),
+    )
+    expect(await adoptSocialSession()).toBe(false)
   })
 })
