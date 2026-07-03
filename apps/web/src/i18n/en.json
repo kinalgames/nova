@@ -202,7 +202,18 @@
     "dismiss": "Later"
   },
   "share": {
-    "copied": "Share link copied"
+    "copied": "Share link copied",
+    "empty": "Nothing to share yet",
+    "failed": "Could not create the link — try again later",
+    "revoke": "Stop sharing",
+    "revoked": "Sharing stopped — the link is dead",
+    "revokeFailed": "Could not stop sharing — try again later",
+    "loading": "Loading…",
+    "notFoundTitle": "This link does not exist",
+    "notFoundBody": "The conversation was never shared, or sharing was revoked.",
+    "sharedFrom": "SHARED FROM NOVA",
+    "footer": "Shared from Nova — your AI assistant",
+    "tryNova": "Try Nova"
   },
   "cheatsheet": {
     "title": "Keyboard shortcuts",

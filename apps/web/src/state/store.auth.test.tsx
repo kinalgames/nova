@@ -148,6 +148,45 @@ describe('store — real auth wiring (BE1)', () => {
     expect(router.state.location.pathname).toBe('/login')
   })
 
+  it('adopting a DIFFERENT account resets the device before hydrating', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    localStorage.setItem(
+      'nova.flow.settings.v5',
+      JSON.stringify({ accountId: 'OLD', userName: 'Cũ' }),
+    )
+    // boot AND submitAuth both probe /v1/me — pin the implementation for
+    // this test, then hand the factory default back
+    vi.mocked(fetchMe).mockImplementation(async () => ({
+      id: 'NEW',
+      name: 'Mới',
+      email: 'new@kinal.co',
+      assistantName: 'Bee',
+      hasPassword: true,
+    }))
+    const { result } = await renderStore({ path: '/login' })
+    await act(async () => {
+      await result.current.v.submitAuth('new@kinal.co', 'password1')
+    })
+    expect(result.current.s.accountId).toBe('NEW')
+    expect(result.current.s.userName).toBe('Mới')
+    expect(result.current.s.assistantName).toBe('Bee')
+    expect(result.current.s.hasPassword).toBe(true)
+    vi.mocked(fetchMe).mockImplementation(async () => ({
+      id: 'u1',
+      name: 'Thành Thật',
+      email: 'test@kinal.co',
+      assistantName: 'Trợ lý',
+    }))
+  })
+
+  it('booting with a FOREIGN persisted account resets local data (hydrateUser)', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    localStorage.setItem('nova.flow.settings.v5', JSON.stringify({ accountId: 'OTHER' }))
+    const { result } = await renderStore({ path: '/onboarding' })
+    await waitFor(() => expect(result.current.s.accountId).toBe('u1'))
+    expect(result.current.s.userName).toBe('Thành Thật')
+  })
+
   it('signup derives the name from the email and lands on onboarding', async () => {
     const { result } = await renderStore({ path: '/signup' })
     await act(async () => {

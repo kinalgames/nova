@@ -65,6 +65,7 @@ import { buildSystemPrompt } from '../services/prompt'
 import { TOKEN_KEY } from '../services/token'
 import { generateTitle } from '../services/title'
 import { MAX_FILES, deleteFile, rejectUpload, uploadFile } from '../services/upload'
+import { createShare, revokeShare, type ShareMsg } from '../services/share'
 import {
   addCredential,
   deleteCredential,
@@ -191,6 +192,29 @@ function persistSliceOf(s: NovaState): import('./persist').Persisted {
     activeConv: s.activeConv,
     threads: s.threads,
   }
+}
+
+/** BE4 — freeze the visible path of a thread into share-snapshot messages */
+function snapshotOfThread(th: NovaState['threads'][string] | undefined): ShareMsg[] {
+  if (!th) return []
+  return visiblePath(th)
+    .map((m) => {
+      const items = m.blocks
+        .filter((b) => b.type === 'files')
+        .flatMap((b) => (b.type === 'files' ? b.items : []))
+        .map((f) => ({ name: f.name, kind: f.kind, ...(f.fileId ? { fileId: f.fileId } : {}) }))
+      return {
+        role: m.role,
+        who: m.who,
+        text: m.blocks
+          .filter((b) => b.type === 'text')
+          .map((b) => (b.type === 'text' ? b.text : ''))
+          .join('\n\n')
+          .trim(),
+        ...(items.length ? { files: items } : {}),
+      }
+    })
+    .filter((m) => m.text || m.files)
 }
 
 /** the uppercase first-name tag rendered beside a user message */
@@ -1307,6 +1331,9 @@ export function StoreProvider({
         // deleting a conversation deletes EVERY ref it holds: server-side
         // attachments (R2 bytes + D1 rows, fail-soft), session object URLs,
         // and its staged tray — nothing may leak
+        // a live share dies with its conversation (fail-soft)
+        const shared = sRef.current.conversations.find((k) => k.id === id)?.shareId
+        if (shared && HAS_API && !demo) void revokeShare(shared)
         const th = sRef.current.threads[id]
         if (th) {
           for (const m of Object.values(th.byId)) {
@@ -1597,13 +1624,61 @@ function deriveValues(
           exportJsonOf(c, s.threads[c.id]),
           'application/json',
         ),
+      // BE4 — create (or re-copy) the real unlisted share link; the demo
+      // world keeps its showcase copy behaviour
       share: () => {
-        try {
-          void navigator.clipboard?.writeText(`https://nova.app/share/${c.id}`)
-        } catch {
-          /* clipboard unavailable — the toast still confirms the intent */
-        }
-        showToast(t('share.copied'))
+        void (async () => {
+          if (!HAS_API || demo) {
+            try {
+              await navigator.clipboard?.writeText(`https://nova.app/share/${c.id}`)
+            } catch {
+              /* clipboard unavailable — the toast still confirms the intent */
+            }
+            showToast(t('share.copied'))
+            return
+          }
+          let sid = c.shareId
+          if (!sid) {
+            const messages = snapshotOfThread(s.threads[c.id])
+            if (messages.length === 0) {
+              showToast(t('share.empty'))
+              return
+            }
+            const created = await createShare(c.id, c.title ?? 'Untitled', messages)
+            if (!created) {
+              showToast(t('share.failed'))
+              return
+            }
+            sid = created
+            set((x) => ({
+              conversations: x.conversations.map((k) =>
+                k.id === c.id ? { ...k, shareId: created } : k,
+              ),
+            }))
+          }
+          try {
+            await navigator.clipboard?.writeText(`${window.location.origin}/share/${sid}`)
+          } catch {
+            /* clipboard unavailable — the toast still confirms the intent */
+          }
+          showToast(t('share.copied'))
+        })()
+      },
+      shared: !!c.shareId,
+      unshare: () => {
+        void (async () => {
+          if (!c.shareId) return
+          if (!(await revokeShare(c.shareId))) {
+            showToast(t('share.revokeFailed'))
+            return
+          }
+          set((x) => ({
+            conversations: x.conversations.map((k) =>
+              k.id === c.id ? { ...k, shareId: undefined } : k,
+            ),
+          }))
+          showToast(t('share.revoked'))
+        })()
       },
       busy: c.id === activeConv && s.typing,
       deleting: s.deleting.includes(c.id),

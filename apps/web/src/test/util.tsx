@@ -29,11 +29,11 @@ interface AppOpts {
 
 /** auth/onboarding screens live in the real world; everything else the unit
  * suite exercises is the seeded showcase — the demo tree */
-const REAL_WORLD = ['/login', '/signup', '/onboarding', '/oauth-done']
+const REAL_WORLD = ['/login', '/signup', '/onboarding', '/oauth-done', '/share']
+const isRealWorld = (path: string) =>
+  REAL_WORLD.some((p) => path === p || path.startsWith(`${p}?`) || path.startsWith(`${p}/`))
 const demoPath = (path: string) =>
-  path.startsWith('/demo') || REAL_WORLD.some((p) => path === p || path.startsWith(`${p}?`))
-    ? path
-    : `/demo${path === '/' ? '' : path}`
+  path.startsWith('/demo') || isRealWorld(path) ? path : `/demo${path === '/' ? '' : path}`
 
 /**
  * Render the full routed app at a URL. Awaits the router's initial load so the

@@ -201,7 +201,18 @@
     "dismiss": "Để sau"
   },
   "share": {
-    "copied": "Đã chép liên kết chia sẻ"
+    "copied": "Đã chép liên kết chia sẻ",
+    "empty": "Chưa có nội dung để chia sẻ",
+    "failed": "Tạo liên kết thất bại — thử lại sau",
+    "revoke": "Huỷ chia sẻ",
+    "revoked": "Đã huỷ chia sẻ — liên kết không còn hoạt động",
+    "revokeFailed": "Huỷ chia sẻ thất bại — thử lại sau",
+    "loading": "Đang tải…",
+    "notFoundTitle": "Liên kết không tồn tại",
+    "notFoundBody": "Cuộc trò chuyện này chưa từng được chia sẻ hoặc đã bị thu hồi.",
+    "sharedFrom": "CHIA SẺ TỪ NOVA",
+    "footer": "Được chia sẻ từ Nova — trợ lý AI của bạn",
+    "tryNova": "Dùng thử Nova"
   },
   "cheatsheet": {
     "title": "Phím tắt",

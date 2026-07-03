@@ -3,6 +3,7 @@ import { act, waitFor } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
 import { streamChat, type StreamHandlers } from '../services/llm'
 import { deleteFile, rejectUpload, uploadFile } from '../services/upload'
+import { createShare, revokeShare } from '../services/share'
 import { fromLinear } from './thread'
 import type { ChatProxyRequest } from '@nova/shared'
 
@@ -17,6 +18,11 @@ vi.mock('../services/llm', () => ({
     h.onDelta('chào!')
     h.onDone({ inputTokens: 21, outputTokens: 7 })
   }),
+}))
+
+vi.mock('../services/share', () => ({
+  createShare: vi.fn(async () => 'sh-1'),
+  revokeShare: vi.fn(async () => true),
 }))
 
 vi.mock('../services/upload', () => ({
@@ -36,6 +42,8 @@ beforeEach(() => {
   vi.mocked(rejectUpload).mockClear()
   vi.mocked(uploadFile).mockClear()
   vi.mocked(deleteFile).mockClear()
+  vi.mocked(createShare).mockClear()
+  vi.mocked(revokeShare).mockClear()
 })
 afterEach(() => vi.useRealTimers())
 
@@ -231,6 +239,103 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:z')
     expect(result.current.s.errorConv).toBeNull()
     expect(result.current.s.errorDetail).toBeNull()
+  })
+
+  it('BE4 — share freezes a snapshot, re-copy reuses it, unshare kills it', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.set((x) => ({
+        conversations: [{ id: 'cs', title: 'Kế hoạch', projectId: 'chung' }, ...x.conversations],
+        threads: {
+          ...x.threads,
+          cs: fromLinear([
+            { id: 'm1', role: 'user', who: 'B', blocks: [{ type: 'text', text: 'xin chào' }] },
+            { id: 'm2', role: 'assistant', who: 'NOVA', blocks: [{ type: 'text', text: 'chào bạn' }] },
+          ]),
+        },
+      })),
+    )
+    const conv = () => result.current.v.sideConvs.find((c) => c.id === 'cs')!
+    await act(async () => conv().share())
+    expect(createShare).toHaveBeenCalledTimes(1)
+    expect((createShare as Mock).mock.calls[0][2]).toHaveLength(2)
+    expect(result.current.s.conversations.find((c) => c.id === 'cs')?.shareId).toBe('sh-1')
+
+    // second share = same link, no new snapshot
+    await act(async () => conv().share())
+    expect(createShare).toHaveBeenCalledTimes(1)
+
+    await act(async () => conv().unshare())
+    expect(revokeShare).toHaveBeenCalledWith('sh-1')
+    expect(result.current.s.conversations.find((c) => c.id === 'cs')?.shareId).toBeUndefined()
+  })
+
+  it('BE4 — share failure paths toast and never corrupt state; demo copies only', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.set((x) => ({
+        conversations: [{ id: 'ce', title: null, projectId: 'chung' }, ...x.conversations],
+      })),
+    )
+    const conv = () => result.current.v.sideConvs.find((c) => c.id === 'ce')!
+    // unshare on a never-shared conversation is a silent no-op
+    await act(async () => conv().unshare())
+    expect(revokeShare).not.toHaveBeenCalled()
+    // nothing to share yet
+    await act(async () => conv().share())
+    expect(result.current.s.toast).toBe('Chưa có nội dung để chia sẻ')
+    expect(createShare).not.toHaveBeenCalled()
+    // server refuses → failed toast, no shareId
+    await act(async () =>
+      result.current.set((x) => ({
+        threads: {
+          ...x.threads,
+          ce: fromLinear([
+            { id: 'm1', role: 'user', who: 'B', blocks: [{ type: 'text', text: 'hi' }] },
+          ]),
+        },
+      })),
+    )
+    vi.mocked(createShare).mockResolvedValueOnce(null)
+    await act(async () => conv().share())
+    expect(result.current.s.toast).toBe('Tạo liên kết thất bại — thử lại sau')
+    expect(result.current.s.conversations.find((c) => c.id === 'ce')?.shareId).toBeUndefined()
+    // revoke failure keeps the shareId (the link is still live)
+    await act(async () =>
+      result.current.set((x) => ({
+        conversations: x.conversations.map((k) => (k.id === 'ce' ? { ...k, shareId: 'sh-e' } : k)),
+      })),
+    )
+    vi.mocked(revokeShare).mockResolvedValueOnce(false)
+    await act(async () => conv().unshare())
+    expect(result.current.s.conversations.find((c) => c.id === 'ce')?.shareId).toBe('sh-e')
+
+    // demo world: the showcase copy path never touches the server
+    const demo = await renderStore()
+    await act(async () => demo.result.current.v.sideConvs[0].share())
+    expect(demo.result.current.s.toast).toBe('Đã chép liên kết chia sẻ')
+    expect(createShare).toHaveBeenCalledTimes(1) // only the failed attempt above
+  })
+
+  it('BE4 — deleting a shared conversation revokes its live share', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.set((x) => ({
+        conversations: [
+          { id: 'cs2', title: 'X', projectId: 'chung', shareId: 'sh-9' },
+          ...x.conversations,
+        ],
+      })),
+    )
+    vi.useFakeTimers()
+    await act(async () => result.current.v.sideConvs.find((c) => c.id === 'cs2')!.del())
+    await act(async () => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(revokeShare).toHaveBeenCalledWith('sh-9')
   })
 
   it('demo world: deleteAccount is a hard no-op', async () => {

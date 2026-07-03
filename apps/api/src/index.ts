@@ -15,6 +15,7 @@ import { createAuth } from './auth'
 import { limitAuth, limitV1, type RateLimitEnv } from './ratelimit'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
 import { files } from './files'
+import { shares } from './shares'
 import { resolveAttachments } from './attachments'
 import { tapNovaUsage, usage, type UsageEnv } from './usage'
 import type { SyncOp } from '@nova/shared'
@@ -180,6 +181,9 @@ app.route('/v1/usage', usage)
 
 // B1: attachment upload + owner-checked serving (bytes in R2)
 app.route('/v1/files', files)
+
+// BE4: public unlisted conversation snapshots (create/revoke need a session)
+app.route('/v1/shares', shares)
 
 app.get('/healthz', (c) =>
   c.json({

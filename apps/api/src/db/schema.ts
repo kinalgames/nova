@@ -84,6 +84,21 @@ export const attachment = sqliteTable('attachment', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 
+/** BE4 — a PUBLIC unlisted snapshot of a conversation. The id is the
+ *  secret (random, unguessable); `snapshot` is the frozen transcript JSON;
+ *  `fileIds` whitelists which attachments the public file route may serve. */
+export const share = sqliteTable('share', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  convId: text('conv_id').notNull(),
+  title: text('title').notNull(),
+  snapshot: text('snapshot').notNull(),
+  fileIds: text('file_ids').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+})
+
 export const verification = sqliteTable('verification', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),

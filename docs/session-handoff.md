@@ -97,6 +97,7 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## BACKLOG ĐẦY ĐỦ (kiểm kê 2026-07-03; OAuth social + deploy ĐÃ XONG)
 
 Backend:
+- ~~BE4 share /share/:id~~ ĐÃ XONG 2026-07-03 (user duyệt: unlisted + snapshot tĩnh + revoke + ẢNH THẬT): bảng D1 share (id random unguessable = credential, snapshot JSON, file_ids whitelist ownership-verified lúc tạo; migration 0003 applied 3 DB) · POST/DELETE /v1/shares (session) · GET /v1/shares/:id + /:id/files/:fileId (PUBLIC, chỉ serve file trong whitelist, nosniff) · client: menu Share tạo/copy link thật + Huỷ chia sẻ, share chết theo delConv + account-delete cascade · trang /share/:id trần (Markdown + ảnh public + CTA, noindex meta).
 - ~~B1 R2 upload~~ ĐÃ XONG 2026-07-03 (scope user duyệt: upload+vision,
   share đợt sau): R2 binding `ATTACH` (bucket nova-attachments{-dev},
   key `att/{uid}/{id}`) + D1 bảng `attachment` (migration 0002, đã

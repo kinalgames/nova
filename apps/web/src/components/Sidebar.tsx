@@ -100,6 +100,11 @@ function ConvRow({ c }: { c: ConvVM }) {
                   <DropdownMenu.Item className={MENU_ITEM} onSelect={c.share}>
                     {t('common.share')}
                   </DropdownMenu.Item>
+                  {c.shared && (
+                    <DropdownMenu.Item className={MENU_ITEM} onSelect={c.unshare}>
+                      {t('share.revoke')}
+                    </DropdownMenu.Item>
+                  )}
                   <DropdownMenu.Separator className={MENU_SEP} />
                   <DropdownMenu.Item className={MENU_ITEM_DANGER} onSelect={c.del}>
                     {t('common.delete')}

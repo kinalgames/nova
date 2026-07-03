@@ -124,6 +124,8 @@ export interface Conversation {
   /** null = not named yet — the UI shows a muted “Untitled” and the first
    *  completed reply auto-names it (D3); a manual rename always sticks */
   title: string | null
+  /** BE4 — id of the live unlisted share; absent = not shared */
+  shareId?: string
   /** the project this conversation belongs to (default 'chung') */
   projectId: string
   /** the seeded showcase conversation that renders the scripted tool-trace */
