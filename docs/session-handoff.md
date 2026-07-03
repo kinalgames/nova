@@ -94,21 +94,34 @@ TODO theo thứ tự, và bẫy đã cắn.
 5. Lỗi upstream hiện nguyên văn trong bubble (⚠ code: detail) — đủ để
    chẩn đoán key sai/quota.
 
-## TODO — thứ tự đề xuất session kế
+## BACKLOG ĐẦY ĐỦ (kiểm kê 2026-07-03; OAuth social + deploy ĐÃ XONG)
 
-1. **OAuth social (Google/GitHub) cho login app**: Better Auth có sẵn —
-   cần user cấp OAuth app credentials (hỏi khi bắt đầu).
-2. BE4 (R2 files/share) → BE5 (rate-limit KV, observability, deploy:
-   `wrangler d1 create nova` thật + secrets prod gồm CREDENTIALS_KEY,
-   GEMINI_OAUTH_*, CF_ACCOUNT_ID + AE_SQL_TOKEN cho /v1/usage).
-3. Ollama client-direct path (endpoint localhost không reach được từ
-   Worker prod — cân nhắc fetch thẳng từ browser khi provider=ollama).
-4. Còn mở từ audit: R4 (iOS keyboard — cần thiết bị thật), F3
-   (lazy-chunk flash), P1/P3/P4 (profiling trước khi tối ưu store/
-   Markdown/grain).
-5. Nhắc user: rotate R2/CF-Images token khi ổn định; dismiss Dependabot
-   esbuild (accepted-risk đã ghi doc); nâng actions lên Node 24 runner
-   (annotation deprecation trong CI).
+Backend:
+- **B1 R2 upload thật** (LỚN) — đính kèm hiện fake (staged local,
+  không upload); R2 creds đã có trong .dev.vars. Kèm BE4 share `/share/:id`.
+- **B3 Rate-limit** (VỪA, ƯU TIÊN trước khi public) — URL đang mở,
+  ai cũng signup + gọi được. Cân nhắc native ratelimit binding (paid,
+  config `unsafe`) vs KV vs đếm trong UserStore DO (chính xác per-user).
+- **B5 Thinking-level → API thật** (VỪA) — chip Suy nghĩ chưa truyền
+  reasoning/thinking param tới provider (anthropic thinking, gemini
+  thinkingConfig, openai reasoning_effort).
+- B4 structured logging request_id · B6 ollama client-direct · B7 sync
+  cursor/live-push · CI deploy-dev.yml ĐÃ CÓ (chờ GH secret
+  CLOUDFLARE_API_TOKEN) · AE_SQL_TOKEN chờ user tạo.
+
+Design/Product:
+- **D1 Tools web/fetch/files/bash là MOCK** (RẤT LỚN — định hướng
+  sản phẩm, cần owner chọn scope thật).
+- **D2 Onboarding cho social login** (NHỎ-VỪA) — user Google mới bỏ
+  qua màn chọn tên trợ lý; cần PATCH /v1/me lưu assistantName
+  server-side + login route quyết định theo assistantName null.
+- D3 auto-title hội thoại bằng LLM · D4 account settings (đổi mật
+  khẩu/xoá tài khoản) · D5 email verify/reset (cần chọn email
+  provider — hỏi owner vì đụng nguyên tắc CF-only) · D6 R4 iOS +
+  F3 + P1/P3/P4 (chờ điều kiện) · D7 custom domain nova.kinal.co.
+
+Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
+(accepted-risk); nâng actions Node 24 runner.
 
 ## BẪY ĐÃ CẮN — đọc trước khi gõ lệnh
 
