@@ -163,10 +163,11 @@
 
   /* type */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  /* Inter/JetBrains Mono: full Vietnamese subsets — Geist lacked them, so
-     diacritics fell back to Segoe UI and mixed typefaces mid-word */
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* Geist Sans = identity (latin); its missing Vietnamese glyphs fall through
+     PER-GLYPH to Be Vietnam Pro (vi-native, harmonizes with Geist) rather than
+     system-ui. Geist Mono ships vietnamese, so it stands alone. */
+  --font-body: 'Geist Sans', 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   /* motion — paper is calm: quiet durations, one easing */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
