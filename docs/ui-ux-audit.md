@@ -83,9 +83,24 @@ tốt, giữ.
 | F3 | P2 | Lazy chunks (Settings/dialog) — kiểm tra fallback có gây nháy overlay khi mở lần đầu. | routes/dialogs lazy | verify động |
 | F4 | P3 | `viewIn` translateY(6px) mỗi lần đổi view — chủ ý (paper turn), giữ; đảm bảo không áp khi chỉ đổi params nhỏ. | `index.css` | review usage |
 
+## ⚠ ĐÍNH CHÍNH (2026-07-03) — Batch A CHƯA thật sự tới portal
+
+Batch A thay hardcode `bg-black/[0.04]` → token `bg-hover-1`, NHƯNG token
+`--hover-1` (và mọi dark token) định nghĩa trên selector `.dark`, còn class
+`.dark` lại gắn vào **div app-root** (`__root.tsx`), KHÔNG phải `<html>`.
+Radix Dialog/Dropdown/HoverCard render qua Portal mount trên `document.body`
+— NGOÀI div đó — nên trong dark mode mọi popover lấy giá trị **light** của
+token từ `:root`. Kết quả: dropdown mode trợ lý, Settings dialog, menu
+project/thinking… vẫn sáng-trên-tối, active/hover nhìn như «không đổi».
+Đây chính là lỗi user báo lại 2026-07-03. **Fix gốc**: effect gắn
+`.dark` lên `document.documentElement` (`store.tsx`) → token cascade tới
+portal. D1/D2/D3/D4 giờ mới thực sự có hiệu lực ở dark. Pre-paint script
+(`index.html`) cũng nên `classList.add('dark')` sớm, không chỉ set background.
+
 ## Trạng thái (2026-07-02, cuối ngày)
 
-- ✅ **Batch A** `bb848c2` — D1–D8 xong (token hover/scrim/badge/knob; social hover:bg-white xử lý ở e00b210).
+- ⚠ **Batch A** `bb848c2` — token D1–D8 đúng NHƯNG bị vô hiệu ở portal tới
+  khi fix `.dark`-lên-`<html>` (2026-07-03). Xem đính chính trên.
 - ✅ **Batch B** `0260887` — I1–I8 xong (corpus/preview vào seed, errors.*, userEmail thật, html lang).
 - ✅ **Batch C** `00600b0` — R1, R2, R3, R5, R6, X4 xong. **R4 (dvh/keyboard iOS) còn mở** — cần verify trên thiết bị thật.
 - ✅ **Batch D** `a8c0102` — X1 (bỏ scroll-smooth), X2 (role=group), X3 (aria-current + e2e proof).

@@ -12,6 +12,10 @@
         var theme = (JSON.parse(localStorage.getItem(key) || '{}').theme) || 'light'
         var dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.style.background = dark ? '#16130f' : '#fbfaf6'
+        // .dark on <html> pre-paint so portaled surfaces (Radix dialogs/menus
+        // mount on body) inherit dark tokens from the very first frame; the
+        // store effect keeps it in sync on runtime theme toggles
+        if (dark) document.documentElement.classList.add('dark')
       } catch (e) { /* first paint keeps the default */ }
     </script>
   </head>
