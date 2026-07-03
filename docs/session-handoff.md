@@ -146,6 +146,12 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 
 ## BẪY ĐÃ CẮN — đọc trước khi gõ lệnh
 
+- **OpenAI chặn region colo Worker**: smoke từ dev (colo gần VN) →
+  `403 unsupported_country_region_territory` từ api.openai.com — user
+  dùng key OpenAI qua proxy có thể dính tùy colo. Hướng xử lý khi cần:
+  Smart Placement (`placement: {mode:"smart"}`) hoặc fallback route —
+  chưa làm, theo dõi khi có user báo.
+
 - **Rate Limiting binding overshoot trên production**: counter per-colo
   đồng bộ bất đồng bộ giữa các metal trong POP — burst ngắn vượt ~2×
   ngưỡng trước khi 429 (dev thực đo: cắn sau ~22 req với limit 10/60s;
