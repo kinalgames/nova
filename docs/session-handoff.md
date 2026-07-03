@@ -269,6 +269,16 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 
 ## BẪY ĐÃ CẮN — đọc trước khi gõ lệnh
 
+- **WS subprotocol + bearer (B7)**: `new WebSocket(url, ['nova-sync', rawToken])`
+  NÉM SyntaxError ĐỒNG BỘ trong browser nếu token chᤓa ký tự ngoài RFC6455
+  token-chars ('=', '/', '+'…) — retry loop quay mãi mà không có socket nào
+  (Node/undici LẠI CHẤP NHẬN → đừng dùng Node làm proof cho browser WS).
+  Fix: base64url-encode bearer ở client, decode ở Worker route.
+- **B7 socket lifecycle**: (1) open() bail khi hidden MÀ không schedule → tab
+  nền không bao giờ connect — giờ connect bất kể visibility (hibernation rẻ);
+  (2) effect gắn theo accountId-dep không re-run sau login — giờ start từ
+  MOUNT, chính startLiveSync poll token cục bộ 2s phẳng.
+
 - **P0 frozen-app (đã fix)**: `uid()` từng là counter module `f${++n}` —
   reset mỗi page load, trong khi conv/message ids persist + sync → đụng id
   cũ → message trùng id biến thread tree thành CHU TRÌNH → visiblePath

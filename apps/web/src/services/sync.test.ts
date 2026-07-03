@@ -82,7 +82,9 @@ describe('startLiveSync — socket lifecycle (stubbed WebSocket)', () => {
       const stop = startLiveSync({ onFrame: (f) => frames.push(f) })
       expect(sockets).toHaveLength(1)
       expect(sockets[0].url).toContain('/v1/sync/ws')
-      expect(sockets[0].protos).toEqual(['nova-sync', 'tok-live'])
+      // the bearer rides base64url-encoded — raw tokens can be illegal
+      // subprotocol entries (new WebSocket would throw synchronously)
+      expect(sockets[0].protos).toEqual(['nova-sync', btoa('tok-live').replace(/=+$/, '')])
       sockets[0].onopen?.()
       sockets[0].onmessage?.({ data: JSON.stringify({ type: 'hello', seq: 3 }) })
       expect(frames).toEqual([{ type: 'hello', seq: 3 }])
@@ -125,7 +127,7 @@ describe('startLiveSync — token wait and visibility revive', () => {
       // no token yet — nothing opened, a retry is scheduled instead
       expect(sockets).toHaveLength(0)
       localStorage.setItem('nova.auth.token', 'tok-later')
-      await vi.advanceTimersByTimeAsync(1600)
+      await vi.advanceTimersByTimeAsync(2100) // flat 2s local token poll
       expect(sockets).toHaveLength(1)
       // socket dies; the tab coming back to the foreground reopens at once
       ;(sockets[0] as InstanceType<typeof FakeWS>).close()

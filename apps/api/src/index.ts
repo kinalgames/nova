@@ -280,7 +280,17 @@ app.get('/v1/sync/ws', async (c) => {
   if (c.req.header('upgrade')?.toLowerCase() !== 'websocket')
     return problem(426, 'upgrade_required', 'This endpoint speaks WebSocket')
   const protos = (c.req.header('sec-websocket-protocol') ?? '').split(',').map((s) => s.trim())
-  const token = protos[0] === 'nova-sync' && protos[1] ? protos[1] : null
+  // the bearer arrives base64url-encoded: raw tokens can carry characters
+  // that are ILLEGAL in a subprotocol entry (browsers refuse to even send)
+  let token: string | null = null
+  if (protos[0] === 'nova-sync' && protos[1]) {
+    try {
+      const b64 = protos[1].replace(/-/g, '+').replace(/_/g, '/')
+      token = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
+    } catch {
+      token = null
+    }
+  }
   if (!token) return problem(401, 'unauthenticated', 'Missing sync token')
   const session = await createAuth(c.env)
     .api.getSession({ headers: new Headers({ authorization: `Bearer ${token}` }) })

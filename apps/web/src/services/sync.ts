@@ -65,14 +65,23 @@ export function startLiveSync(o: { onFrame: (f: SyncWsFrame) => void }): () => v
     timer = setTimeout(open, delay)
   }
   const open = () => {
-    if (stopped || document.visibilityState === 'hidden') return
+    // background tabs connect too — hibernated sockets are near-free and a
+    // hidden tab must be current the moment it returns (a bail here also
+    // left ws=null with NOTHING scheduled: the socket never came up)
+    if (stopped) return
     const token = getToken()
     if (!token) {
-      schedule() // token may appear after login settles
+      // not signed in yet — a cheap LOCAL check, so poll it flat every 2s
+      // (no backoff: login must connect promptly, and nothing hits the wire)
+      timer = setTimeout(open, 2000)
       return
     }
     try {
-      ws = new WebSocket(wsUrl(), ['nova-sync', token])
+      // RFC 6455 subprotocol entries allow only token-chars — a raw bearer
+      // (may contain '=', '/', '+') makes new WebSocket() THROW synchronously
+      // in browsers. base64url ([A-Za-z0-9_-], no padding) is always legal.
+      const legal = btoa(token).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      ws = new WebSocket(wsUrl(), ['nova-sync', legal])
     } catch {
       schedule()
       return

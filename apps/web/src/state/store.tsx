@@ -603,7 +603,10 @@ export function StoreProvider({
   // frames apply directly; anything ahead of the cursor pulls the delta; our
   // own pushes come back tagged src === SYNC_SRC and only advance the cursor.
   useEffect(() => {
-    if (demo || !syncReady()) return
+    // start at MOUNT in any API-backed world: the manager itself waits for a
+    // token (gating on login-derived state here once left the socket dead —
+    // no dep changed after sign-in, so the effect never re-ran)
+    if (demo || !HAS_API) return
     return startLiveSync({
       onFrame: (f) => {
         if (f.type === 'hello') {
