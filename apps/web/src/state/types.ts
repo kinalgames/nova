@@ -109,7 +109,9 @@ export interface Message {
 
 export interface Conversation {
   id: string
-  title: string
+  /** null = not named yet — the UI shows a muted “Untitled” and the first
+   *  completed reply auto-names it (D3); a manual rename always sticks */
+  title: string | null
   /** the project this conversation belongs to (default 'chung') */
   projectId: string
   /** the seeded showcase conversation that renders the scripted tool-trace */

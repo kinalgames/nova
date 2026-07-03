@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
 import { streamChat, type StreamHandlers } from '../services/llm'
 import type { ChatProxyRequest } from '@nova/shared'
@@ -62,6 +62,27 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(calls[0].system).toContain('concise')
     // B5 — the “Suy nghĩ” chip travels with the request
     expect(calls[0].thinking).toBe('normal')
+  })
+
+  it('D3 — the first completed reply names an unnamed conversation via the cheap sibling', async () => {
+    const { result } = await renderStore({ path: '/new' })
+    await act(async () =>
+      result.current.v.providers
+        .find((p) => p.id === 'claude')!
+        .addProfile('api_key', 'Khóa thật', 'sk-ant-real-123'),
+    )
+    await act(async () => result.current.set({ draft: 'lên kế hoạch ra mắt sản phẩm' }))
+    await act(async () => result.current.v.send())
+    // a conversation is born unnamed — the reply call then the title call
+    await waitFor(() => expect(result.current.s.conversations[0].title).toBe('Xin chào!'))
+    expect(vi.mocked(streamChat)).toHaveBeenCalledTimes(2)
+    expect(calls[1].model).toBe('claude-haiku-4-5')
+    expect(calls[1].thinking).toBe('off')
+    expect(calls[1].maxTokens).toBe(24)
+    // the SECOND send in the now-named conversation stays a single call
+    await act(async () => result.current.set({ draft: 'tiếp tục đi' }))
+    await act(async () => result.current.v.send())
+    expect(vi.mocked(streamChat)).toHaveBeenCalledTimes(3)
   })
 
   it('the thinking level follows the composer chip', async () => {

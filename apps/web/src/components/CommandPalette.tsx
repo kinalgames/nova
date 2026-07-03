@@ -108,7 +108,9 @@ export function CommandPalette() {
                     {convHits.map((c) => (
                       <button key={c.id} onClick={c.open} className={row}>
                         <Icon n="write" size={16} className="text-muted" />
-                        <span className="min-w-0 flex-1 truncate">{c.title}</span>
+                        <span className={`min-w-0 flex-1 truncate ${c.untitled ? 'text-muted' : ''}`}>
+                  {c.title}
+                </span>
                         <span className="shrink-0 font-mono text-eyebrow text-faint">
                           {c.projectName}
                         </span>

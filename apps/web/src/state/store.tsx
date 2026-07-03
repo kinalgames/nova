@@ -50,6 +50,7 @@ import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
 import { HAS_API, streamChat } from '../services/llm'
 import { fetchMe, getToken, signIn, signOut, signUp, updateMe } from '../services/auth'
 import { buildSystemPrompt } from '../services/prompt'
+import { generateTitle } from '../services/title'
 import {
   addCredential,
   deleteCredential,
@@ -83,8 +84,8 @@ export const HOME_TRAY = '__home__'
 
 const stagedKeyOf = (nav: NavState) => (nav.view === 'home' ? HOME_TRAY : nav.activeConv)
 
-/** sidebar title for a conversation seeded from a prompt: first non-empty
- * line, capped, so markdown fences and newlines stay out of the sidebar */
+/** demo-mode stand-in for the LLM auto-title: first non-empty line of the
+ * prompt, capped, so markdown fences and newlines stay out of the sidebar */
 function titleFrom(text: string): string {
   const line = (text.split('\n').find((l) => l.trim()) ?? text).trim()
   return line.length > 48 ? `${line.slice(0, 48)}…` : line
@@ -832,6 +833,32 @@ export function StoreProvider({
                   at: Date.now(),
                 },
               })
+              // D3 — a completed reply names an unnamed conversation. Fire
+              // and forget: failure keeps the muted “Untitled” and the next
+              // reply retries; a manual rename racing ahead always wins
+              // (the updater re-checks that the title is still null). A conv
+              // NOT in sRef yet is one born by this very send — unnamed by
+              // definition (state commits lag a synchronous stream).
+              const known = sRef.current.conversations.find((k) => k.id === conv)
+              if (!known || known.title === null) {
+                const replyText = acc
+                void generateTitle({
+                  providerId: ref.providerId,
+                  model: ref.modelId,
+                  credential: liveProfile.server
+                    ? { credentialId: liveProfile.id }
+                    : { profile: { kind: liveProfile.kind, credential: liveProfile.credential } },
+                  userText: turns[turns.length - 1]?.content ?? '',
+                  replyText,
+                }).then((title) => {
+                  if (!title) return
+                  set((x) => ({
+                    conversations: x.conversations.map((k) =>
+                      k.id === conv && k.title === null ? { ...k, title } : k,
+                    ),
+                  }))
+                })
+              }
             },
             onError: (code, message, status, retryAfterSec) => {
               // a rate-limited profile enters its cool-down window — the
@@ -949,6 +976,11 @@ export function StoreProvider({
             set((x) => ({
               typing: false,
               tokenPct: `${Math.min(98, 42 + words.length)}%`,
+              // D3 demo stand-in: the finished first reply names an unnamed
+              // conversation from the prompt (the real world asks the LLM)
+              conversations: x.conversations.map((k) =>
+                k.id === conv && k.title === null ? { ...k, title: titleFrom(prompt) } : k,
+              ),
               threads: {
                 ...x.threads,
                 [conv]: updateMessage(x.threads[conv], replyId, { usage }),
@@ -994,9 +1026,9 @@ export function StoreProvider({
             conversations: [
               {
                 id: convId,
-                // seed the title from the prompt's first line so markdown
-                // fences and newlines never leak into the sidebar
-                title: titleFrom(text),
+                // D3 — born unnamed: the UI shows a muted “Untitled” until
+                // the first completed reply names the conversation
+                title: null,
                 updatedAt: Date.now(),
                 projectId:
                   x.conversations.find((c) => c.id === navRef.current.activeConv)
@@ -1377,7 +1409,7 @@ function deriveValues(
     const id = uid()
     set((x) => ({
       conversations: [
-        { id, title: t('nav.newChat'), projectId, updatedAt: Date.now() },
+        { id, title: null, projectId, updatedAt: Date.now() },
         ...x.conversations,
       ],
       threads: { ...x.threads, [id]: emptyThread() },
@@ -1405,7 +1437,8 @@ function deriveValues(
     const isActive = nav.view === 'conversation' && c.id === activeConv
     return {
       id: c.id,
-      title: c.title,
+      title: c.title ?? t('nav.untitled'),
+      untitled: c.title === null,
       active: isActive,
       pinned: !!c.pinned,
       archived: !!c.archived,
@@ -1416,10 +1449,14 @@ function deriveValues(
           ),
         })),
       exportMd: () =>
-        downloadFile(exportFilename(c.title, 'md'), exportMarkdown(c, s.threads[c.id]), 'text/markdown'),
+        downloadFile(
+          exportFilename(c.title ?? '', 'md'),
+          exportMarkdown(c, s.threads[c.id]),
+          'text/markdown',
+        ),
       exportJson: () =>
         downloadFile(
-          exportFilename(c.title, 'json'),
+          exportFilename(c.title ?? '', 'json'),
           exportJsonOf(c, s.threads[c.id]),
           'application/json',
         ),
@@ -1434,7 +1471,8 @@ function deriveValues(
       busy: c.id === activeConv && s.typing,
       deleting: s.deleting.includes(c.id),
       bg: isActive ? 'var(--accent-soft)' : 'transparent',
-      fg: isActive ? 'var(--text)' : 'var(--text-2)',
+      // an unnamed conversation renders muted — the name simply isn't there yet
+      fg: c.title === null ? 'var(--muted)' : isActive ? 'var(--text)' : 'var(--text-2)',
       onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),
       open: () => {
         set({ activeConv: c.id, palette: false, drawerOpen: false })
@@ -1869,8 +1907,12 @@ function deriveValues(
     closeDrawer: () => set({ drawerOpen: false }),
     // top
     // the top bar reflects the conversation currently open, not a fixed project
-    headerTitle:
-      s.conversations.find((c) => c.id === activeConv)?.title ?? t('chat.headerFallback'),
+    headerTitle: (() => {
+      const open = s.conversations.find((c) => c.id === activeConv)
+      return open ? (open.title ?? t('nav.untitled')) : t('chat.headerFallback')
+    })(),
+    headerUntitled:
+      s.conversations.find((c) => c.id === activeConv)?.title === null,
     palette: s.palette,
     quiet: s.quiet,
     notQuiet: !s.quiet,
@@ -2242,7 +2284,8 @@ function deriveValues(
     // command-palette search space — conversations across ALL projects + projects
     paletteConvs: sortConvs(s.conversations).map((c) => ({
       id: c.id,
-      title: c.title,
+      title: c.title ?? t('nav.untitled'),
+      untitled: c.title === null,
       projectName: s.projects.find((p) => p.id === c.projectId)?.name ?? t('projects.defaultName'),
       open: () => {
         set({ activeConv: c.id, palette: false, q: '' })

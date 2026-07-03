@@ -37,7 +37,11 @@ export function TopBar() {
           className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent font-[inherit]"
         >
           <span className="size-[9px] flex-shrink-0 rounded-xs bg-accent" />
-          <span className="overflow-hidden text-ellipsis whitespace-nowrap text-body text-text">
+          <span
+            className={`overflow-hidden text-ellipsis whitespace-nowrap text-body ${
+              v.headerUntitled ? 'text-muted' : 'text-text'
+            }`}
+          >
             {v.headerTitle}
           </span>
           <Icon n="caret" size={14} className="text-faint" />

@@ -430,12 +430,13 @@ describe('store — streaming chat engine', () => {
     expect(result.current.v.hasStaged).toBe(false)
     await act(async () => result.current.set({ draft: DRAFT }))
     await act(async () => result.current.v.send())
-    // a new conversation exists — titled from the prompt's FIRST LINE, in the
-    // composer's visible project (c1 was cached → aurora) — and the URL moved there
+    // a new conversation exists — born UNNAMED (the UI shows a muted
+    // “Untitled”) — in the composer's visible project (c1 was cached →
+    // aurora), and the URL moved there
     const conv = result.current.s.conversations[0]
     expect(result.current.s.conversations).toHaveLength(before + 1)
     expect(conv.id).not.toBe('c1')
-    expect(conv.title).toBe(`${LINE.slice(0, 48)}…`)
+    expect(conv.title).toBeNull()
     expect(conv.projectId).toBe('aurora')
     expect(router.state.location.pathname).toBe(`/demo/chat/${conv.id}`)
     // the full message landed in the new thread with no inherited attachments;
@@ -445,6 +446,12 @@ describe('store — streaming chat engine', () => {
     expect(first?.blocks.some((b) => b.type === 'files')).toBe(false)
     expect(visiblePath(result.current.s.threads.c1)).toHaveLength(demoLen)
     expect(result.current.s.staged.c1 ?? []).toEqual(c1Tray)
+    // D3 demo stand-in: the finished reply names the conversation from the
+    // prompt's FIRST LINE (the real world asks the LLM instead)
+    await act(async () => vi.advanceTimersByTime(60_000))
+    expect(result.current.s.conversations.find((c) => c.id === conv.id)?.title).toBe(
+      `${LINE.slice(0, 48)}…`,
+    )
   })
 
   it('a fresh chat hides the demo thread and shows the real exchange', async () => {

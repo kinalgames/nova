@@ -58,7 +58,7 @@ function textOf(m: Message): string {
 
 /** serialize the visible path of a conversation as a portable .md document */
 export function exportMarkdown(conv: Conversation, thread: Thread | undefined): string {
-  const lines: string[] = [`# ${conv.title}`, '']
+  const lines: string[] = [`# ${conv.title ?? 'Untitled'}`, '']
   for (const m of thread ? visiblePath(thread) : []) {
     lines.push(`## ${m.who}`, '', textOf(m), '')
   }

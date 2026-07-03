@@ -136,7 +136,18 @@ Design/Product:
   → directive + custom prompt + project instructions, mỗi phần 1
   section) · state mới `systemPrompt` (persist + op-log sync) · tab
   Trợ lý: textarea editable thay text tĩnh (`settings.systemPlaceholder`).
-- D3 auto-title hội thoại bằng LLM · D4 account settings (đổi mật
+- ~~D3 auto-title~~ ĐÃ XONG 2026-07-03 (đi từ UX design theo chỉ đạo):
+  `Conversation.title: string | null` — null = chưa đặt, UI hiện
+  "Untitled" muted (Sidebar/TopBar/Palette/Drawer qua VM fg/untitled);
+  reply đầu hoàn tất → `services/title.ts` gọi /v1/chat với model RẺ
+  NHẤT trong whitelist của provider đang dùng (haiku-4-5 / 2.5-flash /
+  gpt-5-mini; ollama giữ model chat), thinking off, maxTokens 24,
+  sanitize (unquote + cap 48); fail → giữ Untitled, reply sau retry;
+  rename tay luôn thắng (updater re-check null); demo fake layer đặt
+  titleFrom(prompt) sau reply đầu. Lưu ý kỹ thuật: conv mới sinh chưa
+  commit vào sRef khi stream resolve đồng bộ → điều kiện "không tìm
+  thấy = unnamed".
+- D4 account settings (đổi mật
   khẩu/xoá tài khoản) · D5 email verify/reset (cần chọn email
   provider — hỏi owner vì đụng nguyên tắc CF-only) · D6 R4 iOS +
   F3 + P1/P3/P4 (chờ điều kiện) · D7 custom domain nova.kinal.co.
