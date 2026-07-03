@@ -190,7 +190,10 @@ describe('real provider routing (nova-api proxy)', () => {
             },
           ]),
         },
-        staged: { ...x.staged, cx: [{ id: 's1', kind: 'pdf', name: 'p.pdf', size: '1 KB' }] },
+        staged: {
+          ...x.staged,
+          cx: [{ id: 's1', kind: 'pdf', name: 'p.pdf', size: '1 KB', fileId: 'srv-8' }],
+        },
       })),
     )
     vi.useFakeTimers()
@@ -199,6 +202,8 @@ describe('real provider routing (nova-api proxy)', () => {
       vi.advanceTimersByTime(5000)
     })
     expect(deleteFile).toHaveBeenCalledWith('srv-7')
+    // uploaded-but-never-sent tray files die with the conversation too
+    expect(deleteFile).toHaveBeenCalledWith('srv-8')
     expect(result.current.s.threads.cx).toBeUndefined()
     expect(result.current.s.staged.cx).toBeUndefined()
     expect(result.current.s.conversations.some((c) => c.id === 'cx')).toBe(false)
@@ -345,6 +350,38 @@ describe('real provider routing (nova-api proxy)', () => {
       ok = await result.current.v.deleteAccount()
     })
     expect(ok).toBe(false)
+  })
+
+  it('BUG-1 — a removed tray pill deletes its uploaded file server-side', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.addUpload(new File(['x'], 'a.png', { type: 'image/png' })),
+    )
+    const staged = () => Object.values(result.current.s.staged).flat()
+    await waitFor(() => expect(staged()[0]?.fileId).toBe('srv-1'))
+    await act(async () => result.current.v.removeStaged(staged()[0].id))
+    expect(deleteFile).toHaveBeenCalledWith('srv-1')
+    expect(staged()).toHaveLength(0)
+  })
+
+  it('BUG-1 — an upload finishing after its pill was removed deletes itself', async () => {
+    localStorage.setItem('nova.auth.token', 'tok')
+    let resolveUp!: (v: { id: string; name: string; kind: string; size: number; mime: string } | null) => void
+    vi.mocked(uploadFile).mockImplementationOnce(
+      () => new Promise((r) => (resolveUp = r)),
+    )
+    const { result } = await renderStore({ path: '/onboarding' })
+    await act(async () =>
+      result.current.addUpload(new File(['x'], 'b.png', { type: 'image/png' })),
+    )
+    const staged = () => Object.values(result.current.s.staged).flat()
+    await act(async () => result.current.v.removeStaged(staged()[0].id))
+    await act(async () => {
+      resolveUp({ id: 'late-9', name: 'b.png', kind: 'image', size: 1, mime: 'image/png' })
+    })
+    expect(deleteFile).toHaveBeenCalledWith('late-9')
+    expect(staged()).toHaveLength(0)
   })
 
   it('B1 — a failed upload flips into an error pill and the 4-file cap toasts', async () => {

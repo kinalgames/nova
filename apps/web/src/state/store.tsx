@@ -165,6 +165,11 @@ let triggerCredHydrate: (() => void) | null = null
 /** debounce for the assistant-name server PATCH (see setAssistantName) */
 let nameSaveTimer: ReturnType<typeof setTimeout> | undefined
 
+/** tray items removed while their upload was still in flight — when the
+ *  upload lands, its fresh server file is garbage and gets deleted (module
+ *  set: immune to React state-commit timing) */
+const abortedUploads = new Set<string>()
+
 /** the persisted slice of the store — single source for localStorage + sync */
 function persistSliceOf(s: NovaState): import('./persist').Persisted {
   return {
@@ -1310,11 +1315,16 @@ export function StoreProvider({
             [key2]: (x.staged[key2] ?? []).map((f) => (f.id === item.id ? { ...f, ...patch } : f)),
           },
         }))
-      void uploadFile(file, (pct) => patchItem({ progress: pct })).then((up) =>
-        up
-          ? patchItem({ fileId: up.id, progress: undefined })
-          : patchItem({ progress: undefined, error: i18n.t('upload.failed') }),
-      )
+      void uploadFile(file, (pct) => patchItem({ progress: pct })).then((up) => {
+        // the pill may have been removed (or its conversation deleted) while
+        // the bytes were in flight — the fresh upload is garbage: delete it
+        if (abortedUploads.delete(item.id)) {
+          if (up) void deleteFile(up.id)
+          return
+        }
+        if (up) patchItem({ fileId: up.id, progress: undefined })
+        else patchItem({ progress: undefined, error: i18n.t('upload.failed') })
+      })
     },
     [set, demo],
   )
@@ -1346,8 +1356,13 @@ export function StoreProvider({
             }
           }
         }
-        for (const f of sRef.current.staged[id] ?? [])
+        for (const f of sRef.current.staged[id] ?? []) {
           if (f.url?.startsWith('blob:')) URL.revokeObjectURL(f.url)
+          // uploaded-but-never-sent tray files die with the conversation too;
+          // in-flight ones delete themselves when they land
+          if (f.fileId && HAS_API && !demo) void deleteFile(f.fileId)
+          if (f.progress !== undefined) abortedUploads.add(f.id)
+        }
         set((x) => {
           const conversations = x.conversations.filter((k) => k.id !== id)
           const threads = { ...x.threads }
@@ -2237,6 +2252,14 @@ function deriveValues(
     removeStaged: (id: string) =>
       set((x) => {
         const key = stagedKeyOf(nav)
+        // a removed tray item leaves NOTHING behind: revoke its object URL,
+        // delete an already-uploaded file server-side (it belongs to no
+        // message — there would be no other path to it ever again), and mark
+        // an in-flight upload so it deletes itself when it lands
+        const item = (x.staged[key] ?? []).find((f) => f.id === id)
+        if (item?.url?.startsWith('blob:')) URL.revokeObjectURL(item.url)
+        if (item?.fileId && HAS_API && !demo) void deleteFile(item.fileId)
+        if (item && item.progress !== undefined) abortedUploads.add(item.id)
         return {
           staged: {
             ...x.staged,
