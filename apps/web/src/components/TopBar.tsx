@@ -7,7 +7,7 @@ import { Icon } from './Icon'
 import { ProviderLogo } from './ProviderLogo'
 
 const menuContent =
-  'z-40 min-w-[18rem] max-w-[92vw] overflow-hidden rounded-md border border-border bg-panel p-0 shadow-overlay ' +
+  'z-[80] min-w-[18rem] max-w-[92vw] overflow-hidden rounded-md border border-border bg-panel p-0 shadow-overlay ' +
   'animate-[fadeUp_140ms_var(--ease-paper)] origin-top'
 const menuItem =
   'flex cursor-pointer select-none items-start gap-3 px-4 py-3 text-body outline-none data-[highlighted]:bg-hover-1'
@@ -26,7 +26,7 @@ export function TopBar() {
             type="button"
             aria-label={t('nav.openMenu')}
             onClick={v.openDrawer}
-            className="tap flex cursor-pointer border-none bg-transparent pr-0.5 text-text-2"
+            className="tap -ml-3 flex cursor-pointer items-center justify-center border-none bg-transparent text-text-2"
           >
             <Icon n="menu" size={19} />
           </button>
@@ -51,11 +51,11 @@ export function TopBar() {
       <div className="flex flex-shrink-0 items-center gap-2">
         {v.isDemo && (
           <span className="flex items-center gap-2 whitespace-nowrap rounded-xs bg-warn-bg px-2 py-1 font-mono text-eyebrow text-warn-text">
-            <span>{t('demo.badge')}</span>
+            {!v.isMobile && <span>{t('demo.badge')}</span>}
             <button
               type="button"
               onClick={v.exitDemo}
-              className="cursor-pointer border-none bg-transparent p-0 font-mono text-eyebrow text-warn-text underline underline-offset-2"
+              className="-m-1 cursor-pointer border-none bg-transparent p-1 font-mono text-eyebrow text-warn-text underline underline-offset-2"
             >
               {t('demo.exit')}
             </button>
@@ -85,7 +85,7 @@ export function TopBar() {
                 <HoverCard.Content
                   align="end"
                   sideOffset={10}
-                  className="z-40 rounded-sm border border-border bg-panel px-3 py-2 font-mono text-meta text-text shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
+                  className="z-[80] rounded-sm border border-border bg-panel px-3 py-2 font-mono text-meta text-text shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
                 >
                   {v.tokenDetail}
                 </HoverCard.Content>
@@ -170,7 +170,7 @@ export function TopBar() {
           type="button"
           aria-label={t('nav.focusMode')}
           onClick={v.enterQuiet}
-          className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 font-[inherit] text-small text-text-2"
+          className="tap-sm flex cursor-pointer items-center justify-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 font-[inherit] text-small text-text-2"
         >
           <Icon n="focus" size={15} />
           {v.isDesktop && <span className="whitespace-nowrap">{t('topbar.focus')}</span>}

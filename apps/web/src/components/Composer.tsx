@@ -7,7 +7,7 @@ import { GrowingTextarea } from './GrowingTextarea'
 import type { StagedFile } from '../state/types'
 
 const POPUP =
-  'z-40 max-w-[78vw] rounded-md border border-border bg-panel p-1.5 shadow-pop ' +
+  'z-[80] max-w-[78vw] rounded-md border border-border bg-panel p-1.5 shadow-pop ' +
   'origin-bottom animate-[fadeUp_140ms_var(--ease-paper)]'
 const POPUP_LABEL = 'px-3 pb-1 pt-2 font-mono text-eyebrow tracking-[0.14em] text-label'
 const ROW =

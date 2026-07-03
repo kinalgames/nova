@@ -145,7 +145,7 @@ export function Sidebar() {
               type="button"
               aria-label={t('nav.collapseSidebar')}
               onClick={v.collapseSidebar}
-              className="flex cursor-pointer border-none bg-transparent text-muted"
+              className="-mr-1.5 flex size-9 cursor-pointer items-center justify-center rounded-sm border-none bg-transparent text-muted hover:bg-hover-1 active:bg-hover-2"
             >
               <Icon n="collapse" size={16} />
             </button>

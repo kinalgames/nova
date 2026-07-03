@@ -181,6 +181,28 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
   buttons đều có active:bg — touch không còn bấm-không-thấy-gì.
 - .tap-sm (34px min trên touch) cho compact controls cạnh .tap 44px.
 
+### Hotfix sau audit (user báo 3 bug — cùng ngày)
+
+- **Menu conv trong drawer bấm không được**: Radix DropdownMenu portal ra
+  <body>, MENU_CONTENT z-40 < drawer scrim z-48 → menu chìm dưới scrim,
+  mọi tap rơi vào scrim. Fix: popover layer (MENU_CONTENT + TopBar menus
+  + HoverCard + Composer popover) → **z-[80]** — layer transient cao nhất.
+  LUẬT: menu/popover mở từ trong Dialog PHẢI có z cao hơn scrim của Dialog.
+- **Icon lệch trong nút .tap**: .tap phình min 44px nhưng nút thiếu
+  items-center justify-center → icon dạt góc trên-trái (hamburger TopBar,
+  ✕ drawer). Fix: center + negative margin (-ml-3/-mr-3) giữ optical
+  alignment. LUẬT: mọi nút icon mang .tap/.tap-sm phải flex + center 2 trục.
+- **Conv row drawer 60px quá cao**: nút options .tap min-height 44 nằm
+  IN-FLOW + row py-2 → 60px. Fix: row min-h-11 (44px), con self-stretch,
+  options w-11 — bỏ .tap in-flow. LUẬT: đừng đặt .tap trong flow của row
+  gọn — cho nút self-stretch theo row có min-h.
+- Kèm: navRow drawer min-h-11; collapse-sidebar (desktop) hit-box size-9
+  (trước chỉ 16×16!); demo badge ẩn text trên mobile (title đỡ bị ép);
+  nút Thoát demo + focus-mode đủ tap target (tap-sm).
+- Verify: Playwright context hasTouch+isMobile 390×844 — tap icon mở
+  drawer, elementFromPoint tại menuitem = menuitem (trước = scrim), tap
+  Ghim thành công, row 44px.
+
 ## QUYẾT ĐỊNH ĐÓNG (user chốt 2026-07-03)
 
 - **CI auto-deploy: WON'T DO** — CI testing trên GitHub Actions giữ

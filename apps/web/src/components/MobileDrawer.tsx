@@ -8,7 +8,7 @@ import { Icon } from './Icon'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 const navRow =
-  'flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-hover-1 focus-visible:bg-hover-2 active:bg-hover-2'
+  'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-ui outline-none hover:bg-hover-1 focus-visible:bg-hover-2 active:bg-hover-2'
 
 type ConvVM = ReturnType<typeof useStore>['v']['sideConvs'][number]
 
@@ -19,7 +19,7 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
   const { t } = useTranslation()
   return (
     <div
-      className="relative flex items-center gap-2.5 rounded-sm px-2.5 py-2"
+      className="relative flex min-h-11 items-center gap-1 rounded-sm pl-2.5 pr-0.5"
       style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
     >
       <Link
@@ -28,7 +28,7 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
         onClick={c.onSelect}
         disabled={c.deleting}
         aria-current={c.active ? 'page' : undefined}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 bg-transparent py-0.5 text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-disabled:cursor-default"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 self-stretch bg-transparent text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent aria-disabled:cursor-default"
       >
         <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
           {c.title}
@@ -39,7 +39,7 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
         <button
           type="button"
           onClick={c.undo}
-          className="tap flex-shrink-0 cursor-pointer rounded-md border-none bg-transparent px-1 text-small text-accent-text outline-none"
+          className="flex flex-shrink-0 cursor-pointer items-center justify-center self-stretch rounded-md border-none bg-transparent px-2 text-small text-accent-text outline-none"
         >
           {t('common.undo')}
         </button>
@@ -61,7 +61,7 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
             <button
               type="button"
               aria-label={t('common.convOptions')}
-              className="tap flex flex-shrink-0 cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="flex w-11 flex-shrink-0 cursor-pointer items-center justify-center self-stretch border-none bg-transparent text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
             >
               <Icon n="more" size={16} />
             </button>
@@ -133,7 +133,7 @@ export function MobileDrawer() {
               <button
                 type="button"
                 aria-label={t('common.close')}
-                className="tap flex cursor-pointer border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="tap -mr-3 flex cursor-pointer items-center justify-center border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <Icon n="close" size={17} />
               </button>
@@ -182,7 +182,7 @@ export function MobileDrawer() {
                   type="button"
                   onClick={v.toggleArchived}
                   aria-expanded={v.archivedOpen}
-                  className="mt-2 flex w-full cursor-pointer items-center gap-1.5 rounded-sm border-none bg-transparent px-2 py-2 font-mono text-micro tracking-[.14em] text-faint active:bg-hover-1"
+                  className="mt-2 flex min-h-10 w-full cursor-pointer items-center gap-1.5 rounded-sm border-none bg-transparent px-2 py-2 font-mono text-micro tracking-[.14em] text-faint active:bg-hover-1"
                 >
                   <span className="flex-1 text-left">
                     {t('sidebar.archived')} · {v.archivedConvs.length}

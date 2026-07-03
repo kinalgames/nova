@@ -1,8 +1,12 @@
 // Shared Tailwind class strings for Radix dropdown surfaces — one paper-sheet
 // popover vocabulary so every menu looks and behaves identically.
+// z-[80]: popovers are the topmost, self-dismissing layer. They portal to
+// <body>, so anything lower would paint UNDER a modal's scrim (the mobile
+// drawer sits at z-48/49 — a z-40 menu opened from it rendered below the
+// scrim and every tap landed on the scrim instead of the menu).
 
 export const MENU_CONTENT =
-  'z-40 min-w-[12rem] max-w-[88vw] rounded-md border border-border bg-panel p-1.5 ' +
+  'z-[80] min-w-[12rem] max-w-[88vw] rounded-md border border-border bg-panel p-1.5 ' +
   'shadow-pop animate-[fadeUp_140ms_var(--ease-paper)] origin-[var(--radix-dropdown-menu-content-transform-origin)]'
 
 export const MENU_LABEL =
