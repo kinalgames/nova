@@ -8,6 +8,7 @@ const calls: ChatProxyRequest[] = []
 
 vi.mock('../services/llm', () => ({
   API_BASE: 'http://localhost:8787',
+  HAS_API: true,
   streamChat: vi.fn(async (req: ChatProxyRequest, h: StreamHandlers) => {
     calls.push(req)
     h.onDelta('Xin ')

@@ -5,10 +5,15 @@
 import type { ChatProxyRequest } from '@nova/shared'
 import i18n from '../i18n'
 
-/** API origin — dev defaults to the local wrangler dev port */
+/** API origin PREFIX — dev points at local wrangler; the deployed Worker
+ *  serves web + API same-origin, so the production prefix is '' */
 export const API_BASE: string =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
   (import.meta.env.DEV ? 'http://localhost:8787' : '')
+
+/** a real backend exists — NEVER gate on API_BASE truthiness: same-origin
+ *  production has API_BASE === '' yet very much has an API */
+export const HAS_API: boolean = import.meta.env.PROD || API_BASE !== ''
 
 export interface StreamHandlers {
   onDelta: (text: string) => void

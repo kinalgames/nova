@@ -47,7 +47,7 @@ import {
 } from './organize'
 import { loadPersisted, PERSIST_KEY, persistKeyFor } from './persist'
 import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
-import { API_BASE, streamChat } from '../services/llm'
+import { HAS_API, streamChat } from '../services/llm'
 import { fetchMe, getToken, signIn, signOut, signUp } from '../services/auth'
 import {
   addCredential,
@@ -132,7 +132,7 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined
 // mirrors what the server holds so each persist push sends only the diff.
 let syncedRecords: SyncRecord[] | null = null
 let syncPushTimer: ReturnType<typeof setTimeout> | undefined
-const syncReady = () => Boolean(API_BASE && getToken())
+const syncReady = () => Boolean(HAS_API && getToken())
 
 /** test-only: reset the module-level sync mirror between renders */
 export function __resetSync() {
@@ -471,7 +471,7 @@ export function StoreProvider({
   // The first hydration MIGRATES any client-held real profiles up once — the
   // secret leaves the browser one last time, then only hints remain.
   const hydrateCredentials = useCallback(async () => {
-    if (demo || !API_BASE || !getToken()) return
+    if (demo || !HAS_API || !getToken()) return
     let rows = await listCredentials()
     if (!rows) return
     if (rows.length === 0) {
@@ -504,7 +504,7 @@ export function StoreProvider({
   // account — boot resolves the session user once and adopts it (and heals
   // stale info for every login kind). Mirrors submitAuth's account guard.
   const hydrateUser = useCallback(async () => {
-    if (demo || !API_BASE || !getToken()) return
+    if (demo || !HAS_API || !getToken()) return
     const me = await fetchMe()
     if (!me) return
     const prev = sRef.current
@@ -536,7 +536,7 @@ export function StoreProvider({
   // T8: real mode also pulls the server-side month usage roll-up — the
   // Settings meter then reflects EVERY device, not just this one's threads
   const hydrateUsage = useCallback(async () => {
-    if (demo || !API_BASE || !getToken()) return
+    if (demo || !HAS_API || !getToken()) return
     const rows = await fetchMonthUsage()
     if (rows) set({ serverUsage: rows })
   }, [demo, set])
@@ -723,7 +723,7 @@ export function StoreProvider({
       // the real profiles only — seeded showcase credentials never leave
       // the device.
       const liveProfile =
-        API_BASE
+        HAS_API
           ? pickProfile(
               (prev.profiles[ref.providerId] ?? []).filter((f) => !f.demo),
               prev.stickyProfile[ref.providerId],
@@ -1520,7 +1520,7 @@ function deriveValues(
     const fallbackName = kind === 'account' ? t('settings.kindAccount') : t('settings.kindApiKey')
     // real mode with a session seals the credential server-side — the browser
     // keeps only the returned hint
-    if (!demo && API_BASE && getToken()) {
+    if (!demo && HAS_API && getToken()) {
       void addCredential(providerId, kind, name.trim() || fallbackName, credential.trim()).then(
         (row) => {
           if (!row) return
@@ -1587,7 +1587,7 @@ function deriveValues(
     // a server-backed credential gets a REAL probe: a 1-token chat through
     // the stored id against the provider's cheapest model
     const row = s.profiles[providerId]?.find((f) => f.id === profileId)
-    if (row?.server && !demo && API_BASE) {
+    if (row?.server && !demo && HAS_API) {
       set({ testingProfile: profileId })
       const model = findProvider(providerId).models.at(-1)?.id ?? ''
       void pingCredential(profileId, providerId, model).then((status) => {
@@ -1975,7 +1975,7 @@ function deriveValues(
       // revoke BEFORE navigating — /login's bootstrap re-adopts any cookie
       // session that is still alive, which would undo the logout (demo never
       // touches the real auth server)
-      if (API_BASE && !demo) await signOut()
+      if (HAS_API && !demo) await signOut()
       set({ userEmail: undefined })
       __resetSync() // the next login re-hydrates/imports from scratch
       navigate({ to: '/login' })
@@ -1984,7 +1984,7 @@ function deriveValues(
     // or null on success (stores the bearer token, then navigates in).
     submitAuth: async (email: string, password: string): Promise<string | null> => {
       // a real product cannot sign in without its API — surface it honestly
-      if (!API_BASE) return i18n.t('errors.apiNetwork')
+      if (!HAS_API) return i18n.t('errors.apiNetwork')
       const err =
         nav.authView === 'signup'
           ? await signUp(email.split('@')[0] || email, email, password)

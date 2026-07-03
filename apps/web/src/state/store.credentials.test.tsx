@@ -24,6 +24,7 @@ vi.mock('../services/credentials', () => ({
 
 vi.mock('../services/llm', () => ({
   API_BASE: 'http://localhost:8787',
+  HAS_API: true,
   streamChat: vi.fn(
     async (_req: unknown, h: { onDelta: (t: string) => void; onDone: (u: unknown) => void }) => {
       h.onDelta('ok')
