@@ -372,7 +372,7 @@
       "claude": { "sub": "Anthropic · balanced" },
       "gemini": { "sub": "Google · large context" },
       "openai": { "sub": "OpenAI · versatile" },
-      "ollama": { "name": "On your machine", "sub": "Ollama · private, offline" }
+      "ollama": { "name": "On your machine", "sub": "Ollama · needs an internet-reachable endpoint — localhost comes with the desktop app" }
     },
     "styles": {
       "concise": "Concise",

@@ -168,6 +168,15 @@ Design/Product:
 Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 (accepted-risk); nâng actions Node 24 runner.
 
+## QUYẾT ĐỊNH ĐÓNG (user chốt 2026-07-03)
+
+- **CI auto-deploy: WON'T DO** — CI testing trên GitHub Actions giữ
+  nguyên (gate khách quan); deploy tay wrangler sau gate xanh là đủ.
+  Đã xoá .github/workflows/deploy-dev.yml.
+- **B6 ollama-localhost: DEFERRED đến desktop app** — Worker cloud
+  không với tới localhost; ollama self-host qua URL công khai VẪN chạy
+  qua proxy ngay hôm nay. i18n sub của provider ollama đã nói rõ.
+
 ## LUẬT TEST TÀI KHOẢN (user chỉ đạo 2026-07-03)
 
 - Smoke live trên dev CHỈ dùng tài khoản cố định tester@nova.dev —

@@ -371,7 +371,7 @@
       "claude": { "sub": "Anthropic · cân bằng" },
       "gemini": { "sub": "Google · ngữ cảnh lớn" },
       "openai": { "sub": "OpenAI · đa năng" },
-      "ollama": { "name": "Trên máy của bạn", "sub": "Ollama · riêng tư, ngoại tuyến" }
+      "ollama": { "name": "Trên máy của bạn", "sub": "Ollama · cần endpoint truy cập được từ internet — localhost sẽ hỗ trợ khi có bản desktop" }
     },
     "styles": {
       "concise": "Ngắn gọn",
