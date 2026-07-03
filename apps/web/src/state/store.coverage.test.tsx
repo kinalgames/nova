@@ -113,12 +113,15 @@ describe('store — sidebar / drawer', () => {
 })
 
 describe('store — palette actions', () => {
-  it('new chat resets to a fresh empty conversation', async () => {
+  it('new chat opens the home composer without creating a conversation', async () => {
     const { result } = await setup()
+    const before = result.current.s.conversations.length
     await act(async () => result.current.v.pNewChat())
-    expect(result.current.v.isConv).toBe(true)
-    expect(result.current.v.sent).toHaveLength(0)
-    expect(result.current.v.isEmptyChat).toBe(true)
+    expect(result.current.v.isConv).toBe(false)
+    // scoped to the project that was active when “new chat” was pressed
+    expect(result.current.s.homeProject).toBe('aurora')
+    // a conversation is born on the first MESSAGE, never on intent
+    expect(result.current.s.conversations.length).toBe(before)
   })
   it('covers the remaining palette jumps', async () => {
     const { result } = await setup()
@@ -145,16 +148,17 @@ describe('store — per-conversation threads', () => {
     expect(result.current.v.hasDemo).toBe(true)
   })
 
-  it('new chat creates an empty conversation; send appends to it only', async () => {
+  it('new chat defers creation — the conversation is born on the first send', async () => {
     vi.useFakeTimers()
     const { result } = await setup()
     const before = result.current.v.sideConvs.length
     await act(async () => result.current.v.pNewChat())
-    expect(result.current.v.sideConvs.length).toBe(before + 1)
-    expect(result.current.v.sent).toHaveLength(0)
-    const id = result.current.s.activeConv
+    // no empty “Untitled” row appears on intent
+    expect(result.current.v.sideConvs.length).toBe(before)
     await act(async () => result.current.set({ draft: 'xin chào' }))
     await act(async () => result.current.v.send())
+    const id = result.current.s.activeConv
+    expect(result.current.v.sideConvs.length).toBe(before + 1)
     await act(async () => vi.advanceTimersByTime(5000))
     expect(visiblePath(result.current.s.threads[id]).length).toBeGreaterThan(1)
     // the demo conversation's seeded thread (4 messages) is untouched
@@ -458,8 +462,8 @@ describe('store — streaming chat engine', () => {
     vi.useFakeTimers()
     const { result } = await setup()
     await act(async () => result.current.v.pNewChat())
-    expect(result.current.v.isEmptyChat).toBe(true)
-    expect(result.current.v.hasDemo).toBe(false)
+    // (on Home the VM still mirrors the cached last conversation — the home
+    // view simply doesn't render a thread; assertions apply after the send)
     await act(async () => result.current.set({ draft: 'xin chào' }))
     await act(async () => result.current.v.send())
     await act(async () => vi.advanceTimersByTime(5000))
@@ -717,13 +721,20 @@ describe('store — projects (CRUD + membership)', () => {
   })
 
   it('a new chat inherits the active project; newChatInProject targets a given one', async () => {
+    vi.useFakeTimers()
     const { result } = await setup()
     await act(async () => result.current.v.pNewChat())
+    await act(async () => result.current.set({ draft: 'a' }))
+    await act(async () => result.current.v.send())
     const a = result.current.s.activeConv
     expect(result.current.s.conversations.find((c) => c.id === a)?.projectId).toBe('aurora')
+    await act(async () => vi.advanceTimersByTime(5000))
     await act(async () => result.current.v.newChatInProject('chung'))
+    await act(async () => result.current.set({ draft: 'b' }))
+    await act(async () => result.current.v.send())
     const b = result.current.s.activeConv
     expect(result.current.s.conversations.find((c) => c.id === b)?.projectId).toBe('chung')
+    await act(async () => vi.advanceTimersByTime(5000))
   })
 
   it('toggling a per-project preset is isolated to that project', async () => {

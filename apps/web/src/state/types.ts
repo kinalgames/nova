@@ -204,6 +204,10 @@ export interface NovaState {
   /** conversation ids in their optimistic-delete undo window */
   deleting: string[]
   activeConv: string
+  /** project the NEXT home-composed conversation belongs to — set by “new
+   *  chat (in project)”, consumed at the first send. A conversation is born
+   *  on the first MESSAGE, never on intent, so no empty rows pile up. */
+  homeProject: string | null
   threads: Record<string, Thread>
   /** message id currently being edited inline, or null */
   editingMsg: string | null

@@ -250,6 +250,7 @@ function initialState(demo: boolean): NovaState {
     drawerOpen: false,
     sidebarCollapsed: false,
     renamingConv: null,
+    homeProject: null,
     preview: null,
     respState: 'done',
     errorDetail: null,
@@ -1135,12 +1136,15 @@ export function StoreProvider({
                 title: null,
                 updatedAt: Date.now(),
                 projectId:
+                  x.homeProject ??
                   x.conversations.find((c) => c.id === navRef.current.activeConv)
-                    ?.projectId ?? 'chung',
+                    ?.projectId ??
+                  'chung',
               },
               ...x.conversations,
             ],
             activeConv: convId,
+            homeProject: null,
           }
         : {}),
       threads: {
@@ -1515,7 +1519,12 @@ function deriveValues(
   } = extra
   const activeConv = nav.activeConv
   const activeConvObj = s.conversations.find((c) => c.id === activeConv)
-  const activeProjectId = activeConvObj?.projectId ?? 'chung'
+  // on Home the explicitly chosen new-chat project wins; elsewhere the active
+  // conversation owns the project context
+  const activeProjectId =
+    nav.view === 'home' && s.homeProject !== null
+      ? s.homeProject
+      : (activeConvObj?.projectId ?? 'chung')
   const activeProject = s.projects.find((p) => p.id === activeProjectId) ?? s.projects[0]
   const convCount = (pid: string) => s.conversations.filter((c) => c.projectId === pid).length
   // the project addressed by the URL (project view / config routes)
@@ -1584,14 +1593,11 @@ function deriveValues(
       ),
     }))
   const startChat = (projectId: string) => {
-    const id = uid()
-    set((x) => ({
-      conversations: [
-        { id, title: null, projectId, updatedAt: Date.now() },
-        ...x.conversations,
-      ],
-      threads: { ...x.threads, [id]: emptyThread() },
-      activeConv: id,
+    // a conversation is born on the FIRST MESSAGE, not on intent — “new chat”
+    // only opens the home composer scoped to the project, so empty Untitled
+    // rows never pile up in the sidebar
+    set({
+      homeProject: projectId,
       respState: 'done',
       errorDetail: null,
       errorRequestId: null,
@@ -1599,8 +1605,8 @@ function deriveValues(
       errorConv: null,
       palette: false,
       drawerOpen: false,
-    }))
-    goTo('/chat/$convId', { convId: id })
+    })
+    goTo('/new')
   }
 
   const sortConvs = (list: NovaState['conversations']) =>
@@ -1697,9 +1703,11 @@ function deriveValues(
       },
       busy: c.id === activeConv && s.typing,
       deleting: s.deleting.includes(c.id),
-      bg: isActive ? 'var(--accent-soft)' : 'transparent',
+      // the open conversation reads through TEXT COLOR — a paper list keeps
+      // rows flat, only the transient hover wash may tint the background
+      bg: 'transparent',
       // an unnamed conversation renders muted — the name simply isn't there yet
-      fg: c.title === null ? 'var(--muted)' : isActive ? 'var(--text)' : 'var(--text-2)',
+      fg: isActive ? 'var(--accent-text)' : c.title === null ? 'var(--muted)' : 'var(--text-2)',
       onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),
       open: () => {
         set({ activeConv: c.id, palette: false, drawerOpen: false })
@@ -2029,8 +2037,8 @@ function deriveValues(
     dot: p.accent,
     count: String(convCount(p.id)),
     current: p.id === currentProjectId,
-    bg: p.id === currentProjectId ? 'var(--accent-soft)' : 'transparent',
-    fg: p.id === currentProjectId ? 'var(--text)' : 'var(--text-2)',
+    bg: 'transparent',
+    fg: p.id === currentProjectId ? 'var(--accent-text)' : 'var(--text-2)',
   }))
   const sideList = sortConvs(
     s.conversations.filter((c) => c.projectId === currentProjectId && !c.archived),

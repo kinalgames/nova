@@ -19,7 +19,7 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
   const { t } = useTranslation()
   return (
     <div
-      className="relative flex min-h-11 items-center gap-1 rounded-sm pl-2.5 pr-0.5"
+      className="relative flex min-h-10 items-center gap-1 rounded-sm pl-2.5 pr-0.5"
       style={{ background: c.bg, opacity: c.deleting ? 0.5 : 1 }}
     >
       <Link
@@ -28,9 +28,9 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
         onClick={c.onSelect}
         disabled={c.deleting}
         aria-current={c.active ? 'page' : undefined}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 self-stretch bg-transparent text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent aria-disabled:cursor-default"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-[0.85em] self-stretch bg-transparent text-left text-meta no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent aria-disabled:cursor-default"
       >
-        <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
+        <span className="flex-1 truncate" style={{ color: c.fg }}>
           {c.title}
         </span>
         {c.pinned && <Icon n="pin" size={12} fill="currentColor" className="flex-shrink-0 text-faint" />}
@@ -61,7 +61,7 @@ function DrawerConvRow({ c }: { c: ConvVM }) {
             <button
               type="button"
               aria-label={t('common.convOptions')}
-              className="flex w-11 flex-shrink-0 cursor-pointer items-center justify-center self-stretch border-none bg-transparent text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+              className="flex w-10 flex-shrink-0 cursor-pointer items-center justify-center self-stretch border-none bg-transparent text-faint outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
             >
               <Icon n="more" size={16} />
             </button>

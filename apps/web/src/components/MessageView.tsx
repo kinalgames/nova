@@ -5,6 +5,7 @@ import { getToken } from '../services/token'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { GrowingTextarea } from './GrowingTextarea'
+import { BTN_PRIMARY, BTN_SECONDARY } from './ui'
 import type {
   Block,
   Message,
@@ -558,7 +559,7 @@ export function MessageView({
           <button
             type="button"
             onClick={v.setDone}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-left text-small text-text-2"
+            className={BTN_SECONDARY}
           >
             <Icon n="stop" size={13} fill="currentColor" stroke={0} /> {t('common.stop')}
           </button>
@@ -570,11 +571,11 @@ export function MessageView({
           {answer.slice(0, 1).map((b, i) => (
             <BlockView key={i} block={b} />
           ))}
-          <div className="mt-4 flex items-start gap-3 rounded-md border border-danger-line bg-danger-bg px-4 py-3">
+          <div className="mt-4 flex flex-wrap items-start gap-3 rounded-md border border-danger-line bg-danger-bg px-4 py-3">
             <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-danger-strong text-small text-on-ink">
               !
             </span>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-[14rem]">
               <div className="text-body text-text">
                 {v.errorAction === 'providers' ? t('chat.noProviderTitle') : t('chat.errorTitle')}
               </div>
@@ -595,7 +596,7 @@ export function MessageView({
               <button
                 type="button"
                 onClick={() => v.openSettings('providers')}
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-small text-bg"
+                className={`${BTN_PRIMARY} shrink-0`}
               >
                 <Icon n="plus" size={14} /> {t('chat.addProviderCta')}
               </button>
@@ -603,7 +604,7 @@ export function MessageView({
               <button
                 type="button"
                 onClick={() => (v.errorAction === 'retry' ? v.regenerate(message.id) : v.setDone())}
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border-none bg-ink px-3 py-2 text-left text-small text-bg"
+                className={`${BTN_PRIMARY} shrink-0`}
               >
                 <Icon n="retry" size={14} /> {t('common.retry')}
               </button>

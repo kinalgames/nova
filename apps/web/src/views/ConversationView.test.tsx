@@ -116,9 +116,9 @@ describe('ConversationView — response states', () => {
     expect(nodes.some((n) => !n.closest('button'))).toBe(true)
   })
 
-  it('a fresh chat shows the empty state', async () => {
+  it('a fresh chat lands on the home composer (no conversation yet)', async () => {
     await renderApp((s) => s.v.pNewChat())
-    expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()
+    expect(await screen.findByText(/Bạn muốn làm gì hôm nay/)).toBeInTheDocument()
   })
 })
 
@@ -133,9 +133,9 @@ describe('ConversationView — demo content is scoped to the demo conversation',
     expect(screen.queryByText('demo:')).not.toBeInTheDocument()
   })
 
-  it('a fresh chat shows only the empty state, no scripted answer', async () => {
+  it('a fresh chat shows only the home composer, no scripted answer', async () => {
     await renderApp((s) => s.v.pNewChat())
-    expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()
+    expect(await screen.findByText(/Bạn muốn làm gì hôm nay/)).toBeInTheDocument()
     expect(screen.queryByText(/đối chiếu khảo sát với 6 đối thủ/)).not.toBeInTheDocument()
   })
 

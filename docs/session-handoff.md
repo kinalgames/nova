@@ -203,6 +203,32 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
   drawer, elementFromPoint tại menuitem = menuitem (trước = scrim), tap
   Ghim thành công, row 44px.
 
+### Design pass 2 (user chỉ đạo — cùng ngày)
+
+- **Active = MÀU CHỮ, không phải nền**: conv/project đang mở đọc qua
+  `var(--accent-text)`, bg luôn transparent (chỉ hover wash tạm thời).
+- **EM-RATIO**: padding/gap của component chạy theo chữ dùng em
+  (`py-[0.45em] px-[0.85em] gap-[0.85em]`); px chỉ cho icon/dot/border.
+  Conv+project rows sidebar/drawer = `text-meta` (12px) — user chốt
+  sidebar list type 10–12px. Desktop row ~28px; drawer min-h-10 (40px).
+- **Button vocabulary** `components/ui.ts`: BTN_PRIMARY/BTN_SECONDARY —
+  “mảnh giấy”: hairline shadow `0_1px_0_var(--border)`, rounded-md,
+  `active:translate-y-px`, padding em. Áp: error card CTAs, stop, toast.
+- **Toast**: z-50→z-[90], `w-max max-w-[min(92vw,26rem)]` (fixed+left-50%
+  shrink-to-fit chỉ được 50vw → trước đó hẹp + cao trên mobile).
+- **Error card chat**: `flex-wrap` + text `basis-[14rem]` → mobile nút
+  xuống dòng riêng, hết co kéo.
+- **Lazy conversation**: “Cuộc trò chuyện mới” KHÔNG tạo conv — chỉ
+  goTo('/new') + `homeProject` (state) giữ project đích; conv sinh ở lần
+  send đầu (send đã lazy sẵn). Lưu ý VM: trên Home nav.activeConv =
+  cached last conv (by design) → sent/hasDemo phản ánh conv cũ, Home
+  không render thread nên vô hại — ĐỪNG assert chúng trên Home.
+- **E2E mobile project mới** (`playwright.config.ts` project 'mobile',
+  Pixel 7 chromium — không cần tải webkit): `e2e/mobile.spec.ts` 4 test
+  guard: menu trên scrim (actionability), nav+close drawer, geometry
+  44px/icon-centered/row≤48px, elementFromPoint sweep không bị overlay
+  che. Đây là tầng “sự thật UI” — jsdom không thấy layout/z-index/touch.
+
 ## QUYẾT ĐỊNH ĐÓNG (user chốt 2026-07-03)
 
 - **CI auto-deploy: WON'T DO** — CI testing trên GitHub Actions giữ

@@ -13,7 +13,13 @@ export default defineConfig({
     // first-run detection resolves to vi
     locale: 'vi-VN',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    // desktop truth — the mobile spec drives touch-only UI, skip it here
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /mobile\.spec\.ts/ },
+    // mobile truth — real layout, z-index and touch semantics jsdom cannot
+    // see. Pixel 7 = chromium-based, so CI needs no extra browser download
+    { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /mobile\.spec\.ts/ },
+  ],
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',

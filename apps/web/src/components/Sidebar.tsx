@@ -22,9 +22,9 @@ function ConvRow({ c }: { c: ConvVM }) {
         onClick={c.onSelect}
         disabled={c.deleting}
         aria-current={c.active ? 'page' : undefined}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-sm bg-transparent px-2.5 py-2 text-left no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent aria-disabled:cursor-default"
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-[0.85em] rounded-sm bg-transparent px-[0.85em] py-[0.45em] text-left text-meta no-underline outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent aria-disabled:cursor-default"
       >
-        <span className="flex-1 truncate text-ui" style={{ color: c.fg }}>
+        <span className="flex-1 truncate" style={{ color: c.fg }}>
           {c.title}
         </span>
       </Link>
@@ -213,13 +213,13 @@ export function Sidebar() {
             data-hover="soft"
             aria-current={p.current ? 'true' : undefined}
             aria-label={t('nav.projectAria', { name: p.name })}
-            className="mb-px flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 no-underline"
+            className="mb-px flex w-full cursor-pointer items-center gap-[0.85em] rounded-sm px-[0.85em] py-[0.45em] text-meta no-underline"
             style={{ justifyContent: v.railJustify, background: p.bg }}
           >
             <span className="size-[9px] shrink-0 rounded-xs" style={{ background: p.dot }} />
             {v.sidebarExpanded && (
               <>
-                <span className="flex-1 truncate text-left text-ui" style={{ color: p.fg }}>
+                <span className="flex-1 truncate text-left" style={{ color: p.fg }}>
                   {p.name}
                 </span>
                 <span className="font-mono text-micro text-faint">{p.count}</span>

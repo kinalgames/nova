@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { BTN_PRIMARY } from './ui'
 
 /** transient notice toast (share-link copied, …) — auto-clears from the store */
 export function NoticeToast() {
@@ -9,7 +10,7 @@ export function NoticeToast() {
   return (
     <div
       role="status"
-      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-md border border-border bg-panel px-4 py-2.5 shadow-overlay animate-[fadeUp_180ms_var(--ease-paper)]"
+      className="fixed bottom-5 left-1/2 z-[90] flex w-max max-w-[min(92vw,26rem)] -translate-x-1/2 items-center gap-2.5 rounded-md border border-border bg-panel px-4 py-2.5 shadow-overlay animate-[fadeUp_180ms_var(--ease-paper)]"
     >
       <Icon n="check" size={14} className="text-accent" />
       <span className="text-ui text-text">{v.toast}</span>
@@ -25,7 +26,7 @@ export function UpdateToast() {
   return (
     <div
       role="status"
-      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-md border border-border bg-panel py-2.5 pl-4 pr-2.5 shadow-overlay animate-[fadeUp_180ms_var(--ease-paper)]"
+      className="fixed bottom-5 left-1/2 z-[90] flex w-max max-w-[min(92vw,26rem)] -translate-x-1/2 flex-wrap items-center gap-3 rounded-md border border-border bg-panel py-2.5 pl-4 pr-2.5 shadow-overlay animate-[fadeUp_180ms_var(--ease-paper)]"
     >
       <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-accent text-bg">
         <Icon n="nova" size={13} />
@@ -34,7 +35,7 @@ export function UpdateToast() {
       <button
         type="button"
         onClick={v.reloadNow}
-        className="cursor-pointer whitespace-nowrap rounded-sm border-none bg-ink px-3 py-1.5 text-small text-bg"
+        className={`${BTN_PRIMARY} whitespace-nowrap`}
       >
         {t('update.reload')}
       </button>
