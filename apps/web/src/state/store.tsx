@@ -33,6 +33,7 @@ import type {
   AuthView,
   Block,
   Message,
+  MsgAttachment,
   NovaState,
   SettingsTab,
   StagedFile,
@@ -2421,19 +2422,33 @@ function deriveValues(
     openLightbox: () => set({ preview: { kind: 'image', name: 'moodboard.png' } }),
     openStaged: (f: StagedFile) =>
       set({ preview: { kind: f.kind, name: f.name, url: f.url } }),
+    // real message attachment — carries fileId so Preview fetches the actual
+    // bytes/text; a local url (staged blob) is used directly when present
+    previewFile: (f: MsgAttachment) =>
+      set({
+        preview: {
+          kind: f.open ?? f.kind,
+          name: f.name,
+          ...(f.url ? { url: f.url } : {}),
+          ...(f.fileId ? { fileId: f.fileId } : {}),
+          ...(f.meta ? { meta: f.meta } : {}),
+        },
+      }),
     preview: s.preview,
     hasPreview: !!s.preview,
     previewName: s.preview?.name || '',
     previewUrl: s.preview?.url,
+    previewFileId: s.preview?.fileId,
     isPrevImage: s.preview?.kind === 'image',
     isPrevPdf: s.preview?.kind === 'pdf',
     isPrevCode: s.preview?.kind === 'code',
     isPrevCsv: s.preview?.kind === 'csv',
     isPrevMd: s.preview?.kind === 'md',
     previewMeta:
-      s.preview?.kind === 'image'
+      s.preview?.meta ??
+      (s.preview?.kind === 'image'
         ? '1440×960 · 820 KB'
-        : (getSeed().previewMeta as Record<string, string>)[s.preview?.kind || ''] || '',
+        : (getSeed().previewMeta as Record<string, string>)[s.preview?.kind || ''] || ''),
     openPdf: () => set({ preview: { kind: 'pdf', name: getSeed().previewNames.pdf } }),
     openCode: () => set({ preview: { kind: 'code', name: getSeed().previewNames.code } }),
     openCsv: () => set({ preview: { kind: 'csv', name: getSeed().previewNames.csv } }),
@@ -2755,7 +2770,10 @@ function deriveValues(
     typing: s.typing,
     typingLabel: s.typingLabel,
     activeCount,
-    tokenPct: s.tokenPct,
+    // real context indicator: session tokens against a ~200k reference window
+    // (BYOK has no billing quota, so the bar reads “how much context is in
+    // play”, not “how much budget is left”). Honest numerator, no placeholder.
+    tokenPct: `${Math.min(98, Math.round((usageIn + usageOut) / 2000))}%`,
     tokenLabel: t('meter.tokenLabel'),
     tokenDetail: usageIn + usageOut > 0
       ? t('meter.usageDetail', {
@@ -2766,7 +2784,7 @@ function deriveValues(
       : t('meter.tokenDetail'),
     copyLabel: s.copied ? t('common.copied') : t('common.copy'),
     copied: s.copied,
-    quietClock: '24:13',
+    quietClock: new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
     // nav handlers
     goHome: () => go('home'),
     goConv: () => go('conversation'),

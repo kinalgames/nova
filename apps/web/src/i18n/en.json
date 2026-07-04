@@ -353,11 +353,14 @@
   "quiet": {
     "header": "FOCUS · {{clock}}",
     "placeholder": "Continue in silence…",
-    "exit": "Exit"
+    "exit": "Exit",
+    "empty": "A quiet space — start typing."
   },
   "preview": {
     "download": "Download",
-    "open": "Open"
+    "open": "Open",
+    "loading": "Loading…",
+    "loadFailed": "Couldn't load the file"
   },
   "authForm": {
     "email": "Email",

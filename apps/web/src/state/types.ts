@@ -24,6 +24,11 @@ export interface Preview {
   name: string
   /** Object URL for a real uploaded image (optional). */
   url?: string
+  /** R2 file id — when set, Preview fetches and renders the REAL content
+   *  (blob for image/pdf, text for code/csv/md); absent = demo seed doc */
+  fileId?: string
+  /** meta line under the title (size · pages…) for a real file */
+  meta?: string
 }
 
 export interface StagedFile {

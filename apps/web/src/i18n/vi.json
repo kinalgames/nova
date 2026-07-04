@@ -352,11 +352,14 @@
   "quiet": {
     "header": "TẬP TRUNG · {{clock}}",
     "placeholder": "Tiếp tục trong im lặng…",
-    "exit": "Thoát"
+    "exit": "Thoát",
+    "empty": "Không gian yên tĩnh — gõ để bắt đầu."
   },
   "preview": {
     "download": "Tải",
-    "open": "Mở"
+    "open": "Mở",
+    "loading": "Đang tải…",
+    "loadFailed": "Không tải được tệp"
   },
   "authForm": {
     "email": "Email",

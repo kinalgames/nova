@@ -153,7 +153,7 @@ function FilePill({ f }: { f: MsgAttachment }) {
   if (f.image) return <ImageTile f={f} />
   const b = FILE_BADGE[f.kind] ?? FILE_BADGE.pdf
   return (
-    <button type="button" onClick={() => openPreview(v, f.open ?? f.kind)} className={FILE_PILL}>
+    <button type="button" onClick={() => v.previewFile(f)} className={FILE_PILL}>
       <span className={`flex h-[30px] w-[26px] shrink-0 items-center justify-center rounded-xs font-mono text-micro ${b.cls}`}>
         {b.label}
       </span>
