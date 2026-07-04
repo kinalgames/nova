@@ -42,6 +42,15 @@ describe('ollama adapter — request body', () => {
     ])
     expect(body.stream).toBe(true)
     expect(body.options).toEqual({ num_predict: 8192 })
+    // no thinking knob on the request → the body never mentions think
+    expect('think' in body).toBe(false)
+  })
+
+  it('B6b — maps the thinking level onto ollama `think` (off must be false)', () => {
+    const off = JSON.parse(ollamaBody({ ...baseReq, thinking: 'off' })) as Record<string, unknown>
+    expect(off.think).toBe(false)
+    const high = JSON.parse(ollamaBody({ ...baseReq, thinking: 'high' })) as Record<string, unknown>
+    expect(high.think).toBe(true)
   })
 })
 

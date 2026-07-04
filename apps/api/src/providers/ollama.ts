@@ -37,6 +37,10 @@ export function ollamaBody(req: ResolvedChatRequest): string {
       })),
     ],
     stream: true,
+    // B6b — the thinking knob arrives ONLY for models the client knows can
+    // reason (capability-gated); off must actually switch thinking off, or a
+    // reasoning model silently burns its budget on hidden thought
+    ...(req.thinking !== undefined ? { think: req.thinking !== 'off' } : {}),
     options: { num_predict: req.maxTokens ?? 8192 },
   })
 }

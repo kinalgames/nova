@@ -14,6 +14,7 @@ import {
 import { createAuth } from './auth'
 import { limitAuth, limitV1, type RateLimitEnv } from './ratelimit'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
+import { listOllamaModels, pullOllamaModel } from './ollama-catalog'
 import { files } from './files'
 import { shares } from './shares'
 import { resolveAttachments } from './attachments'
@@ -301,6 +302,71 @@ app.get('/v1/sync/ws', async (c) => {
   const uid = session?.user.id
   if (!uid) return problem(401, 'unauthenticated', 'Invalid sync token')
   return userStub(c.env, uid).fetch(new Request('https://do/ws', c.req.raw))
+})
+
+/** B6c — resolve the ollama endpoint from exactly one credential source */
+async function ollamaEndpointOf(
+  c: { env: Env; req: { raw: Request; json: () => Promise<unknown> } },
+  uid: string,
+  body: { credentialId?: unknown; endpoint?: unknown },
+): Promise<{ endpoint: string } | { error: Response }> {
+  const hasStored = typeof body.credentialId === 'string' && body.credentialId.trim() !== ''
+  const hasInline = typeof body.endpoint === 'string' && body.endpoint.trim() !== ''
+  if (hasStored === hasInline)
+    return { error: problem(400, 'invalid_request', 'Expected exactly one of credentialId | endpoint') }
+  if (hasStored) {
+    const stored = await openCredential(c.env, uid, body.credentialId as string)
+    if (!stored) return { error: problem(404, 'credential_not_found', 'No such stored credential') }
+    if (stored.providerId !== 'ollama')
+      return { error: problem(400, 'credential_mismatch', 'Credential belongs to another provider') }
+    return { endpoint: stored.credential }
+  }
+  return { endpoint: body.endpoint as string }
+}
+
+// B6c — the models the user's ollama endpoint actually serves (real caps)
+app.post('/v1/ollama/models', async (c) => {
+  const uid = await userIdOf(c)
+  if (!uid) return problem(401, 'unauthenticated', 'Requires a signed-in session')
+  let body: { credentialId?: unknown; endpoint?: unknown }
+  try {
+    body = (await c.req.json()) as typeof body
+  } catch {
+    return problem(400, 'invalid_json', 'Body must be JSON')
+  }
+  const src = await ollamaEndpointOf(c, uid, body)
+  if ('error' in src) return src.error
+  let rows
+  try {
+    rows = await listOllamaModels(src.endpoint)
+  } catch (e) {
+    return problem(400, 'invalid_endpoint', String((e as Error).message ?? e).slice(0, 200))
+  }
+  if (rows === null)
+    return problem(502, 'ollama_unreachable', 'The ollama endpoint did not answer /api/tags')
+  return c.json({ models: rows })
+})
+
+// B6c — pull a new model onto the endpoint; progress streams back as SSE
+app.post('/v1/ollama/pull', async (c) => {
+  const uid = await userIdOf(c)
+  if (!uid) return problem(401, 'unauthenticated', 'Requires a signed-in session')
+  let body: { credentialId?: unknown; endpoint?: unknown; model?: unknown }
+  try {
+    body = (await c.req.json()) as typeof body
+  } catch {
+    return problem(400, 'invalid_json', 'Body must be JSON')
+  }
+  const model = typeof body.model === 'string' ? body.model.trim() : ''
+  if (!model || model.length > 200) return problem(400, 'invalid_request', 'Missing model name')
+  const src = await ollamaEndpointOf(c, uid, body)
+  if ('error' in src) return src.error
+  console.log(JSON.stringify({ level: 'info', msg: 'ollama_pull', id: c.get('requestId'), uid, model }))
+  try {
+    return await pullOllamaModel(src.endpoint, model)
+  } catch (e) {
+    return problem(400, 'invalid_endpoint', String((e as Error).message ?? e).slice(0, 200))
+  }
 })
 
 app.post('/v1/chat', async (c) => {

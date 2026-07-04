@@ -227,7 +227,9 @@ export interface NovaState {
   /** which provider's config is expanded in Settings → Nhà cung cấp (accordion) */
   openProvider: ProviderId | null
   /** dynamic ollama catalog — hydrated from the user's endpoint (/api/tags) */
-  ollamaModels: ModelDef[]
+  ollamaModels: (ModelDef & { size?: string })[]
+  /** an in-flight ollama pull — drives the progress line in Settings */
+  ollamaPull: { model: string; pct: number | null; status: string } | null
   /** cross-provider model routing per slot */
   slots: Record<SlotId, ModelRef>
   tools: ToolFlags

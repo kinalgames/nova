@@ -146,6 +146,57 @@ describe('Settings → Providers — accordion + profiles', () => {
     expect(await within(dialog).findByLabelText('API KEY — Gemini')).toBeInTheDocument()
   })
 
+  it('the ollama config lists its dynamic models and offers the pull form', async () => {
+    const user = makeUser()
+    await renderApp(undefined, {
+      path: '/chat/c1?settings=providers',
+      storeInit: {
+        ollamaModels: [
+          { id: 'ornith:35b', name: 'ornith:35b', mode: 'fast', caps: { reasoning: true }, ctx: 262_144, inPrice: 0, outPrice: 0, size: '19.7 GB' },
+        ],
+      },
+    })
+    const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Trên máy của bạn')
+    // the installed model renders with its size badge + caps glyph
+    expect(within(dialog).getByText('ornith:35b')).toBeInTheDocument()
+    expect(within(dialog).getByText('19.7 GB')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Làm mới' })).toBeInTheDocument()
+    // the pull form guards empty input
+    const pull = within(dialog).getByRole('button', { name: 'Tải model' })
+    expect(pull).toBeDisabled()
+    await user.type(within(dialog).getByLabelText('Tên model cần tải'), 'llama3.2')
+    expect(pull).toBeEnabled()
+  })
+
+  it('an in-flight pull replaces the form with a progress line', async () => {
+    const user = makeUser()
+    await renderApp(undefined, {
+      path: '/chat/c1?settings=providers',
+      storeInit: { ollamaPull: { model: 'llama3.2', pct: 40, status: 'downloading' } },
+    })
+    const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Trên máy của bạn')
+    expect(within(dialog).getByRole('status')).toHaveTextContent('llama3.2')
+    expect(within(dialog).getByRole('status')).toHaveTextContent('40%')
+    expect(within(dialog).getByRole('status')).toHaveTextContent('downloading')
+    expect(within(dialog).queryByRole('button', { name: 'Tải model' })).not.toBeInTheDocument()
+  })
+
+  it('a pull whose layer sizes are unknown shows … instead of a percentage', async () => {
+    const user = makeUser()
+    await renderApp(undefined, {
+      path: '/chat/c1?settings=providers',
+      storeInit: { ollamaPull: { model: 'qwen3', pct: null, status: '' } },
+    })
+    const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Trên máy của bạn')
+    expect(within(dialog).getByRole('status')).toHaveTextContent('…%')
+    // refresh survives an unreachable endpoint — the button simply re-asks
+    await user.click(within(dialog).getByRole('button', { name: 'Làm mới' }))
+    expect(within(dialog).getByRole('button', { name: 'Làm mới' })).toBeInTheDocument()
+  })
+
   it('toggles auto-rotate', async () => {
     const user = makeUser()
     const { store } = await openProviders()

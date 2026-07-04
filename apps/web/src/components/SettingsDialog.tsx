@@ -493,12 +493,79 @@ function Providers() {
                 ))}
               </div>
               <AddProfileForm pr={pr} />
+              {pr.id === 'ollama' && <OllamaSection />}
             </div>
             )}
           </div>
         ))}
       </div>
     </>
+  )
+}
+
+/** B6c — the ollama config carries its DYNAMIC catalog: models the endpoint
+ *  serves (with real caps) plus a pull form with streamed progress. */
+function OllamaSection() {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const [name, setName] = useState('')
+  const cat = v.ollamaCatalog
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="font-mono text-micro tracking-[.12em] text-faint">{t('settings.ollamaModels')}</span>
+        <button
+          type="button"
+          onClick={cat.refresh}
+          className="cursor-pointer border-none bg-transparent p-0 font-mono text-eyebrow text-muted hover:text-text"
+        >
+          {t('settings.ollamaRefresh')}
+        </button>
+      </div>
+      {cat.models.length === 0 && (
+        <div className="mb-2 text-small text-muted">{t('settings.ollamaEmpty')}</div>
+      )}
+      <div className="mb-2 flex flex-col gap-1">
+        {cat.models.map((m) => (
+          <div key={m.id} className="flex items-center gap-2">
+            <span className="min-w-0 truncate font-mono text-small text-text">{m.name}</span>
+            <CapIcons caps={m.caps} />
+            <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint">{m.size}</span>
+          </div>
+        ))}
+      </div>
+      {cat.pulling ? (
+        <div className="text-small text-muted" role="status">
+          {t('settings.ollamaPulling', {
+            model: cat.pulling.model,
+            pct: cat.pulling.pct ?? '…',
+          })}
+          {cat.pulling.status && <span className="ml-2 font-mono text-eyebrow text-faint">{cat.pulling.status}</span>}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('settings.ollamaPullPlaceholder')}
+            aria-label={t('settings.ollamaPullAria')}
+            spellCheck={false}
+            className="field min-w-0 flex-1 rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              cat.pull(name)
+              setName('')
+            }}
+            disabled={!name.trim()}
+            className="cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2.5 py-1.5 font-mono text-eyebrow text-accent-text disabled:cursor-default disabled:opacity-[.38]"
+          >
+            {t('settings.ollamaPull')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 

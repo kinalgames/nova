@@ -93,6 +93,7 @@ import {
 } from './thread'
 import { describeUpload, downloadFile, downloadUrl } from '../services/files'
 import { fetchFileObjectUrl } from '../services/preview'
+import { listOllamaModels, pullOllamaModel } from '../services/ollama'
 
 const ACCENT_DEFAULT = 'var(--accent)'
 
@@ -273,6 +274,7 @@ function initialState(): NovaState {
     nudgeNonce: 0,
     openProvider: null,
     ollamaModels: [],
+    ollamaPull: null,
     preview: null,
     respState: 'done',
     errorDetail: null,
@@ -682,6 +684,47 @@ export function StoreProvider({
       }
     },
     [set],
+  )
+
+  // B6c — the ollama catalog is whatever the user's endpoint serves; ask it
+  // (through the proxy) whenever an ollama profile exists
+  const hydrateOllama = useCallback(async () => {
+    const prof = (sRef.current.profiles.ollama ?? [])[0]
+    if (!prof || !HAS_API || !getToken()) return
+    const rows = await listOllamaModels(prof)
+    if (rows) set({ ollamaModels: rows })
+  }, [set])
+
+  useEffect(() => {
+    if ((s.profiles.ollama ?? []).length === 0) return
+    void hydrateOllama()
+  }, [s.profiles.ollama, hydrateOllama])
+
+  const pullOllama = useCallback(
+    (model: string) => {
+      const prof = (sRef.current.profiles.ollama ?? [])[0]
+      const name = model.trim()
+      if (!prof || !name || sRef.current.ollamaPull) return
+      set({ ollamaPull: { model: name, pct: null, status: '' } })
+      const toastLater = (msg: string) => {
+        clearTimeout(toastTimer)
+        set({ toast: msg })
+        toastTimer = setTimeout(() => set({ toast: null }), 2400)
+      }
+      void pullOllamaModel(prof, name, {
+        onProgress: (pct, status) => set({ ollamaPull: { model: name, pct, status } }),
+        onDone: () => {
+          set({ ollamaPull: null })
+          toastLater(i18n.t('settings.ollamaPullDone', { model: name }))
+          void hydrateOllama()
+        },
+        onError: (detail) => {
+          set({ ollamaPull: null })
+          toastLater(i18n.t('settings.ollamaPullFailed', { detail }))
+        },
+      })
+    },
+    [set, hydrateOllama],
   )
 
   // T8: real mode also pulls the server-side month usage roll-up — the
@@ -1445,8 +1488,10 @@ export function StoreProvider({
         copyMessage,
         setFeedback,
         adoptAccount,
+        ollamaRefresh: hydrateOllama,
+        ollamaPullStart: pullOllama,
       }),
-    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount],
+    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama],
   )
 
   const store: Store = useMemo(
@@ -1487,11 +1532,15 @@ function deriveValues(
     copyMessage: (id: string) => void
     setFeedback: (id: string, val: 'up' | 'down') => void
     adoptAccount: (me: SessionUser) => void
+    ollamaRefresh: () => Promise<void>
+    ollamaPullStart: (model: string) => void
   },
 ) {
   const {
     go,
     goTo,
+    ollamaRefresh,
+    ollamaPullStart,
     send,
     stop,
     copyCode,
@@ -2553,6 +2602,18 @@ function deriveValues(
     providers,
     smartChoices: slotChoices('smart'),
     fastChoices: slotChoices('fast'),
+    // B6c — the ollama section inside its provider config
+    ollamaCatalog: {
+      models: s.ollamaModels.map((m) => ({
+        id: m.id,
+        name: m.name,
+        size: m.size ?? '',
+        caps: m.caps,
+      })),
+      refresh: () => void ollamaRefresh(),
+      pull: ollamaPullStart,
+      pulling: s.ollamaPull,
+    },
     presetsProj: mkPreset(viewProject.presets, (pid) => toggleProjectPreset(viewProject.id, pid)),
     presetsLib: mkPreset(s.presetDefault, togDef),
     projActiveNames,
