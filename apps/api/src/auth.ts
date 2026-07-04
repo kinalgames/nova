@@ -15,8 +15,12 @@ export interface AuthEnv extends MailEnv {
   BETTER_AUTH_SECRET: string
   /** canonical URL of this API (defaults to local wrangler dev) */
   BETTER_AUTH_URL?: string
-  /** the web client origin allowed to authenticate */
+  /** the CANONICAL web origin — email callbacks land here and it is always
+   *  trusted for auth POSTs */
   WEB_ORIGIN?: string
+  /** extra origins allowed to authenticate (comma-separated) — the legacy
+   *  workers.dev host keeps email sign-in while nova.kinal.co is canonical */
+  TRUSTED_ORIGINS_EXTRA?: string
   /** social login — a provider activates when BOTH its values are set */
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
@@ -30,7 +34,10 @@ export function createAuth(env: AuthEnv) {
     database: drizzleAdapter(db, { provider: 'sqlite', schema }),
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL ?? 'http://localhost:8787',
-    trustedOrigins: [env.WEB_ORIGIN ?? 'http://localhost:5173'],
+    trustedOrigins: [
+      env.WEB_ORIGIN ?? 'http://localhost:5173',
+      ...(env.TRUSTED_ORIGINS_EXTRA?.split(',').map((s) => s.trim()).filter(Boolean) ?? []),
+    ],
     emailAndPassword: { enabled: true },
     // D5 — send a verification link on signup. NOT required for sign-in: it
     // must never lock out accounts created before this shipped; the web app

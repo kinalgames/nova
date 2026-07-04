@@ -82,11 +82,15 @@
     "production": {
       "name": "nova",
       "observability": { "enabled": true },
-      // custom domain sau này: thêm routes nova.kinal.co + đổi 2 vars này +
-      // thêm redirect URI mới vào Google/GitHub OAuth apps
+      // nova.kinal.co = custom domain (gắn qua Dashboard → Worker → Domains;
+      // wrangler deploy KHÔNG đụng vào custom domains). OAuth consoles cần
+      // redirect URI https://nova.kinal.co/api/auth/callback/{google,github}.
+      // workers.dev giữ làm legacy origin: email login chạy, social dồn về
+      // canonical (popup khác origin không chia sẻ được localStorage token).
       "vars": {
-        "BETTER_AUTH_URL": "https://nova.kinalgames.workers.dev",
-        "WEB_ORIGIN": "https://nova.kinalgames.workers.dev"
+        "BETTER_AUTH_URL": "https://nova.kinal.co",
+        "WEB_ORIGIN": "https://nova.kinal.co",
+        "TRUSTED_ORIGINS_EXTRA": "https://nova.kinalgames.workers.dev"
       },
       "assets": {
         "directory": "../web/dist",
