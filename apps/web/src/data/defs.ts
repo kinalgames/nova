@@ -86,11 +86,11 @@ export const provDefs: ProviderDef[] = [
     auth: providerAuth.claude,
     field: 'key',
     placeholder: 'sk-ant-…',
-    // real Anthropic catalog (2026-07): dateless pinned ids, current pricing
+    // curated catalog: latest top models only (legacy joins by user request)
     models: [
-      { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', inPrice: 5, outPrice: 25, pace: 32 },
-      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', inPrice: 2, outPrice: 10, pace: 24 },
-      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', inPrice: 1, outPrice: 5, pace: 16 },
+      { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 200_000, inPrice: 5, outPrice: 25 },
+      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 200_000, inPrice: 2, outPrice: 10 },
+      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', mode: 'fast', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 200_000, inPrice: 1, outPrice: 5 },
     ],
     rec: true,
   },
@@ -104,8 +104,8 @@ export const provDefs: ProviderDef[] = [
     field: 'key',
     placeholder: 'AIza…',
     models: [
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', inPrice: 1.25, outPrice: 10, pace: 28 },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', inPrice: 0.15, outPrice: 0.6, pace: 14 },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', mode: 'smart', caps: { reasoning: true, vision: true, audio: true, toolUse: true }, ctx: 1_048_576, inPrice: 1.25, outPrice: 10 },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', mode: 'fast', caps: { reasoning: true, vision: true, audio: true, toolUse: true }, ctx: 1_048_576, inPrice: 0.15, outPrice: 0.6 },
     ],
     rec: false,
   },
@@ -120,9 +120,8 @@ export const provDefs: ProviderDef[] = [
     field: 'key',
     placeholder: 'sk-…',
     models: [
-      { id: 'gpt-5', name: 'GPT-5', inPrice: 1.25, outPrice: 10, pace: 26 },
-      { id: 'gpt-5-mini', name: 'GPT-5 mini', inPrice: 0.25, outPrice: 2, pace: 15 },
-      { id: 'o4', name: 'o4', inPrice: 2, outPrice: 8, pace: 30 },
+      { id: 'gpt-5', name: 'GPT-5', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 400_000, inPrice: 1.25, outPrice: 10 },
+      { id: 'gpt-5-mini', name: 'GPT-5 mini', mode: 'fast', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 400_000, inPrice: 0.25, outPrice: 2 },
     ],
     rec: false,
   },
@@ -136,11 +135,9 @@ export const provDefs: ProviderDef[] = [
     auth: providerAuth.ollama,
     field: 'endpoint',
     placeholder: 'http://localhost:11434',
-    models: [
-      { id: 'llama3.2', name: 'Llama 3.2', inPrice: 0, outPrice: 0, pace: 20 },
-      { id: 'qwen2.5', name: 'Qwen 2.5', inPrice: 0, outPrice: 0, pace: 20 },
-      { id: 'mistral-nemo', name: 'Mistral Nemo', inPrice: 0, outPrice: 0, pace: 20 },
-    ],
+    // ollama's catalog is DYNAMIC — the store hydrates it from the user's
+    // endpoint (/api/tags + /api/show, P3); nothing is hardcoded here
+    models: [],
     rec: false,
   },
 ]
@@ -157,6 +154,13 @@ export function findProvider(id: ProviderId): ProviderDef {
   return provDefs.find((p) => p.id === id) ?? provDefs[0]
 }
 
+/** stand-in def for a DYNAMIC (ollama) model id — local models cost nothing;
+ *  caps stay empty until the endpoint reports them (/api/show). `mode` is a
+ *  placeholder: local models list in BOTH slot pickers regardless. */
+export function dynamicModel(id: string): ModelDef {
+  return { id, name: id, mode: 'fast', caps: {}, ctx: 0, inPrice: 0, outPrice: 0 }
+}
+
 /** look a model up by its globally-unique id (usage records store only the id) */
 export function findModelById(modelId: string): ModelDef | undefined {
   for (const p of provDefs) {
@@ -168,7 +172,12 @@ export function findModelById(modelId: string): ModelDef | undefined {
 
 export function findModel(ref: ModelRef): ModelDef {
   const prov = findProvider(ref.providerId)
-  return prov.models.find((m) => m.id === ref.modelId) ?? prov.models[0]
+  const found = prov.models.find((m) => m.id === ref.modelId)
+  if (found) return found
+  // ollama's catalog is dynamic — any persisted/routed id resolves to a
+  // synthesized def instead of being healed away
+  if (ref.providerId === 'ollama') return dynamicModel(ref.modelId)
+  return prov.models[0]
 }
 
 // chip colours per profile status — badge text translated at consumption (vocab.profileStatus.*)

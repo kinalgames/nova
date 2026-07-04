@@ -250,7 +250,10 @@ function sanitizeSlots(slots: Record<SlotId, ModelRef> | undefined): Record<Slot
   const fix = (slot: SlotId): ModelRef => {
     const ref = slots[slot]
     const prov = provDefs.find((pd) => pd.id === ref?.providerId)
-    return prov && prov.models.some((m) => m.id === ref.modelId) ? ref : defaultSlots[slot]
+    if (!prov) return defaultSlots[slot]
+    // ollama models are dynamic (user-pulled) — never heal those refs away
+    if (prov.id === 'ollama' && ref.modelId) return ref
+    return prov.models.some((m) => m.id === ref.modelId) ? ref : defaultSlots[slot]
   }
   return { smart: fix('smart'), fast: fix('fast') }
 }
@@ -865,6 +868,7 @@ export function StoreProvider({
       // auth profile (sticky + ordered fallback) the request bills against —
       // for EVERY provider the proxy speaks (claude/gemini/openai/ollama)
       const ref = prev.slots[prev.activeSlot]
+      const modelDef = findModel(ref)
       const liveProfile = HAS_API
         ? pickProfile(
             prev.profiles[ref.providerId] ?? [],
@@ -944,8 +948,10 @@ export function StoreProvider({
               projectInstructions: instructions || undefined,
             }),
             // B5 — the “Suy nghĩ” chip drives the provider's native reasoning
-            // control (adaptive/budget thinking · thinkingConfig · effort)
-            thinking: prev.thinkingLevel,
+            // control (adaptive/budget thinking · thinkingConfig · effort);
+            // only models that CAN reason receive it — others never see the
+            // knob, so no provider 4xx on an unsupported parameter
+            ...(modelDef.caps.reasoning ? { thinking: prev.thinkingLevel } : {}),
             messages: turns,
             // server-backed profiles chat by id — the secret stays sealed
             // server-side; transitional local profiles still send inline
@@ -2441,7 +2447,9 @@ function deriveValues(
         } as const
       )[s.thinkingLevel] ?? 'composer.thinkNormal',
     ),
-    showThinkChip: s.thinkingLevel !== 'off',
+    // capability-gated: the chip only exists for models that can reason —
+    // it stays visible at “Tắt” so the user can turn thinking back on
+    showThinkChip: !!findModel(s.slots[s.activeSlot]).caps.reasoning,
     thinkChkOff: s.thinkingLevel === 'off' ? '✓' : '',
     thinkChkLow: s.thinkingLevel === 'low' ? '✓' : '',
     thinkChkNormal: s.thinkingLevel === 'normal' ? '✓' : '',

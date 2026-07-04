@@ -98,12 +98,26 @@ export function callAnthropic(req: ResolvedChatRequest, signal?: AbortSignal): P
   })
 }
 
+interface AnthropicUsage {
+  input_tokens?: number
+  output_tokens?: number
+  /** prompt-caching tokens live in their OWN fields — input_tokens does NOT
+   *  include them; both bill (at different rates) and must be metered */
+  cache_creation_input_tokens?: number
+  cache_read_input_tokens?: number
+}
+
 interface AnthropicEvent {
   type?: string
-  message?: { usage?: { input_tokens?: number; output_tokens?: number } }
-  usage?: { output_tokens?: number }
+  message?: { usage?: AnthropicUsage }
+  usage?: AnthropicUsage
   delta?: { type?: string; text?: string }
   error?: { type?: string; message?: string }
+}
+
+/** total input-side tokens — base prompt + cache writes + cache reads */
+function inputSideTokens(u: AnthropicUsage | undefined): number {
+  return (u?.input_tokens ?? 0) + (u?.cache_creation_input_tokens ?? 0) + (u?.cache_read_input_tokens ?? 0)
 }
 
 /**
@@ -126,7 +140,7 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
       }
       switch (evt.type) {
         case 'message_start':
-          inputTokens = evt.message?.usage?.input_tokens ?? 0
+          inputTokens = inputSideTokens(evt.message?.usage)
           emit({ type: 'message_start' })
           break
         case 'content_block_delta':
@@ -135,6 +149,9 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
           break
         case 'message_delta':
           outputTokens = evt.usage?.output_tokens ?? outputTokens
+          // final message_delta can restate input-side usage (cache fields)
+          if (evt.usage && inputSideTokens(evt.usage) > inputTokens)
+            inputTokens = inputSideTokens(evt.usage)
           break
         case 'message_stop':
           emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })

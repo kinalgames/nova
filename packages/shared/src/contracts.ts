@@ -107,17 +107,37 @@ export interface ModelRef {
   modelId: string
 }
 
+/** what a model can DO — drives capability-gated UX (thinking chip, upload
+ *  affordances, future tool wiring). Extend as new surfaces need it. */
+export interface ModelCaps {
+  /** extended thinking / reasoning — gates the “Suy nghĩ” chip + `thinking` */
+  reasoning?: boolean
+  /** image input */
+  vision?: boolean
+  /** audio input */
+  audio?: boolean
+  /** image generation */
+  imageGen?: boolean
+  /** function calling / tool use — foundation for real web/fetch/files/bash */
+  toolUse?: boolean
+}
+
 export interface ModelDef {
   /** canonical id — globally unique across providers */
   id: string
   /** display name */
   name: string
+  /** routing class — which slot picker lists this model */
+  mode: 'smart' | 'fast'
+  caps: ModelCaps
+  /** context window, tokens */
+  ctx: number
   /** USD per 1M input tokens */
   inPrice: number
   /** USD per 1M output tokens */
   outPrice: number
-  /** stream pace — ms between tokens (client fake layer; advisory server-side) */
-  pace: number
+  /** iconic/user-favourite older model — badged and sorted last */
+  legacy?: boolean
 }
 
 /** one row of the month roll-up returned by GET /v1/usage (T8) */

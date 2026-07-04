@@ -411,6 +411,28 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(result.current.s.toast).toBe('Tối đa 4 tệp mỗi tin nhắn')
   })
 
+  it('a model without the reasoning cap hides the chip and sends NO thinking', async () => {
+    const { result } = await withRealProfile()
+    // curated claude models reason → chip visible
+    expect(result.current.v.showThinkChip).toBe(true)
+    // route to a DYNAMIC ollama model (caps unknown → no reasoning declared)
+    await act(async () =>
+      result.current.set((x) => ({
+        profiles: {
+          ...x.profiles,
+          ollama: [{ id: 'pf-ol', name: 'Máy', kind: 'api_key', credential: 'http://localhost:11434', status: 'active' }],
+        },
+        slots: { ...x.slots, smart: { providerId: 'ollama', modelId: 'ornith:35b' } },
+      })),
+    )
+    expect(result.current.v.showThinkChip).toBe(false)
+    await act(async () => result.current.set({ draft: 'chào local' }))
+    await act(async () => result.current.v.send())
+    // the dynamic id rode through untouched; the knob was never sent
+    expect(calls.at(-1)?.model).toBe('ornith:35b')
+    expect(calls.at(-1)?.thinking).toBeUndefined()
+  })
+
   it('the thinking level follows the composer chip', async () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.v.setThinkHigh())

@@ -162,6 +162,20 @@ describe('anthropic adapter — SSE transform to the Nova contract', () => {
     expect(events.at(-1)?.usage).toEqual({ inputTokens: 12, outputTokens: 7 })
   })
 
+  it('meters prompt-cache tokens — they live OUTSIDE input_tokens', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"message_start","message":{"usage":{"input_tokens":10,"cache_creation_input_tokens":100,"cache_read_input_tokens":40}}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ok"}}',
+          'data: {"type":"message_delta","usage":{"output_tokens":3}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    expect(events.at(-1)?.usage).toEqual({ inputTokens: 150, outputTokens: 3 })
+  })
+
   it('surfaces upstream error events', async () => {
     const events = await collect(
       toNovaStream(

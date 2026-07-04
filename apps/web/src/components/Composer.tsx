@@ -262,6 +262,7 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
             </DropdownMenu.Root>
 
             <div className="flex items-center gap-3">
+              {v.showThinkChip && (
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <button
@@ -299,6 +300,7 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
                   </DropdownMenu.Content>
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
+              )}
               {v.showComposerHint && (
                 <span className="whitespace-nowrap font-mono text-eyebrow text-faint">
                   {t('composer.toolCount', { count: v.activeCount })}

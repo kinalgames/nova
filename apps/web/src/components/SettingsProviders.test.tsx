@@ -36,8 +36,9 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
     expect(within(dialog).getAllByText(/đang dùng/).length).toBeGreaterThan(0)
     // gemini has no profiles yet
     expect(within(dialog).getByText('Chưa kết nối')).toBeInTheDocument()
-    // model rows carry pricing; local models are free
-    expect(within(dialog).getAllByText('Miễn phí').length).toBeGreaterThan(0)
+    // model rows carry their catalog names (ollama's catalog is dynamic —
+    // nothing hardcoded to assert there)
+    expect(within(dialog).getByText('Claude Opus 4.8')).toBeInTheDocument()
   })
 
   // generous timeout: per-keystroke typing runs slower under coverage
