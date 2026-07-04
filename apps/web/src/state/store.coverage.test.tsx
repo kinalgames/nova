@@ -439,7 +439,7 @@ describe('store — streaming chat engine (real proxy path)', () => {
     await act(async () =>
       result.current.set({
         slots: {
-          smart: { providerId: 'openai', modelId: 'gpt-5' },
+          smart: { providerId: 'openai', modelId: 'gpt-5.5' },
           fast: { providerId: 'claude', modelId: 'claude-haiku-4-5' },
         },
       }),
@@ -447,7 +447,7 @@ describe('store — streaming chat engine (real proxy path)', () => {
     await act(async () => result.current.set({ draft: 'phân tích số liệu bán hàng' }))
     await act(async () => result.current.v.send())
     const nova = result.current.v.sent.at(-1)!
-    expect(nova.usage!.modelId).toBe('gpt-5')
+    expect(nova.usage!.modelId).toBe('gpt-5.5')
     expect(nova.usage!.profileId).toBe('pf-openai-key')
     expect(result.current.v.tokenDetail).toMatch(/\$\d/)
     // the reply is stamped and rolls up into the current month's total

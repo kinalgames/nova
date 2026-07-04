@@ -105,8 +105,15 @@ TODO theo thứ tự, và bẫy đã cắn.
 
 ## BACKLOG ĐẦY ĐỦ (RE-AUDIT 2026-07-04)
 
-Còn mở: **D1 tools-thật · D6 (chờ điều kiện) · a11y contrast baseline 6
-· desktop app (tương lai)**. ~~B6b/B6c ollama~~ ĐÃ XONG 2026-07-04
+Còn mở (ưu tiên theo thứ tự user chốt 2026-07-04):
+1. **D1 tools-thật** (ĐANG LÀM — design phase; tham khảo cấu trúc
+   C:/Users/me/code/ai/pi/packages/ai nhưng CLEAN-ROOM, không copy/credit).
+2. **UI/UX RESPONSIVE OVERHAUL** — user: "UI lỗi rất nhiều, đặc biệt trên
+   mobile; làm dạng responsive để UI PC/tablet/mobile ĐỒNG NHẤT; mobile
+   native app riêng làm sau". Cần audit Playwright đa viewport + sửa —
+   KHÔNG được quên.
+3. D6 (chờ điều kiện) · a11y contrast baseline 6 · desktop app (tương lai)
+   · gemini-3 thinkingLevel mapping (cần docs values chính xác). ~~B6b/B6c ollama~~ ĐÃ XONG 2026-07-04
 (eba0ab0). Mọi thứ khác dưới đây đã gạch = DONE (giữ làm sử liệu).
 
 ### Model & Provider system v2 (2026-07-04 — 3 releases P1/P2/P3)

@@ -78,12 +78,12 @@ describe('Settings → Providers — accordion + profiles', () => {
     const user = makeUser()
     const { store } = await renderApp(undefined, { path: '/chat/c1?settings=assistant' })
     const dialog = await screen.findByRole('dialog')
-    // the FAST picker lists fast-mode models; pick GPT-5 mini
-    const miniFast = within(dialog).getByRole('radio', { name: 'Nhanh — GPT-5 mini' })
+    // the FAST picker lists fast-mode models; pick GPT-5.4 mini
+    const miniFast = within(dialog).getByRole('radio', { name: 'Nhanh — GPT-5.4 mini' })
     expect(miniFast).toHaveAttribute('aria-checked', 'false')
     await user.click(miniFast)
     expect(miniFast).toHaveAttribute('aria-checked', 'true')
-    expect(store().s.slots.fast).toEqual({ providerId: 'openai', modelId: 'gpt-5-mini' })
+    expect(store().s.slots.fast).toEqual({ providerId: 'openai', modelId: 'gpt-5.4-mini' })
     // the previous fast model is unassigned now
     expect(
       within(dialog).getByRole('radio', { name: 'Nhanh — Claude Haiku 4.5' }),
@@ -92,7 +92,7 @@ describe('Settings → Providers — accordion + profiles', () => {
     expect(within(dialog).getAllByLabelText('Suy luận sâu').length).toBeGreaterThan(0)
     // smart-mode models never render in the fast group and vice versa
     expect(within(dialog).queryByRole('radio', { name: 'Nhanh — GPT-5' })).not.toBeInTheDocument()
-    expect(within(dialog).queryByRole('radio', { name: 'Thông minh — GPT-5 mini' })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('radio', { name: 'Thông minh — GPT-5.4 mini' })).not.toBeInTheDocument()
   })
 
   it('hydrated ollama models list in BOTH pickers with caps, free pricing and a\n     LEGACY badge sorting last', async () => {
@@ -137,8 +137,8 @@ describe('Settings → Providers — accordion + profiles', () => {
     const { store } = await renderApp(undefined, { path: '/chat/c1?settings=assistant' })
     const dialog = await screen.findByRole('dialog')
     // gemini has no profile → its models are visible but not pickable
-    expect(within(dialog).queryByRole('radio', { name: 'Nhanh — Gemini 2.5 Flash' })).not.toBeInTheDocument()
-    expect(within(dialog).getByText('Gemini 2.5 Flash')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('radio', { name: 'Nhanh — Gemini 3.5 Flash' })).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Gemini 3.5 Flash')).toBeInTheDocument()
     // the CTA lands on the Providers tab with gemini's config expanded
     await user.click(within(dialog).getAllByRole('button', { name: 'Kết nối — Gemini' })[0])
     expect(store().v.settingsTab).toBe('providers')

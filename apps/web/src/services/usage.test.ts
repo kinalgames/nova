@@ -9,7 +9,7 @@ describe('usage service — GET /v1/usage transport', () => {
     const fetchMock = vi.fn(async () =>
       Response.json({
         month: '2026-07',
-        rows: [{ providerId: 'openai', modelId: 'gpt-5-mini', kind: 'api_key', inTok: 10, outTok: 20 }],
+        rows: [{ providerId: 'openai', modelId: 'gpt-5.4-mini', kind: 'api_key', inTok: 10, outTok: 20 }],
       }),
     )
     vi.stubGlobal('fetch', fetchMock)

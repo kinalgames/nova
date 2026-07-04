@@ -116,10 +116,15 @@ export interface ModelCaps {
   vision?: boolean
   /** audio input */
   audio?: boolean
+  /** video input */
+  video?: boolean
   /** image generation */
   imageGen?: boolean
   /** function calling / tool use — foundation for real web/fetch/files/bash */
   toolUse?: boolean
+  /** provider-NATIVE web search / grounding tool — D1 routes search here
+   *  when available instead of Nova's own search pipeline */
+  webSearch?: boolean
 }
 
 export interface ModelDef {
@@ -132,10 +137,17 @@ export interface ModelDef {
   caps: ModelCaps
   /** context window, tokens */
   ctx: number
+  /** max output tokens per reply (absent = unknown — never guessed) */
+  maxOut?: number
   /** USD per 1M input tokens */
   inPrice: number
   /** USD per 1M output tokens */
   outPrice: number
+  /** USD per 1M cache-READ input tokens (absent = provider has no cache or
+   *  price unverified; the meter then bills them as plain input) */
+  cacheReadPrice?: number
+  /** USD per 1M cache-WRITE input tokens */
+  cacheWritePrice?: number
   /** iconic/user-favourite older model — badged and sorted last */
   legacy?: boolean
 }

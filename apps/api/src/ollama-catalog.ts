@@ -40,6 +40,8 @@ function capsOf(show: ShowResponse | null): ModelDef['caps'] {
   return {
     ...(c.includes('thinking') ? { reasoning: true } : {}),
     ...(c.includes('vision') ? { vision: true } : {}),
+    ...(c.includes('audio') ? { audio: true } : {}),
+    ...(c.includes('video') ? { video: true } : {}),
     ...(c.includes('tools') ? { toolUse: true } : {}),
   }
 }

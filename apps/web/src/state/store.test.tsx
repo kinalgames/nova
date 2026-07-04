@@ -118,7 +118,7 @@ describe('store — theme persistence', () => {
           // claude-opus-4 was retired upstream — must fall back to the default
           smart: { providerId: 'claude', modelId: 'claude-opus-4' },
           // still-valid ref must be preserved untouched
-          fast: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+          fast: { providerId: 'gemini', modelId: 'gemini-3.5-flash' },
         },
       }),
     )
@@ -129,7 +129,7 @@ describe('store — theme persistence', () => {
     })
     expect(result.current.s.slots.fast).toEqual({
       providerId: 'gemini',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.5-flash',
     })
   })
 })

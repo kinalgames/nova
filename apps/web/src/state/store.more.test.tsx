@@ -214,17 +214,17 @@ describe('store — model slots (cross-provider routing)', () => {
   it('routes the fast slot to another provider\u2019s model via the picker', async () => {
     const { result } = await setup()
     // the FAST picker lists fast-mode models across providers with caps meta
-    const mini = result.current.v.fastChoices.find((c) => c.key === 'openai:gpt-5-mini')!
+    const mini = result.current.v.fastChoices.find((c) => c.key === 'openai:gpt-5.4-mini')!
     expect(mini.connected).toBe(true)
     expect(mini.caps.reasoning).toBe(true)
-    expect(mini.meta).toContain('$0.25')
+    expect(mini.meta).toContain('$0.75')
     await act(async () => mini.pick())
     expect(result.current.s.slots.fast).toEqual({
       providerId: 'openai',
-      modelId: 'gpt-5-mini',
+      modelId: 'gpt-5.4-mini',
     })
     // the menu renders [provider icon][model name] for the slot
-    expect(result.current.v.modelBName).toBe('GPT-5 mini')
+    expect(result.current.v.modelBName).toBe('GPT-5.4 mini')
     expect(result.current.v.modelBGlyph).toBe('O')
     // the smart slot is untouched — slots are independent
     expect(result.current.s.slots.smart.providerId).toBe('claude')
@@ -238,7 +238,7 @@ describe('store — model slots (cross-provider routing)', () => {
     const keys = result.current.v.smartChoices.map((c) => c.key)
     expect(keys).toContain('claude:claude-opus-4-8')
     expect(keys).toContain('claude:claude-sonnet-5')
-    expect(keys).toContain('openai:gpt-5')
+    expect(keys).toContain('openai:gpt-5.5')
     // fast-mode models never leak into the smart list
     expect(keys).not.toContain('claude:claude-haiku-4-5')
     // no hardcoded ollama placeholders — its catalog comes from the endpoint

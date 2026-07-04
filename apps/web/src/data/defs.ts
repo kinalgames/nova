@@ -86,11 +86,14 @@ export const provDefs: ProviderDef[] = [
     auth: providerAuth.claude,
     field: 'key',
     placeholder: 'sk-ant-…',
-    // curated catalog: latest top models only (legacy joins by user request)
+    // curated catalog: latest top models only (legacy joins by user request).
+    // Specs per platform.claude.com 2026-07: Opus 4.8 + Sonnet 5 run 1M ctx;
+    // Sonnet 5 is on intro pricing ($2/$10) until 2026-08-31, then $3/$15.
     models: [
-      { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 200_000, inPrice: 5, outPrice: 25 },
-      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 200_000, inPrice: 2, outPrice: 10 },
-      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', mode: 'fast', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 200_000, inPrice: 1, outPrice: 5 },
+      // cache pricing = Anthropic's standard formula: write 1.25× in, read 0.1× in
+      { id: 'claude-opus-4-8', name: 'Claude Opus 4.8', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true, webSearch: true }, ctx: 1_000_000, maxOut: 128_000, inPrice: 5, outPrice: 25, cacheReadPrice: 0.5, cacheWritePrice: 6.25 },
+      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true, webSearch: true }, ctx: 1_000_000, maxOut: 128_000, inPrice: 2, outPrice: 10, cacheReadPrice: 0.2, cacheWritePrice: 2.5 },
+      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', mode: 'fast', caps: { reasoning: true, vision: true, toolUse: true, webSearch: true }, ctx: 200_000, maxOut: 64_000, inPrice: 1, outPrice: 5, cacheReadPrice: 0.1, cacheWritePrice: 1.25 },
     ],
     rec: true,
   },
@@ -103,9 +106,12 @@ export const provDefs: ProviderDef[] = [
     auth: providerAuth.gemini,
     field: 'key',
     placeholder: 'AIza…',
+    // Gemini 3 generation (ai.google.dev 2026-07): 3.1 Pro ≤200k-prompt tier
+    // $2/$12; 3.5 Flash $1.50/$9 — the 2.5 line is no longer latest-top
     models: [
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', mode: 'smart', caps: { reasoning: true, vision: true, audio: true, toolUse: true }, ctx: 1_048_576, inPrice: 1.25, outPrice: 10 },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', mode: 'fast', caps: { reasoning: true, vision: true, audio: true, toolUse: true }, ctx: 1_048_576, inPrice: 0.15, outPrice: 0.6 },
+      // cache-read pricing unverified for the 3.x line — absent by design
+      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', mode: 'smart', caps: { reasoning: true, vision: true, audio: true, video: true, toolUse: true, webSearch: true }, ctx: 1_048_576, maxOut: 65_536, inPrice: 2, outPrice: 12 },
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', mode: 'fast', caps: { reasoning: true, vision: true, audio: true, video: true, toolUse: true, webSearch: true }, ctx: 1_048_576, maxOut: 65_536, inPrice: 1.5, outPrice: 9 },
     ],
     rec: false,
   },
@@ -119,9 +125,14 @@ export const provDefs: ProviderDef[] = [
     auth: providerAuth.openai,
     field: 'key',
     placeholder: 'sk-…',
+    // OpenAI dropped GPT-5/5-mini from the price list (2026-07); the current
+    // lineup is GPT-5.5 (flagship $5/$30), 5.4 ($2.50/$15), 5.4-mini
+    // ($0.75/$4.50) — all 1M ctx. 5.6 stays preview-gated, not listed.
     models: [
-      { id: 'gpt-5', name: 'GPT-5', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 400_000, inPrice: 1.25, outPrice: 10 },
-      { id: 'gpt-5-mini', name: 'GPT-5 mini', mode: 'fast', caps: { reasoning: true, vision: true, toolUse: true }, ctx: 400_000, inPrice: 0.25, outPrice: 2 },
+      // cached-input = OpenAI's standard 10% of input; no write charge
+      { id: 'gpt-5.5', name: 'GPT-5.5', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true, webSearch: true }, ctx: 1_000_000, inPrice: 5, outPrice: 30, cacheReadPrice: 0.5 },
+      { id: 'gpt-5.4', name: 'GPT-5.4', mode: 'smart', caps: { reasoning: true, vision: true, toolUse: true, webSearch: true }, ctx: 1_000_000, inPrice: 2.5, outPrice: 15, cacheReadPrice: 0.25 },
+      { id: 'gpt-5.4-mini', name: 'GPT-5.4 mini', mode: 'fast', caps: { reasoning: true, vision: true, toolUse: true, webSearch: true }, ctx: 1_000_000, inPrice: 0.75, outPrice: 4.5, cacheReadPrice: 0.075 },
     ],
     rec: false,
   },

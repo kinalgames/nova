@@ -10,8 +10,8 @@ import { streamChat } from './llm'
  *  sibling in the catalog (ollama) reuse the chat's own model */
 export const TITLE_MODEL: Partial<Record<ProviderId, string>> = {
   claude: 'claude-haiku-4-5',
-  gemini: 'gemini-2.5-flash',
-  openai: 'gpt-5-mini',
+  gemini: 'gemini-3.5-flash',
+  openai: 'gpt-5.4-mini',
 }
 
 const INSTRUCTION =

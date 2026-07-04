@@ -473,8 +473,8 @@ describe('real provider routing (nova-api proxy)', () => {
     await act(async () =>
       result.current.set({
         slots: {
-          smart: { providerId: 'gemini', modelId: 'gemini-2.5-pro' },
-          fast: { providerId: 'gemini', modelId: 'gemini-2.5-flash' },
+          smart: { providerId: 'gemini', modelId: 'gemini-3.1-pro' },
+          fast: { providerId: 'gemini', modelId: 'gemini-3.5-flash' },
         },
       }),
     )
@@ -482,10 +482,10 @@ describe('real provider routing (nova-api proxy)', () => {
     await act(async () => result.current.v.send())
 
     expect(calls[0].providerId).toBe('gemini')
-    expect(calls[0].model).toBe('gemini-2.5-pro')
+    expect(calls[0].model).toBe('gemini-3.1-pro')
     expect(calls[0].profile?.credential).toBe('AIza-real-1')
     expect(msgText(result.current.v.sent.at(-1))).toBe('Xin chào!')
-    expect(result.current.v.sent.at(-1)?.usage).toMatchObject({ modelId: 'gemini-2.5-pro' })
+    expect(result.current.v.sent.at(-1)?.usage).toMatchObject({ modelId: 'gemini-3.1-pro' })
   })
 
   it('a 429 puts the profile into its cool-down window and surfaces the error', async () => {
