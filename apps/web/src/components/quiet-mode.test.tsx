@@ -19,4 +19,24 @@ describe('<QuietMode> — real conversation', () => {
     await renderApp((s) => s.set({ quiet: true, activeConv: 'empty', threads: { empty: { byId: {}, children: {}, selected: {} } } }))
     expect(await screen.findByText(/Không gian yên tĩnh/)).toBeInTheDocument()
   })
+
+  it('a cleared assistant name still labels replies NOVA, never a blank', async () => {
+    await renderApp((s) => s.set({ quiet: true, assistantName: '  ' }))
+    expect((await screen.findAllByText('NOVA')).length).toBeGreaterThan(0)
+  })
+
+  it('Enter attempts the send; Shift+Enter never does', async () => {
+    const user = makeUser()
+    const { store } = await renderApp((s) => s.set({ quiet: true, draft: 'ghi chú' }))
+    const input = await screen.findByLabelText(/Tiếp tục trong im lặng/)
+    await user.click(input)
+    const nonce0 = store().s.nudgeNonce
+    // Shift+Enter is a newline, not a send — the store is never asked to send
+    await user.keyboard('{Shift>}{Enter}{/Shift}')
+    expect(store().s.nudgeNonce).toBe(nonce0)
+    // plain Enter DOES ask — with no live provider the BYOK nudge pulses
+    await user.keyboard('{Enter}')
+    expect(store().s.nudgeNonce).toBe(nonce0 + 1)
+    expect(store().s.draft).toBe('ghi chú') // soft-block keeps the draft
+  })
 })

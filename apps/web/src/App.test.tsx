@@ -59,7 +59,7 @@ describe('App — root redirect', () => {
         ],
       }),
     )
-    const { store } = await renderApp(undefined, { path: '/' })
+    const { store } = await renderApp(undefined, { world: 'demo', path: '/' })
     expect(store().v.headerTitle).toBe('b')
   })
 })
@@ -67,7 +67,7 @@ describe('App — root redirect', () => {
 describe('App — sending a message', () => {
   it('appends the typed message to the conversation', async () => {
     const user = makeUser()
-    await renderApp()
+    await renderApp(undefined, { world: 'demo' })
     const input = screen.getByRole('textbox', { name: 'Nhắn cho Nova' })
     await user.type(input, 'Phân tích quý 4 giúp mình')
     await user.click(screen.getByRole('button', { name: 'Gửi' }))

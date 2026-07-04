@@ -3,8 +3,12 @@ import { act } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
 import { visiblePath } from './thread'
 
+// this suite covers the store's VM getters/actions AND the demo fake-chat
+// engine (composeReply, timer-based streaming, optimistic local addProfile).
+// It runs in the demo world where that engine is live; Phase C deletes the
+// fake-engine cases and re-homes the world-agnostic VM checks on the fixture.
 function setup() {
-  return renderStore()
+  return renderStore({ world: 'demo' })
 }
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
@@ -426,7 +430,7 @@ describe('store — streaming chat engine', () => {
     vi.useFakeTimers()
     const LINE = 'Lên kế hoạch du lịch Đà Lạt cuối tuần này giúp mình nhé'
     const DRAFT = `${LINE}\n\n- chỗ ở\n- lịch trình`
-    const { result, router } = await renderStore({ path: '/new' })
+    const { result, router } = await renderStore({ world: 'demo', path: '/new' })
     const before = result.current.s.conversations.length
     const demoLen = visiblePath(result.current.s.threads.c1).length
     // files staged in another conversation must NOT leak into the new chat

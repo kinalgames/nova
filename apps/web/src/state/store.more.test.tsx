@@ -9,8 +9,11 @@ vi.mock('../services/auth', async (importOriginal) => ({
   updateMe: vi.fn(async () => true),
 }))
 
+// organization / account / projects VM plus the demo fake-chat engine (send,
+// share-copy, instruction-steered replies). Runs in the demo world; Phase C
+// re-homes the world-agnostic checks and drops the fake-engine ones.
 function setup() {
-  return renderStore()
+  return renderStore({ world: 'demo' })
 }
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
@@ -47,7 +50,7 @@ describe('store — organization (Track B)', () => {
 
   it('message activity moves the conversation into today', async () => {
     vi.useFakeTimers()
-    const { result } = await renderStore({ path: '/chat/c3' })
+    const { result } = await renderStore({ world: 'demo', path: '/chat/c3' })
     await act(async () => result.current.set({ draft: 'chạm nhóm hôm nay' }))
     await act(async () => result.current.v.send())
     expect(
@@ -143,7 +146,7 @@ describe('store — projects completion (Track C)', () => {
   it('project instructions steer the reply; the default project stays neutral', async () => {
     vi.useFakeTimers()
     // c2 belongs to aurora, whose description acts as instructions
-    const aurora = await renderStore({ path: '/chat/c2' })
+    const aurora = await renderStore({ world: 'demo', path: '/chat/c2' })
     await act(async () => aurora.result.current.set({ draft: 'viết mở đầu giúp mình' }))
     await act(async () => aurora.result.current.v.send())
     await act(async () => vi.advanceTimersByTime(9000))

@@ -10,6 +10,7 @@ import {
 import { routeTree } from '../routeTree.gen'
 import { StoreProvider, type Store } from '../state/store'
 import type { Message, NovaState } from '../state/types'
+import { demoFixture } from './fixture'
 
 /** the concatenated text of a message's text blocks (test convenience) */
 export const msgText = (m?: Message) =>
@@ -43,15 +44,29 @@ const demoPath = (path: string) =>
  */
 export async function renderApp(drive?: (store: Store) => void, opts: AppOpts = {}) {
   let captured: Store | null = null
+  const path = opts.path ?? '/chat/c1'
+  // world resolution:
+  //  'real'    → the real route tree, caller-supplied state only
+  //  'demo'    → the /demo tree (kept for the few demo-specific tests)
+  //  default   → the real route tree seeded with the showcase FIXTURE, so the
+  //              suite no longer depends on the demo runtime (Phase B)
+  const entry = opts.world === 'demo' ? demoPath(path) : path
+  // auth/onboarding/share screens are their OWN real, logged-out context — the
+  // signed-in fixture (data + token) makes no sense there and would trip the
+  // guards, so those paths get the bare real tree even under the default world
+  const authPath = isRealWorld(path)
+  const fixtureWorld = opts.world !== 'real' && opts.world !== 'demo' && !authPath
+  const storeInit = fixtureWorld ? { ...demoFixture(), ...opts.storeInit } : opts.storeInit
+  // the fixture world is a signed-in user browsing their real conversations —
+  // give it a token so the /_app auth guard doesn't bounce it to /login. Never
+  // clobber a token the test set itself (a preview-auth test asserts its own).
+  if (fixtureWorld && !localStorage.getItem('nova.auth.token'))
+    localStorage.setItem('nova.auth.token', 'test-token')
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({
-      initialEntries: [
-        opts.world === 'real' ? (opts.path ?? '/chat/c1') : demoPath(opts.path ?? '/chat/c1'),
-      ],
-    }),
+    history: createMemoryHistory({ initialEntries: [entry] }),
     context: {
-      storeInit: opts.storeInit,
+      storeInit,
       onStore: (s: Store) => {
         captured = s
       },

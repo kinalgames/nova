@@ -28,9 +28,10 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## Trạng thái repo
 
 - **CI XANH** (gates + e2e). Push thẳng main, mỗi commit kèm "Verified:".
-- Web: 347 unit web + 64 api + 9 shared = **420 unit** (50 file, projects
-  song song `npm run test`) + 18 e2e · coverage floors web **94/90/94/95**
-  (branches sát floor, ĐỪNG hạ). CI xanh: 48723de (T6) + 7d90981 (T8).
+- Web: 607 unit tổng (`npm run test` root; web 488/53 file) +
+  25 e2e · coverage floors web **95/90/94/96** (branches 90.08 sát floor,
+  ĐỪNG hạ — Phase C xóa demo sẽ đổi pool). Unit suite đã chuyển sang
+  fixture-world default (Phase B) — xem mục "Gỡ demo mode".
 - Dev local: web `npm run dev` (:5173); api `cd apps/api && npx wrangler
   dev --port 8787` (session bash `dev`; **restart wrangler sau khi đổi
   `.dev.vars`**). D1 local đã migrate tới `0001` (provider_credential).
@@ -268,6 +269,42 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 - Icon system: 1 he duy nhat = lucide (Icon.tsx, stroke 1.75). Logo
   provider/social la brand mark rieng (simple-icons) -- dung, khong ve lai.
 
+### Gỡ demo mode — Phase A + B (2026-07-04)
+
+- **Kế hoạch 3 phase (user duyệt)**: (A) build component thật khi demo còn
+  sống → (B) chuyển test suite sang fixture real → (C) xóa demo. Mỗi
+  phase 1 release xanh.
+- **Phase A (d9e6ff5, đã deploy)**: Preview thật 4 loại (PDF `<object>`,
+  code shiki, csv table, md) fetch từ R2 qua `services/preview.ts`;
+  QuietMode render thread thật + composer thật; token meter = context
+  thật. Trace tool-use GIỮ renderer (agentic tương lai).
+- **Phase B (test-only, không đổi production code)** — world-model của
+  unit suite:
+  - `renderApp` default = REAL route tree + `demoFixture()`
+    (`test/fixture.ts`, build từ getSeed: strip conv demo flag, GIỮ
+    profile demo flag) + token `test-token` (KHÔNG ghi đè token test tự
+    đặt). Auth paths (`/login /signup /onboarding /oauth-done /share`)
+    → bare real tree logged-out (không fixture/token). `world:'real'` =
+    bare real tree; `world:'demo'` = /demo tree (opt-in).
+  - store.live: inject profiles trực tiếp qua `set({profiles})` — BE3
+    addProfile là server-side ở real world (503 hermetic → không add).
+  - Demo-subsystem tests pin `world:'demo'` (fake engine composeReply +
+    timer streaming, local addProfile + fake connection test, demo
+    switcher, demo share-copy, DEMO_PERSIST_KEY): setup() của
+    store.coverage/store.test/store.more + MessageView seed/seedError +
+    CV response-states + SettingsProviders adds-profile + App 2 test.
+    Phase C xóa fake-engine tests (hành vi real đã cover ở store.live)
+    và re-home phần world-agnostic sang fixture.
+  - Tests thật mới (không filler): EmptyChat hero (conv rỗng + provider
+    → greeting), accent swatch + hidden file input UI (ProjectConfig),
+    QuietMode name-fallback + Shift+Enter-không-send. Branches 90.08%
+    (floor 90 — sát, để Phase C nới khi xóa demo-defensive branches).
+- **Phase C (KẾ TIẾP)**: xóa 7 routes `demo.*.tsx` + 3 seed
+  `data/seed*.ts` + `services/chat.ts` + WorldLink demo-logic +
+  DEMO_PERSIST_KEY + isDemo/hasDemo + entry "Khám phá demo" (Auth.tsx)
+  + `/demo` pathToView. Fixture phải standalone (inline seed vào
+  test/). E2e có demo flow nào thì cập nhật theo.
+
 ### D5 email verification (2026-07-04)
 
 - **Transport = Microsoft Graph** (`apps/api/src/mail.ts`), KHÔNG SMTP:
@@ -366,9 +403,9 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 
 ## Số liệu gate hiện hành
 
-- typecheck 0 · lint 0 (5 warnings pre-existing trong store.tsx) ·
-  unit 420/420 (`npm run test`, ~25s) · e2e 18/18 (~9s) · coverage web
-  trên floors · build sạch.
+- typecheck 0 · lint 0 (7 warnings pre-existing trong store.tsx) ·
+  unit web 488/488 (~26s) · e2e 25/25 (~16s) · coverage web 96.08 /
+  90.08 / 95.8 / 97.57 trên floors 95/90/94/96 · build sạch.
 - Lệnh chuẩn trước commit:
   `npm run typecheck && npm run lint && npm run test && npm run build && git commit …`
   (e2e + coverage thêm khi chạm UI/logic tương ứng).

@@ -24,7 +24,9 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
   // run slower under coverage instrumentation
   it('adds a profile via the form and a test marks it active', { timeout: 15_000 }, async () => {
     const user = makeUser()
-    await openProviders()
+    // optimistic local addProfile + fake connection test live in the demo world
+    // (the real product seals the credential server-side — store.credentials)
+    await renderApp(undefined, { world: 'demo', path: '/chat/c1?settings=providers' })
     const dialog = await screen.findByRole('dialog')
     await user.type(within(dialog).getByLabelText('API KEY — Gemini'), 'AIza-new-key-000')
     await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 
 beforeEach(() => localStorage.clear())
@@ -169,5 +169,33 @@ describe('overlays render on demand', () => {
   it('quiet (focus) mode takes over the screen', async () => {
     await renderApp((s) => s.v.enterQuiet())
     expect(await screen.findByText(/TẬP TRUNG/)).toBeInTheDocument()
+  })
+})
+
+describe('project config — accent + file picker (UI handlers)', () => {
+  it('picks a project accent from the swatch row', async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, { path: '/projects/aurora/config' })
+    const swatches = await screen.findAllByRole('button', { name: /Chọn màu/ })
+    const target = swatches.find((b) => b.getAttribute('aria-pressed') === 'false')!
+    const color = target.getAttribute('aria-label')!.replace('Chọn màu ', '')
+    await user.click(target)
+    expect(target).toHaveAttribute('aria-pressed', 'true')
+    expect(store().s.projects.find((p) => p.id === 'aurora')?.accent).toBe(color)
+  })
+
+  it('uploads a project file through the picker button and hidden input', async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, { path: '/projects/aurora/config' })
+    // the visible button proxies the hidden file input
+    await user.click(await screen.findByRole('button', { name: 'Tải tệp lên' }))
+    const input = screen.getByLabelText('Tải tệp vào dự án')
+    fireEvent.change(input, {
+      target: { files: [new File(['# notes'], 'ghi-chú.md', { type: 'text/markdown' })] },
+    })
+    expect(await screen.findByText('ghi-chú.md')).toBeInTheDocument()
+    expect(
+      store().s.projects.find((p) => p.id === 'aurora')?.files?.some((f) => f.name === 'ghi-chú.md'),
+    ).toBe(true)
   })
 })

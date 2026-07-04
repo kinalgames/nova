@@ -18,8 +18,11 @@ const linear = () =>
 
 const forked = () => addSibling(linear(), 'a1', msg('a2', 'assistant', 'Trả lời hai'))
 
+// regenerate / edit-and-rerun exercise the streaming reply; the demo world's
+// fake engine gives a stoppable mid-stream, so these run there (Phase C moves
+// them onto the real streamChat path)
 const seed = (thread: ReturnType<typeof linear>) => async () =>
-  renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: thread } }))
+  renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: thread } }), { world: 'demo' })
 
 const imgMsg = (att: Partial<MsgAttachment>): Message => ({
   id: 'u9',
@@ -153,6 +156,7 @@ describe('real error card', () => {
         errorAction,
         errorDetail,
       }),
+      { world: 'demo' },
     )
 
   it('no-provider error shows the card + an Add-provider button (not silence)', async () => {
@@ -246,6 +250,7 @@ describe('coverage — file pills open by kind + error retry', () => {
         errorConv: 'c1',
         errorDetail: 'boom',
       }),
+      { world: 'demo' },
     )
     await user.click(await screen.findByRole('button', { name: /Thử lại/ }))
     // retry drives regenerate → respState leaves the error state

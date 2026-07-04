@@ -49,10 +49,17 @@ afterEach(() => vi.useRealTimers())
 
 async function withRealProfile() {
   const handle = await renderStore()
+  // real world: BE3 owns addProfile server-side — inject the live profile
+  // directly so it is the sole NON-demo claude profile the router picks
   await act(async () =>
-    handle.result.current.v.providers
-      .find((p) => p.id === 'claude')!
-      .addProfile('api_key', 'Khóa thật', 'sk-ant-real-123'),
+    handle.result.current.set((x) => ({
+      profiles: {
+        ...x.profiles,
+        claude: [
+          { id: 'pf-real', name: 'Khóa thật', kind: 'api_key', credential: 'sk-ant-real-123', status: 'active' },
+        ],
+      },
+    })),
   )
   return handle
 }
@@ -90,9 +97,14 @@ describe('real provider routing (nova-api proxy)', () => {
   it('D3 — the first completed reply names an unnamed conversation via the cheap sibling', async () => {
     const { result } = await renderStore({ path: '/new' })
     await act(async () =>
-      result.current.v.providers
-        .find((p) => p.id === 'claude')!
-        .addProfile('api_key', 'Khóa thật', 'sk-ant-real-123'),
+      result.current.set((x) => ({
+        profiles: {
+          ...x.profiles,
+          claude: [
+            { id: 'pf-real', name: 'Khóa thật', kind: 'api_key', credential: 'sk-ant-real-123', status: 'active' },
+          ],
+        },
+      })),
     )
     await act(async () => result.current.set({ draft: 'lên kế hoạch ra mắt sản phẩm' }))
     await act(async () => result.current.v.send())
@@ -210,7 +222,7 @@ describe('real provider routing (nova-api proxy)', () => {
   })
 
   it('demo world: deleting a conversation clears its error card, revokes object\n     URLs and never calls the server', async () => {
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'demo' })
     URL.revokeObjectURL = vi.fn()
     await act(async () =>
       result.current.set((x) => ({
@@ -318,7 +330,7 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(result.current.s.conversations.find((c) => c.id === 'ce')?.shareId).toBe('sh-e')
 
     // demo world: the showcase copy path never touches the server
-    const demo = await renderStore()
+    const demo = await renderStore({ world: 'demo' })
     await act(async () => demo.result.current.v.sideConvs[0].share())
     expect(demo.result.current.s.toast).toBe('Đã chép liên kết chia sẻ')
     expect(createShare).toHaveBeenCalledTimes(1) // only the failed attempt above
@@ -344,7 +356,7 @@ describe('real provider routing (nova-api proxy)', () => {
   })
 
   it('demo world: deleteAccount is a hard no-op', async () => {
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'demo' })
     let ok = true
     await act(async () => {
       ok = await result.current.v.deleteAccount()
@@ -430,9 +442,14 @@ describe('real provider routing (nova-api proxy)', () => {
   it('a non-claude provider routes live too — providerId follows the routed slot', async () => {
     const { result } = await renderStore()
     await act(async () =>
-      result.current.v.providers
-        .find((p) => p.id === 'gemini')!
-        .addProfile('api_key', 'Khóa Gemini', 'AIza-real-1'),
+      result.current.set((x) => ({
+        profiles: {
+          ...x.profiles,
+          gemini: [
+            { id: 'pf-gem', name: 'Khóa Gemini', kind: 'api_key', credential: 'AIza-real-1', status: 'active' },
+          ],
+        },
+      })),
     )
     await act(async () =>
       result.current.set({
@@ -537,7 +554,7 @@ describe('real provider routing (nova-api proxy)', () => {
 
   it('demo-only profiles never leave the device — the fake layer answers', async () => {
     vi.useFakeTimers()
-    const { result } = await renderStore()
+    const { result } = await renderStore({ world: 'demo' })
     await act(async () => result.current.set({ draft: 'xin chào demo' }))
     await act(async () => result.current.v.send())
     await act(async () => vi.advanceTimersByTime(9000))

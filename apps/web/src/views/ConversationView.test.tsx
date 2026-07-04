@@ -76,23 +76,23 @@ describe('ConversationView — data-driven message blocks', () => {
 
 describe('ConversationView — response states', () => {
   it('streaming shows the live "writing" indicator and a stop control', async () => {
-    await renderApp((s) => s.set({ respState: 'stream' }))
+    await renderApp((s) => s.set({ respState: 'stream' }), { world: 'demo' })
     expect(await screen.findByText(/Đang viết câu trả lời/)).toBeInTheDocument()
     expect(screen.getByText('Dừng')).toBeInTheDocument()
   })
 
   it('streaming shows an animated Nova working indicator', async () => {
-    await renderApp((s) => s.set({ respState: 'stream' }))
+    await renderApp((s) => s.set({ respState: 'stream' }), { world: 'demo' })
     expect(await screen.findByLabelText('Nova đang làm việc')).toBeInTheDocument()
   })
 
   it('error shows the interrupted banner with a retry', async () => {
-    await renderApp((s) => s.set({ respState: 'error' }))
+    await renderApp((s) => s.set({ respState: 'error' }), { world: 'demo' })
     expect(await screen.findByText('Phản hồi bị gián đoạn')).toBeInTheDocument()
   })
 
   it('approval shows the permission prompt for a bash command', async () => {
-    await renderApp((s) => s.set({ respState: 'approval' }))
+    await renderApp((s) => s.set({ respState: 'approval' }), { world: 'demo' })
     expect(await screen.findByText('Cho phép')).toBeInTheDocument()
     expect(screen.getByText('Từ chối')).toBeInTheDocument()
   })
@@ -140,7 +140,7 @@ describe('ConversationView — demo content is scoped to the demo conversation',
   })
 
   it('shows the demo state switcher on the demo conversation', async () => {
-    await renderApp()
+    await renderApp(undefined, { world: 'demo' })
     expect(await screen.findByText('demo:')).toBeInTheDocument()
   })
 
@@ -174,5 +174,29 @@ describe('ConversationView — demo content is scoped to the demo conversation',
     })
     expect(await screen.findByText(/Kết nối nhà cung cấp/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Thêm nhà cung cấp/ })).toBeInTheDocument()
+  })
+
+  it('an empty conversation WITH a provider greets with the empty-chat hero', async () => {
+    await renderApp(undefined, {
+      path: '/chat/r9',
+      storeInit: {
+        conversations: [{ id: 'r9', title: null, projectId: 'chung', updatedAt: 1 }],
+        threads: {},
+        // a live (non-demo) profile → no nudge; the greeting owns the empty state
+        profiles: {
+          claude: [
+            { id: 'p1', name: 'Khóa', kind: 'api_key', credential: 'sk-x', status: 'active' },
+          ],
+          gemini: [],
+          openai: [],
+          ollama: [],
+        },
+      },
+    })
+    // the greeting body is unique; the title also exists as a sidebar button,
+    // so assert the HERO copy (display face) specifically
+    expect(await screen.findByText(/Hỏi bất cứ điều gì/)).toBeInTheDocument()
+    const heroes = screen.getAllByText('Cuộc trò chuyện mới')
+    expect(heroes.some((n) => n.classList.contains('font-display'))).toBe(true)
   })
 })

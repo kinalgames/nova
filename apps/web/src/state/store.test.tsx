@@ -3,8 +3,11 @@ import { act } from '@testing-library/react'
 import { DEMO_PERSIST_KEY } from './persist'
 import { msgText, renderStore } from '../test/util'
 
+// core store VM + the demo showcase (seeded attachments, fake send engine,
+// demo-namespace persistence). Runs in the demo world; Phase C re-homes the
+// world-agnostic checks on the fixture and drops the fake-engine ones.
 function setup() {
-  return renderStore()
+  return renderStore({ world: 'demo' })
 }
 
 beforeEach(() => localStorage.clear())
