@@ -154,7 +154,6 @@
     "toolFiles": "Your documents",
     "toolBash": "Run commands",
     "replyPlaceholder": "Reply to Nova…",
-    "needProvider": "Connect a provider to start chatting…",
     "needProvider": "Add a provider in Settings to start chatting.",
     "chatInProject": "CHAT IN PROJECT",
     "projectAria": "Project: {{name}}",

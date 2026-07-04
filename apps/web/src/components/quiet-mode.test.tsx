@@ -25,22 +25,14 @@ describe('<QuietMode> — real conversation', () => {
     expect((await screen.findAllByText('NOVA')).length).toBeGreaterThan(0)
   })
 
-  it('Enter attempts the send; Shift+Enter never does', async () => {
-    const user = makeUser()
-    // no provider configured → a REAL send attempt pulses the BYOK nudge,
-    // which distinguishes “asked to send” from “newline only” observably
-    const { store } = await renderApp((s) => s.set({ quiet: true, draft: 'ghi chú' }), {
+  it('with no provider the focus input is honestly disabled and says why', async () => {
+    // the BYOK nudge card lives behind the focus overlay, so a silent
+    // soft-block would give zero feedback — the input disables + explains
+    await renderApp((s) => s.set({ quiet: true, draft: 'ghi chú' }), {
       storeInit: { profiles: { claude: [], gemini: [], openai: [], ollama: [] } },
     })
-    const input = await screen.findByLabelText(/Tiếp tục trong im lặng/)
-    await user.click(input)
-    const nonce0 = store().s.nudgeNonce
-    // Shift+Enter is a newline, not a send — the store is never asked to send
-    await user.keyboard('{Shift>}{Enter}{/Shift}')
-    expect(store().s.nudgeNonce).toBe(nonce0)
-    // plain Enter DOES ask — with no live provider the BYOK nudge pulses
-    await user.keyboard('{Enter}')
-    expect(store().s.nudgeNonce).toBe(nonce0 + 1)
-    expect(store().s.draft).toBe('ghi chú') // soft-block keeps the draft
+    const input = (await screen.findByLabelText(/Tiếp tục trong im lặng/)) as HTMLInputElement
+    expect(input.disabled).toBe(true)
+    expect(input.placeholder).toMatch(/Thêm nhà cung cấp trong Cài đặt/)
   })
 })

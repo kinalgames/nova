@@ -66,9 +66,14 @@ export function QuietMode() {
                 v.send()
               }
             }}
+            // no provider connected → honestly disabled with the WHY, since the
+            // nudge card is hidden behind the focus overlay
+            disabled={v.needsProvider}
             aria-label={t('quiet.placeholder')}
-            placeholder={t('quiet.placeholder')}
-            className="min-w-0 flex-1 border-b border-border bg-transparent pb-2 text-lead text-text outline-none"
+            placeholder={v.needsProvider ? t('composer.needProvider') : t('quiet.placeholder')}
+            className={`min-w-0 flex-1 border-b border-border bg-transparent pb-2 text-lead text-text outline-none ${
+              v.needsProvider ? 'opacity-60' : ''
+            }`}
           />
           <button
             type="button"
