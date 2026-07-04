@@ -30,10 +30,28 @@ Xem `docs/d1-tools-design.md` (status SHIPPED). Tóm tắt nhanh:
 - **CHƯA smoke live** tools trên dev/prod (cần key thật trong profile user) —
   user tự test được ngay trên nova.kinal.co: bật “Tra cứu web” trong menu
   “Thêm vào chat” với model Claude/Gemini/GPT.
-- **KẾ TIẾP (mandate user, đã hứa)**: UI/UX RESPONSIVE OVERHAUL — audit
-  Playwright PC/tablet/mobile, sửa đồng nhất. Sau đó: Nova-side search cho
-  ollama/local, PDF qua Responses input_file, coverage buffer nới khi thêm
-  test UI (branches hiện 90.29 — sát floor 90).
+- **UI/UX RESPONSIVE OVERHAUL — ĐÃ SHIP 4 BATCHES** (2026-07-04, đều
+  prod): `7085eff` mobile batch 1 (nudge thẳng hàng composer · input
+  disable khi chưa provider · ~23 tap targets → tap-sm · settings tabs
+  vừa 390px) · `84f6d99` batch 2 (nút Smart/Fast — mobile chat 0 nút nhỏ)
+  · `593c65f` batch 3 (meter % theo ctx model THẬT hết "58%" fake ·
+  "1M ctx" · test-fail có LÝ DO dưới row · providers progressive
+  disclosure 2 nút đăng nhập/API key + form chỉ hiện khi chọn · row
+  profile gọn actions vào menu "…" · SlotPicker mobile meta xuống dòng)
+  · `6c5fc09` batch 4 (copy phổ thông: humanErrorDetail mở rộng — lỗi dẫn
+  bằng lời thường + tech tail; help đăng nhập viết theo bước).
+  Audit đo DOM: mobile 390 + tablet 768 + desktop 1440 đều 0 tràn ngang;
+  dark mode contrast đạt AA (thấp nhất text-label 4.78). Tooling:
+  `apps/web/public/__seed.json` (gitignored) + vite `--host 0.0.0.0` +
+  MCP Playwright one-call (seed→goto→đo, KHÔNG tách call — reconnect
+  mất state). **Ability mới (project)**: `nova-ux-copy` — copy cho người
+  dùng phổ thông, progressive disclosure mọi UI.
+- **CÒN MỞ UI/UX**: chuẩn hóa icon size theo vai trò (13-22px đang trộn;
+  survey: 14 chiếm 27, 13×17, 16×16, 15×16…) · quiet-mode input chưa
+  disable khi chưa provider · OAuth login thật thay paste-token (desktop
+  app / popup flow). Sau đó: Nova-side search cho ollama/local, PDF qua
+  Responses input_file, coverage buffer nới khi thêm test UI (branches
+  hiện ~90.3 — sát floor 90).
 
 ## ĐÃ DEPLOY — Cloudflare Workers (2 env, mỗi env 1 Worker serve web + API)
 
