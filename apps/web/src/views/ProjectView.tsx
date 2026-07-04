@@ -73,7 +73,7 @@ export function ProjectView() {
                 {c.pinned && (
                   <Icon n="pin" size={13} fill="currentColor" className="shrink-0 text-faint" />
                 )}
-                <Icon n="caret" size={14} className="shrink-0 -rotate-90 text-faint" />
+                <Icon n="caret" size={12} className="shrink-0 -rotate-90 text-faint" />
               </Link>
             ))}
           </div>

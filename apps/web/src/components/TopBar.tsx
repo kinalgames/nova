@@ -44,7 +44,7 @@ export function TopBar() {
           >
             {v.headerTitle}
           </span>
-          <Icon n="caret" size={14} className="text-faint" />
+          <Icon n="caret" size={12} className="text-faint" />
         </button>
       </div>
 
@@ -103,7 +103,7 @@ export function TopBar() {
                   <span className="col-start-1 row-start-1 whitespace-nowrap">{v.modelLabel}</span>
                 </span>
               )}
-              <Icon n="caret" size={13} className="text-faint" />
+              <Icon n="caret" size={12} className="text-faint" />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>

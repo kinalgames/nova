@@ -94,7 +94,7 @@ export function SettingsDialog() {
                   aria-label={t('common.close')}
                   className="tap flex flex-shrink-0 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  <Icon n="close" size={19} />
+                  <Icon n="close" size={17} />
                 </button>
               </Dialog.Close>
               <div role="tablist" aria-label={t('settings.tabsAria')} className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
@@ -141,7 +141,7 @@ export function SettingsDialog() {
                     aria-label={t('common.close')}
                     className="flex cursor-pointer rounded-md border-none bg-transparent p-1 text-muted outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    <Icon n="close" size={18} />
+                    <Icon n="close" size={17} />
                   </button>
                 </Dialog.Close>
               )}
@@ -336,7 +336,7 @@ function Account() {
           <div className="truncate text-body">{v.userEmail}</div>
           {v.emailVerified ? (
             <div className="mt-0.5 flex items-center gap-1 text-small text-accent-text">
-              <Icon n="check" size={13} /> {t('settings.emailVerified')}
+              <Icon n="check" size={14} /> {t('settings.emailVerified')}
             </div>
           ) : (
             <div className="mt-0.5 text-small text-muted">{t('settings.emailUnverified')}</div>
@@ -484,7 +484,7 @@ function Providers() {
               <span className="whitespace-nowrap rounded-xs px-2 py-1 font-mono text-eyebrow" style={{ color: pr.statusFg, background: pr.statusBg }}>
                 {pr.badge}
               </span>
-              <Icon n="caret" size={14} className={`shrink-0 text-faint transition-transform duration-150 ${pr.open ? 'rotate-180' : ''}`} />
+              <Icon n="caret" size={12} className={`shrink-0 text-faint transition-transform duration-150 ${pr.open ? 'rotate-180' : ''}`} />
             </button>
 
             {pr.open && (

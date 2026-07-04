@@ -49,6 +49,20 @@ import type { CSSProperties } from 'react'
  * One ink-stroke icon vocabulary for the whole app. Semantic names so call
  * sites read intent, not glyphs. Everything inherits currentColor and sits on
  * the text baseline — a drawn mark on the same sheet of paper.
+ *
+ * SIZE BY ROLE, not by eye — an audited size scale (2026-07-05) collapsed
+ * several near-duplicate values that had drifted apart for the SAME role
+ * (e.g. a dropdown caret at 12/13/14px across different files, two Settings
+ * close buttons at 18/19px for the identical button). Match the closest
+ * existing role below before picking a number:
+ *   9–11  — glyph inside a tiny circular status dot/badge
+ *   12    — disclosure caret (dropdown/accordion open-indicator) — ALWAYS 12
+ *   13–14 — inline glyph beside body text (selection checkmark, tag icon)
+ *   15    — leading icon inside a menu-item's own badge chip (24–30px box)
+ *   16–17 — icon on a standalone control (toolbar button, full-bleed dialog
+ *          close — mobile drawer + Settings both use 17)
+ *   18+   — hero/empty-state icon, deliberately prominent
+ * When in doubt, grep this file's role comment before introducing a new size.
  */
 const REGISTRY = {
   plus: Plus,

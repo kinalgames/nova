@@ -259,7 +259,7 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
                     >
                       <span className="size-[9px] rounded-xs" style={{ background: pp.dot }} />
                       <span className="flex-1">{pp.name}</span>
-                      {pp.check && <Icon n="check" size={13} className="text-accent" />}
+                      {pp.check && <Icon n="check" size={14} className="text-accent" />}
                     </DropdownMenu.Item>
                   ))}
                 </DropdownMenu.Content>
@@ -299,7 +299,7 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
                           <div className="text-ui text-text">{label}</div>
                           <div className="text-meta text-muted">{sub}</div>
                         </div>
-                        {check && <Icon n="check" size={13} className="text-accent" />}
+                        {check && <Icon n="check" size={14} className="text-accent" />}
                       </DropdownMenu.Item>
                     ))}
                   </DropdownMenu.Content>
