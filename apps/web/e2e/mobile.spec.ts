@@ -96,3 +96,40 @@ test('no overlay steals taps from visible controls (top bar, then open drawer)',
   await page.waitForTimeout(350)
   expect(await audit('[role=dialog]')).toEqual([])
 })
+
+test('drawer delete shows a tappable undo that restores the row', async ({ page }) => {
+  await page.goto('/demo/chat/c1')
+  await page.getByRole('button', { name: 'Mở menu' }).tap()
+  const rows = page.locator('[role=dialog] a[href*="/chat/"]')
+  const before = await rows.count()
+  await page.locator('[role=dialog] button[aria-label="Tùy chọn cuộc trò chuyện"]').nth(1).tap()
+  await page.locator('[role=menuitem]').filter({ hasText: 'Xóa' }).tap()
+  const undo = page.locator('[role=dialog] button').filter({ hasText: 'Hoàn tác' })
+  await expect(undo).toBeVisible()
+  const b = (await undo.boundingBox())!
+  expect(b.height).toBeGreaterThanOrEqual(36) // full-height touch target
+  await undo.tap()
+  await expect(rows).toHaveCount(before)
+})
+
+test('composer thinking menu opens ABOVE everything and the lightbox round-trips', async ({
+  page,
+}) => {
+  await page.goto('/demo/chat/c1')
+  await page.getByRole('button', { name: /Mức suy nghĩ/ }).tap()
+  const menu = page.locator('[role=menu]')
+  await expect(menu).toBeVisible()
+  // popover layer must own its own pixels (z-80 over any surface)
+  const owns = await page.evaluate(() => {
+    const m = document.querySelector('[role=menu]')!
+    const r = m.getBoundingClientRect()
+    return m.contains(document.elementFromPoint(r.x + 10, r.y + 10))
+  })
+  expect(owns).toBe(true)
+  await page.keyboard.press('Escape')
+  // attachment preview lightbox opens and closes cleanly
+  await page.getByRole('button', { name: /Mở moodboard/ }).tap()
+  await expect(page.locator('.bg-scrim-lightbox')).toBeVisible()
+  await page.getByRole('button', { name: 'Đóng' }).last().tap()
+  await expect(page.locator('.bg-scrim-lightbox')).not.toBeVisible()
+})
