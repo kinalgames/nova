@@ -33,3 +33,4 @@ test-results
 
 # per-conversation git worktrees
 .worktrees/
+apps/web/public/__seed.json

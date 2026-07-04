@@ -150,6 +150,7 @@
     "toolFiles": "Tài liệu của bạn",
     "toolBash": "Chạy lệnh",
     "replyPlaceholder": "Trả lời Nova…",
+    "needProvider": "Kết nối nhà cung cấp để bắt đầu trò chuyện…",
     "needProvider": "Thêm nhà cung cấp trong Cài đặt để bắt đầu trò chuyện.",
     "chatInProject": "CHAT TRONG DỰ ÁN",
     "projectAria": "Dự án: {{name}}",

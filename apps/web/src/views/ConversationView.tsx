@@ -75,9 +75,12 @@ export function ConversationView() {
         </div>
 
 
+        {/* px-3 matches the Composer wrapper — the two cards must align */}
         {!v.isEmptyChat && (
-          <div className="px-4">
-            <ProviderNudge compact />
+          <div className="flex justify-center px-3">
+            <div className="w-[680px] max-w-full">
+              <ProviderNudge compact />
+            </div>
           </div>
         )}
         <Composer />

@@ -23,7 +23,7 @@ const USER_LABEL = 'mb-2.5 font-mono text-eyebrow tracking-[.12em] text-muted'
 const NOVA_HEAD = 'mb-3 flex items-center gap-2'
 const NOVA_DOT = 'flex size-[22px] items-center justify-center rounded-full bg-accent text-bg'
 const NOVA_TAG = 'font-mono text-eyebrow tracking-[.12em] text-accent-text'
-const ACT = 'inline-flex cursor-pointer items-center gap-1 border-none bg-transparent text-left'
+const ACT = 'tap-sm inline-flex cursor-pointer items-center gap-1 border-none bg-transparent text-left'
 const NODE = 'absolute -left-[29px] top-0.5 size-[11px] rounded-full border-2 bg-bg'
 const NODE_TEXT = 'text-body text-text'
 const TOOL_TAG = 'inline-flex items-center gap-1 font-mono text-meta text-muted'
@@ -314,7 +314,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
               onClick={() =>
                 s.url ? window.open(s.url, '_blank', 'noopener') : openPreview(v, s.open ?? 'md')
               }
-              className="cursor-pointer rounded-xs border border-border bg-transparent px-2 py-0.5 text-left"
+              className="tap-sm cursor-pointer rounded-xs border border-border bg-transparent px-2 py-0.5 text-left"
             >
               <sup>{s.n}</sup> {s.label}
             </button>
@@ -369,7 +369,7 @@ function VersionNav({ id }: { id: string }) {
   const info = v.versions[id]
   if (!info || info.count < 2) return null
   const btn =
-    'flex cursor-pointer items-center border-none bg-transparent px-0.5 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+    'tap-sm flex cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
   return (
     <span className="inline-flex items-center gap-0.5 font-mono text-eyebrow text-faint">
       <button type="button" aria-label={t('chat.prevVersion')} disabled={info.index <= 1} onClick={() => v.selectVersion(id, -1)} className={btn}>
@@ -389,7 +389,7 @@ function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) 
   const { t } = useTranslation()
   const copied = v.copiedMsg === message.id
   const btn =
-    'flex cursor-pointer items-center rounded-sm border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+    'tap-sm flex cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
   return (
     <div
       className={`mt-1.5 flex items-center gap-0.5 ${

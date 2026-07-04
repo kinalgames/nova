@@ -203,8 +203,13 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
               onChange={v.onDraft}
               onKeyDown={v.onKey}
               aria-label={t('home.inputAria')}
-              placeholder={placeholder ?? t('composer.replyPlaceholder')}
-              className="min-w-0 flex-1 py-2 text-lead text-text"
+              // no provider connected → the input is honestly disabled and
+              // says WHY; the nudge card above carries the CTA
+              disabled={v.needsProvider}
+              placeholder={
+                v.needsProvider ? t('composer.needProvider') : (placeholder ?? t('composer.replyPlaceholder'))
+              }
+              className={`min-w-0 flex-1 py-2 text-lead text-text ${v.needsProvider ? 'opacity-60' : ''}`}
             />
             {v.typing ? (
               <button
@@ -235,7 +240,7 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
                 <button
                   type="button"
                   aria-label={t('composer.projectAria', { name: v.chatProject })}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-bg px-2 py-1 text-small text-text-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="tap-sm flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-bg px-2 py-1 text-small text-text-2 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <span className="size-2 rounded-xs bg-accent" />
                   {v.chatProject}
@@ -268,7 +273,7 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
                   <button
                     type="button"
                     aria-label={t('composer.thinkAria', { label: v.thinkLabel })}
-                    className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap border-none bg-transparent text-meta text-text-2 outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="tap-sm inline-flex cursor-pointer items-center justify-center gap-1 whitespace-nowrap border-none bg-transparent text-meta text-text-2 outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     <Icon n="think" size={13} /> {t('composer.thinkChip', { label: v.thinkLabel })}{' '}
                     <Icon n="caret" size={12} className="text-faint" />

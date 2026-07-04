@@ -34,7 +34,7 @@ export function TopBar() {
         <button
           type="button"
           onClick={v.goProject}
-          className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent font-[inherit]"
+          className="tap-sm flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent font-[inherit]"
         >
           <span className="size-[9px] flex-shrink-0 rounded-xs bg-accent" />
           <span
@@ -57,7 +57,7 @@ export function TopBar() {
                   type="button"
                   onClick={() => setMeterOpen((o) => !o)}
                   aria-label={`${v.meterLabel} — ${v.tokenDetail}`}
-                  className="flex cursor-help items-center gap-2 border-none bg-transparent p-0 font-[inherit] outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                  className="tap-sm flex cursor-help items-center gap-2 border-none bg-transparent p-0 font-[inherit] outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 >
                   <span className="font-mono text-eyebrow text-faint">{v.meterLabel}</span>
                   <div className="h-[5px] w-[84px] overflow-hidden rounded-xs bg-border">

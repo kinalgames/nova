@@ -40,14 +40,19 @@ function TabButton({
       className={
         // paper-subtle active: background + text colour only, no left rail
         // marker — the tint IS the state
-        'flex flex-shrink-0 items-center gap-2.5 cursor-pointer rounded-md border-none text-left text-ui outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
-        (mobile ? 'px-3 py-1.5 ' : 'px-3 py-2 ') +
+        // mobile: tighter cell + smaller type so all four tabs fit 390px
+        // without a hidden horizontal scroll
+        'flex flex-shrink-0 items-center cursor-pointer rounded-md border-none text-left outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
+        (mobile ? 'tap-sm gap-1.5 px-2 py-1.5 text-small ' : 'gap-2.5 px-3 py-2 text-ui ') +
         (active
           ? 'bg-accent-soft text-accent-text'
           : 'bg-transparent text-text-2 hover:bg-hover-1 active:bg-hover-2')
       }
     >
-      <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? '' : 'opacity-50')} />
+      {/* mobile drops the icon — four text tabs fit 390px; desktop keeps it */}
+      {!mobile && (
+        <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? '' : 'opacity-50')} />
+      )}
       {t(tab.labelKey)}
     </button>
   )
@@ -161,7 +166,7 @@ function General() {
       type="button"
       aria-pressed={i18n.language === lng}
       onClick={() => setLanguage(lng)}
-      className="cursor-pointer rounded-sm border px-3 py-1 text-small"
+      className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small"
       style={{
         borderColor: i18n.language === lng ? v.accent : 'var(--border)',
         background: i18n.language === lng ? 'var(--accent-soft)' : 'transparent',
@@ -199,9 +204,9 @@ function General() {
 
       <div className={`${LABEL} mb-3`}>{t('settings.appearance')}</div>
       <div role="group" aria-label={t('settings.appearance')} className="flex flex-wrap gap-1.5 border-b border-border px-0.5 pb-4 pt-0.5">
-        <button type="button" aria-pressed={v.themeVal === 'light'} onClick={v.setLight} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeLightBd, background: v.themeLightBg, color: v.themeLightFg }}>{t('settings.themeLight')}</button>
-        <button type="button" aria-pressed={v.themeVal === 'dark'} onClick={v.setDark} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeDarkBd, background: v.themeDarkBg, color: v.themeDarkFg }}>{t('settings.themeDark')}</button>
-        <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeAutoBd, background: v.themeAutoBg, color: v.themeAutoFg }}>{t('settings.themeAuto')}</button>
+        <button type="button" aria-pressed={v.themeVal === 'light'} onClick={v.setLight} className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeLightBd, background: v.themeLightBg, color: v.themeLightFg }}>{t('settings.themeLight')}</button>
+        <button type="button" aria-pressed={v.themeVal === 'dark'} onClick={v.setDark} className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeDarkBd, background: v.themeDarkBg, color: v.themeDarkFg }}>{t('settings.themeDark')}</button>
+        <button type="button" aria-pressed={v.themeVal === 'auto'} onClick={v.setAuto} className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.themeAutoBd, background: v.themeAutoBg, color: v.themeAutoFg }}>{t('settings.themeAuto')}</button>
       </div>
 
       <div className={`${LABEL} mb-3 mt-4`}>{t('settings.language')}</div>
@@ -221,9 +226,9 @@ function General() {
       <div className="flex items-center justify-between gap-3 border-b border-border px-0.5 py-3">
         <span className="text-body">{t('settings.sessionLength')}</span>
         <div role="group" aria-label={t('settings.sessionLength')} className="flex shrink-0 gap-1.5">
-          <button type="button" aria-pressed={v.focusVal === '15'} onClick={v.setF15} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f15Bd, background: v.f15Bg, color: v.f15Fg }}>15′</button>
-          <button type="button" aria-pressed={v.focusVal === '25'} onClick={v.setF25} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f25Bd, background: v.f25Bg, color: v.f25Fg }}>25′</button>
-          <button type="button" aria-pressed={v.focusVal === '50'} onClick={v.setF50} className="cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f50Bd, background: v.f50Bg, color: v.f50Fg }}>50′</button>
+          <button type="button" aria-pressed={v.focusVal === '15'} onClick={v.setF15} className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f15Bd, background: v.f15Bg, color: v.f15Fg }}>15′</button>
+          <button type="button" aria-pressed={v.focusVal === '25'} onClick={v.setF25} className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f25Bd, background: v.f25Bg, color: v.f25Fg }}>25′</button>
+          <button type="button" aria-pressed={v.focusVal === '50'} onClick={v.setF50} className="tap-sm cursor-pointer rounded-sm border px-3 py-1 text-small" style={{ borderColor: v.f50Bd, background: v.f50Bg, color: v.f50Fg }}>50′</button>
         </div>
       </div>
 

@@ -214,7 +214,7 @@ export function Auth() {
               <button
                 type="button"
                 onClick={v.authToggleAct}
-                className="cursor-pointer border-none bg-transparent text-left text-accent-text"
+                className="tap-sm cursor-pointer border-none bg-transparent text-left text-accent-text"
               >
                 {v.authToggleLink}
               </button>

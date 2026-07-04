@@ -2901,7 +2901,10 @@ function deriveValues(
     },
     send,
     stop,
-    canSend: s.draft.trim().length > 0 && !activeStaged.some((f) => f.progress !== undefined),
+    canSend:
+      s.draft.trim().length > 0 &&
+      !activeStaged.some((f) => f.progress !== undefined) &&
+      (s.profiles[s.slots[s.activeSlot].providerId] ?? []).length > 0,
     copyCode,
     pConvAurora: () => go('conversation'),
     pProjects: () => go('projects'),
