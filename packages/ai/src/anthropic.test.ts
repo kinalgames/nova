@@ -39,7 +39,10 @@ describe('B1 — binary parts render as native blocks', () => {
     })
     expect(withParts.content[1].type).toBe('document')
     expect(withParts.content[2]).toEqual({ type: 'text', text: 'phân tích ảnh' })
-    expect(plain.content).toBe('đây là kết quả')
+    // the LAST message's final block carries the prompt-cache breakpoint
+    expect(plain.content).toEqual([
+      { type: 'text', text: 'đây là kết quả', cache_control: { type: 'ephemeral' } },
+    ])
   })
 
   it('T4.5 — URL parts render as url sources (Anthropic fetches the bytes)', () => {
@@ -117,6 +120,45 @@ describe('B5 — thinking mapping per model generation', () => {
   })
 })
 
+describe('prompt caching — cache_control breakpoints on stable prefixes', () => {
+  it('marks the last system block and the last message block', () => {
+    const body = JSON.parse(
+      anthropicBody({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        system: 'Chỉ dẫn dự án',
+        messages: [
+          { role: 'user', content: 'câu một' },
+          { role: 'assistant', content: 'trả lời' },
+          { role: 'user', content: 'câu hai' },
+        ],
+        profile: profileKey,
+      }),
+    )
+    // system prompt — stable every turn
+    expect(body.system.at(-1).cache_control).toEqual({ type: 'ephemeral' })
+    // conversation prefix — the last message's final block
+    expect(body.messages.at(-1).content).toEqual([
+      { type: 'text', text: 'câu hai', cache_control: { type: 'ephemeral' } },
+    ])
+    // earlier turns stay plain strings (no wasted breakpoints)
+    expect(body.messages[0].content).toBe('câu một')
+  })
+
+  it('account path caches the CLI-identity system too', () => {
+    const body = JSON.parse(
+      anthropicBody({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [{ role: 'user', content: 'hi' }],
+        profile: profileAcc,
+      }),
+    )
+    // only system block present is the identity — it carries the breakpoint
+    expect(body.system.at(-1).cache_control).toEqual({ type: 'ephemeral' })
+  })
+})
+
 describe('D1 — native server tools ride the request', () => {
   const base = {
     providerId: 'claude' as const,
@@ -130,7 +172,8 @@ describe('D1 — native server tools ride the request', () => {
     const body = JSON.parse(anthropicBody({ ...base, search: true, fetch: true }))
     expect(body.tools).toEqual([
       { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
-      { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5 },
+      // the last tool carries the cache breakpoint (covers the whole array)
+      { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5, cache_control: { type: 'ephemeral' } },
     ])
     expect(JSON.parse(anthropicBody(base)).tools).toBeUndefined()
   })
@@ -149,7 +192,7 @@ describe('D1 — native server tools ride the request', () => {
 describe('anthropic adapter — alternate origin (AI Gateway)', () => {
   it('ANTHROPIC_BASE_URL replaces the origin; default stays api.anthropic.com', async () => {
     const { callAnthropic } = await import('./anthropic')
-    const fetchMock = vi.fn(async () => new Response('', { status: 200 }))
+    const fetchMock = vi.fn(async (_url: string) => new Response('', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const req = {
       providerId: 'claude' as const,

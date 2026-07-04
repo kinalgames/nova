@@ -107,12 +107,21 @@ const ADAPTIVE_THINKING =
 const THINKING_BUDGET = { low: 2048, normal: 8192, high: 16384 } as const
 const THINKING_EFFORT = { low: 'low', normal: 'medium', high: 'high' } as const
 
+/** an ephemeral prompt-cache breakpoint — Anthropic caches the prefix up to
+ *  and including the marked block; reads cost 0.1× input, writes 1.25×. Below
+ *  the model minimum (1024 tok, 2048 for Haiku) it is silently ignored. */
+const CACHE = { type: 'ephemeral' } as const
+
 export function anthropicBody(req: ResolvedChatRequest): string {
   // NOTE: no temperature/top_p/top_k — models ≥4.7 reject sampling params,
   // and extended thinking is incompatible with them anyway
-  const system: { type: 'text'; text: string }[] = []
+  const system: { type: 'text'; text: string; cache_control?: typeof CACHE }[] = []
   if (req.profile.kind === 'account') system.push({ type: 'text', text: CLAUDE_CODE_IDENTITY })
   if (req.system?.trim()) system.push({ type: 'text', text: req.system })
+  // prompt caching: the system prompt is byte-identical every turn — mark its
+  // last block so persona + project instructions + CLI identity read from
+  // cache on every follow-up instead of billing full input each time
+  if (system.length) system[system.length - 1].cache_control = CACHE
   // B5 — thinking: 'off'/absent sends nothing (provider default: no extended
   // thinking on budget models; adaptive models decide per request)
   const level = req.thinking && req.thinking !== 'off' ? req.thinking : null
@@ -120,6 +129,44 @@ export function anthropicBody(req: ResolvedChatRequest): string {
   const budget = level && !adaptive ? THINKING_BUDGET[level] : 0
   const maxTokens = req.maxTokens ?? (level === 'high' ? 16384 : 8192)
   const tools = anthropicTools(req)
+  // tool schemas are stable across a conversation — cache them too (the
+  // breakpoint on the last tool covers the whole tools array)
+  if (tools.length) tools[tools.length - 1].cache_control = CACHE
+  // B1/T5 — turns as native blocks; a breakpoint on the LAST message's final
+  // block caches the growing conversation prefix (read cheap next round/turn)
+  const messages: { role: string; content: unknown }[] = req.messages.map((m) => ({
+    role: m.role as string,
+    content: m.parts?.length
+      ? [
+          ...m.parts.map((p) =>
+            p.type === 'image'
+              ? {
+                  type: 'image',
+                  source: p.url
+                    ? { type: 'url', url: p.url }
+                    : { type: 'base64', media_type: p.mime, data: p.base64 ?? '' },
+                }
+              : {
+                  type: 'document',
+                  source: p.url
+                    ? { type: 'url', url: p.url }
+                    : { type: 'base64', media_type: 'application/pdf', data: p.base64 ?? '' },
+                },
+          ),
+          ...(m.content ? [{ type: 'text', text: m.content }] : []),
+        ]
+      : (m.content as unknown),
+  }))
+  messages.push(...((req.rawTail ?? []) as { role: string; content: unknown }[]))
+  const tail = messages[messages.length - 1] as { role: string; content: unknown } | undefined
+  if (tail) {
+    if (typeof tail.content === 'string')
+      tail.content = [{ type: 'text', text: tail.content, cache_control: CACHE }]
+    else if (Array.isArray(tail.content) && tail.content.length) {
+      const blocks = tail.content as Record<string, unknown>[]
+      blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: CACHE }
+    }
+  }
   return JSON.stringify({
     model: req.model,
     ...(tools.length ? { tools } : {}),
@@ -131,31 +178,7 @@ export function anthropicBody(req: ResolvedChatRequest): string {
       : {}),
     ...(budget ? { thinking: { type: 'enabled', budget_tokens: budget } } : {}),
     ...(system.length ? { system } : {}),
-    // B1 — binary parts render as native image/document blocks before the
-    // text; URL parts let Anthropic fetch the bytes itself (body stays small)
-    messages: req.messages.map((m) => ({
-      role: m.role,
-      content: m.parts?.length
-        ? [
-            ...m.parts.map((p) =>
-              p.type === 'image'
-                ? {
-                    type: 'image',
-                    source: p.url
-                      ? { type: 'url', url: p.url }
-                      : { type: 'base64', media_type: p.mime, data: p.base64 ?? '' },
-                  }
-                : {
-                    type: 'document',
-                    source: p.url
-                      ? { type: 'url', url: p.url }
-                      : { type: 'base64', media_type: 'application/pdf', data: p.base64 ?? '' },
-                  },
-            ),
-            ...(m.content ? [{ type: 'text', text: m.content }] : []),
-          ]
-        : m.content,
-    })).concat((req.rawTail ?? []) as never[]),
+    messages,
   })
 }
 
