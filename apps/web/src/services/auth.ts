@@ -1,6 +1,6 @@
 // Real authentication against nova-api (Better Auth). The web keeps the
 // session cookie AND stores the bearer token so /v1/* calls (and future
-// native clients) authenticate the same way. No API_BASE → demo mode.
+// native clients) authenticate the same way.
 
 import { API_BASE } from './llm'
 import { getToken, TOKEN_KEY } from './token'

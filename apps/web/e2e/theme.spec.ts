@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test'
+import { seedApp } from './seed'
+
+test.beforeEach(async ({ page }) => seedApp(page))
 
 // Dark mode is a class over runtime tokens — these specs assert the ACTUAL
 // computed values so a broken token mapping can never ship silently.
 
 test('dark mode flips the interaction tokens (hover wash, scrim)', async ({ page }) => {
-  await page.goto('/demo/chat/c1?settings=general')
+  await page.goto('/chat/c1?settings=general')
   await page.getByRole('button', { name: 'Tối' }).click()
   const tokens = await page.evaluate(() => {
     const el = document.querySelector('.dark') ?? document.documentElement
@@ -24,7 +27,7 @@ test('dark mode flips the interaction tokens (hover wash, scrim)', async ({ page
 test('dark tokens reach PORTALED surfaces — settings dialog text is never black', async ({ page }) => {
   // regression guard: .dark used to sit on the app-root div, so Radix portals
   // (mounted on <body>) rendered light tokens / browser-default black text
-  await page.goto('/demo/chat/c1?settings=general')
+  await page.goto('/chat/c1?settings=general')
   await page.getByRole('button', { name: 'Tối' }).click()
   const { color, htmlHasDark } = await page.evaluate(() => {
     const dlg = document.querySelector('[role="dialog"]')
@@ -44,7 +47,7 @@ test('fonts are self-hosted — zero third-party font requests', async ({ page }
   page.on('request', (r) => {
     if (/fonts\.googleapis|fonts\.gstatic/i.test(r.url())) external.push(r.url())
   })
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   await expect(page.getByText('Đối chiếu benchmark đối thủ').first()).toBeVisible()
   expect(external).toHaveLength(0)
   // the display serif actually loaded from our own origin
@@ -56,7 +59,7 @@ test('fonts are self-hosted — zero third-party font requests', async ({ page }
 })
 
 test('the sidebar marks the open conversation with aria-current', async ({ page }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   const current = page.locator('aside [aria-current="page"]')
   await expect(current).toHaveCount(1)
   await expect(current).toContainText('Đối chiếu benchmark đối thủ')

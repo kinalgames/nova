@@ -7,7 +7,7 @@ beforeEach(() => localStorage.clear())
 describe('<QuietMode> — real conversation', () => {
   it('renders the real thread text and a working composer', async () => {
     const user = makeUser()
-    // demo c1 has a real seeded thread; focus mode shows THAT, not a sample
+    // fixture c1 has a real seeded thread; focus mode shows THAT, not a sample
     const { store } = await renderApp((s) => s.set({ quiet: true }))
     // the active conversation's message text is shown in the focus view
     const input = await screen.findByLabelText(/Tiếp tục trong im lặng/)
@@ -27,7 +27,11 @@ describe('<QuietMode> — real conversation', () => {
 
   it('Enter attempts the send; Shift+Enter never does', async () => {
     const user = makeUser()
-    const { store } = await renderApp((s) => s.set({ quiet: true, draft: 'ghi chú' }))
+    // no provider configured → a REAL send attempt pulses the BYOK nudge,
+    // which distinguishes “asked to send” from “newline only” observably
+    const { store } = await renderApp((s) => s.set({ quiet: true, draft: 'ghi chú' }), {
+      storeInit: { profiles: { claude: [], gemini: [], openai: [], ollama: [] } },
+    })
     const input = await screen.findByLabelText(/Tiếp tục trong im lặng/)
     await user.click(input)
     const nonce0 = store().s.nudgeNonce

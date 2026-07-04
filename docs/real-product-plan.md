@@ -1,5 +1,10 @@
 # RP — Real Product plan (2026-07-02)
 
+> **HOÀN TẤT & VƯỢT KẾ HOẠCH (2026-07-04)**: demo mode đã bị XÓA HOÀN
+> TOÀN khỏi sản phẩm (không còn `/demo/*`); test suite chạy trên fixture
+> thật (`src/test/showcase.ts`). Tài liệu này giữ làm archive của giai
+> đoạn chuyển đổi — các mục nói về `/demo` mô tả trạng thái ĐÃ QUA.
+
 **Goal**: app mặc định là sản phẩm thật (auth bắt buộc, boot sạch, không nội
 dung giả); toàn bộ kịch bản demo sống ở route riêng `/demo/*`; khi
 feature-complete thay demo bundle bằng DB seeder (op-log của user đầu tiên).

@@ -86,7 +86,7 @@ describe('overlay open/close wiring', () => {
 
   it('preview closes via its close button (onOpenChange → closePreview)', async () => {
     const user = makeUser()
-    await renderApp((s) => s.v.openPdf())
+    await renderApp((s) => s.v.previewFile({ kind: 'pdf', name: 'brief.pdf', open: 'pdf' }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Đóng' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

@@ -5,7 +5,7 @@ import { makeUser, renderApp } from '../test/util'
 beforeEach(() => localStorage.clear())
 
 describe('ConversationView — data-driven message blocks', () => {
-  it('renders the demo from data: text, table, sources, file blocks', async () => {
+  it('renders the showcase thread from data: text, table, sources, file blocks', async () => {
     await renderApp(undefined, { path: '/chat/c1' })
     expect(await screen.findByText('Kích hoạt 72h')).toBeInTheDocument() // table head
     expect((await screen.findAllByText('plan.md')).length).toBeGreaterThan(0) // file block
@@ -29,7 +29,7 @@ describe('ConversationView — data-driven message blocks', () => {
   it('message actions run (copy marks copied, open shows a preview)', async () => {
     const user = makeUser()
     const { store } = await renderApp(undefined, { path: '/chat/c1' })
-    // the demo actions-block button carries visible text (ActionRow is icon-only)
+    // the actions-block button carries visible text (ActionRow is icon-only)
     await user.click((await screen.findAllByText('Sao chép'))[0])
     expect(store().s.copied).toBe(true)
     await user.click((await screen.findAllByRole('button', { name: /Mở plan\.md/ }))[0])
@@ -65,7 +65,7 @@ describe('ConversationView — data-driven message blocks', () => {
   it('a sent message with a staged attachment renders a file block', async () => {
     const user = makeUser()
     await renderApp(undefined, { path: '/chat/c1' })
-    // c1 seeds two staged demo attachments; send consumes them into the message
+    // fixture c1 stages two attachments; send consumes them into the message
     await user.type(screen.getByRole('textbox', { name: 'Nhắn cho Nova' }), 'kèm theo tệp')
     await user.click(screen.getByRole('button', { name: 'Gửi' }))
     expect(await screen.findByText('kèm theo tệp')).toBeInTheDocument()
@@ -76,23 +76,24 @@ describe('ConversationView — data-driven message blocks', () => {
 
 describe('ConversationView — response states', () => {
   it('streaming shows the live "writing" indicator and a stop control', async () => {
-    await renderApp((s) => s.set({ respState: 'stream' }), { world: 'demo' })
+    await renderApp((s) => s.set({ respState: 'stream' }))
     expect(await screen.findByText(/Đang viết câu trả lời/)).toBeInTheDocument()
     expect(screen.getByText('Dừng')).toBeInTheDocument()
   })
 
   it('streaming shows an animated Nova working indicator', async () => {
-    await renderApp((s) => s.set({ respState: 'stream' }), { world: 'demo' })
+    await renderApp((s) => s.set({ respState: 'stream' }))
     expect(await screen.findByLabelText('Nova đang làm việc')).toBeInTheDocument()
   })
 
   it('error shows the interrupted banner with a retry', async () => {
-    await renderApp((s) => s.set({ respState: 'error' }), { world: 'demo' })
+    // a REAL error is conv-scoped — errorConv must point at the open thread
+    await renderApp((s) => s.set({ respState: 'error', errorConv: 'c1', errorAction: 'retry' }))
     expect(await screen.findByText('Phản hồi bị gián đoạn')).toBeInTheDocument()
   })
 
   it('approval shows the permission prompt for a bash command', async () => {
-    await renderApp((s) => s.set({ respState: 'approval' }), { world: 'demo' })
+    await renderApp((s) => s.set({ respState: 'approval' }))
     expect(await screen.findByText('Cho phép')).toBeInTheDocument()
     expect(screen.getByText('Từ chối')).toBeInTheDocument()
   })
@@ -112,7 +113,7 @@ describe('ConversationView — response states', () => {
   it('expanded trace ends with a "Hoàn tất" checkpoint when done', async () => {
     await renderApp((s) => s.set({ traceOpen: true, respState: 'done' }))
     const nodes = await screen.findAllByText('Hoàn tất')
-    // the trace terminal checkpoint lives in the timeline, not the demo switcher button
+    // the trace terminal checkpoint lives in the timeline
     expect(nodes.some((n) => !n.closest('button'))).toBe(true)
   })
 
@@ -122,26 +123,19 @@ describe('ConversationView — response states', () => {
   })
 })
 
-describe('ConversationView — demo content is scoped to the demo conversation', () => {
-  it('does not leak the scripted answer into a real conversation', async () => {
+describe('ConversationView — threads never leak across conversations', () => {
+  it('c2 shows its own thread, never another conversation\u2019s answer', async () => {
     await renderApp((s) => s.set({ respState: 'done' }), { path: '/chat/c2' })
-    // the real c2 thread is shown
+    // the c2 thread is shown
     expect(await screen.findByText(/Viết giúp mình đoạn mở đầu/)).toBeInTheDocument()
-    // the Aurora benchmark answer (demo-only) must NOT appear
+    // c1's benchmark answer must NOT appear
     expect(screen.queryByText(/đối chiếu khảo sát với 6 đối thủ/)).not.toBeInTheDocument()
-    // nor the demo state switcher
-    expect(screen.queryByText('demo:')).not.toBeInTheDocument()
   })
 
   it('a fresh chat shows only the home composer, no scripted answer', async () => {
     await renderApp((s) => s.v.pNewChat())
     expect(await screen.findByText(/Bạn muốn làm gì hôm nay/)).toBeInTheDocument()
     expect(screen.queryByText(/đối chiếu khảo sát với 6 đối thủ/)).not.toBeInTheDocument()
-  })
-
-  it('shows the demo state switcher on the demo conversation', async () => {
-    await renderApp(undefined, { world: 'demo' })
-    expect(await screen.findByText('demo:')).toBeInTheDocument()
   })
 
   it('real world without a provider: the empty chat IS the connect card', async () => {
@@ -182,7 +176,7 @@ describe('ConversationView — demo content is scoped to the demo conversation',
       storeInit: {
         conversations: [{ id: 'r9', title: null, projectId: 'chung', updatedAt: 1 }],
         threads: {},
-        // a live (non-demo) profile → no nudge; the greeting owns the empty state
+        // a configured profile → no nudge; the greeting owns the empty state
         profiles: {
           claude: [
             { id: 'p1', name: 'Khóa', kind: 'api_key', credential: 'sk-x', status: 'active' },

@@ -1,22 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { msgText, renderStore } from '../test/util'
 import { visiblePath } from './thread'
 
-// this suite covers the store's VM getters/actions AND the demo fake-chat
-// engine (composeReply, timer-based streaming, optimistic local addProfile).
-// It runs in the demo world where that engine is live; Phase C deletes the
-// fake-engine cases and re-homes the world-agnostic VM checks on the fixture.
 function setup() {
-  return renderStore({ world: 'demo' })
+  return renderStore()
 }
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
 
 describe('store — auth flows', () => {
   it('toggles between login and signup, and onboarding completes into the app', async () => {
-    const { result, router } = await setup()
-    await act(async () => result.current.v.openLogin())
+    // auth screens belong to the logged-out world (a signed-in user is
+    // redirected away from /login — that behaviour is its own guard test)
+    const { result, router } = await renderStore({ world: 'real', path: '/login' })
     expect(result.current.v.isLoginForm).toBe(true)
     expect(result.current.v.authTitle).toBe('Đăng nhập')
     await act(async () => result.current.v.authToggleAct())
@@ -36,11 +33,11 @@ describe('store — auth flows', () => {
 describe('store — approval flow', () => {
   it('approves and denies a tool request back to done', async () => {
     const { result } = await setup()
-    await act(async () => result.current.v.setApproval())
+    await act(async () => result.current.set({ respState: 'approval' }))
     expect(result.current.v.respApproval).toBe(true)
     await act(async () => result.current.v.approveTool())
     expect(result.current.v.isDone).toBe(true)
-    await act(async () => result.current.v.setApproval())
+    await act(async () => result.current.set({ respState: 'approval' }))
     await act(async () => result.current.v.denyTool())
     expect(result.current.v.isDone).toBe(true)
   })
@@ -87,11 +84,11 @@ describe('store — thinking levels', () => {
 describe('store — preview formats', () => {
   it('covers csv, md, image and the isPrev flags', async () => {
     const { result } = await setup()
-    await act(async () => result.current.v.openCsv())
+    await act(async () => result.current.v.previewFile({ kind: 'csv', name: 'd.csv', open: 'csv' }))
     expect(result.current.v.isPrevCsv).toBe(true)
-    await act(async () => result.current.v.openMd())
+    await act(async () => result.current.v.previewFile({ kind: 'md', name: 'p.md', open: 'md' }))
     expect(result.current.v.isPrevMd).toBe(true)
-    await act(async () => result.current.v.openLightbox())
+    await act(async () => result.current.v.previewFile({ kind: 'image', name: 'a.png', open: 'image' }))
     expect(result.current.v.isPrevImage).toBe(true)
   })
 })
@@ -141,19 +138,18 @@ describe('store — palette actions', () => {
 })
 
 describe('store — per-conversation threads', () => {
-  it('switching conversations loads that thread; the demo conv flags hasDemo', async () => {
+  it('switching conversations loads that thread', async () => {
     const { result } = await setup()
     const open = (id: string) => result.current.v.sideConvs.find((c) => c.id === id)!.open()
     await act(async () => open('c2'))
     expect(result.current.s.activeConv).toBe('c2')
     expect(result.current.v.sent.length).toBeGreaterThan(0)
-    expect(result.current.v.hasDemo).toBe(false)
     await act(async () => open('c1'))
-    expect(result.current.v.hasDemo).toBe(true)
+    expect(result.current.s.activeConv).toBe('c1')
+    expect(result.current.v.sent).toHaveLength(4)
   })
 
   it('new chat defers creation — the conversation is born on the first send', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     const before = result.current.v.sideConvs.length
     await act(async () => result.current.v.pNewChat())
@@ -163,9 +159,8 @@ describe('store — per-conversation threads', () => {
     await act(async () => result.current.v.send())
     const id = result.current.s.activeConv
     expect(result.current.v.sideConvs.length).toBe(before + 1)
-    await act(async () => vi.advanceTimersByTime(5000))
     expect(visiblePath(result.current.s.threads[id]).length).toBeGreaterThan(1)
-    // the demo conversation's seeded thread (4 messages) is untouched
+    // the fixture conversation's seeded thread (4 messages) is untouched
     expect(visiblePath(result.current.s.threads.c1)).toHaveLength(4)
   })
 
@@ -282,7 +277,6 @@ describe('store — copy & search input', () => {
     expect(result.current.s.q).toBe('cài đặt')
   })
   it('onKey Enter sends the draft', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     await act(async () => result.current.set({ draft: 'gửi bằng Enter' }))
     await act(async () =>
@@ -291,13 +285,14 @@ describe('store — copy & search input', () => {
         preventDefault: () => {},
       } as React.KeyboardEvent),
     )
-    expect(msgText(result.current.v.sent.at(-1))).toBe('gửi bằng Enter')
+    // the user turn landed (the hermetic reply follows it instantly)
+    expect(msgText(result.current.v.sent.at(-2))).toBe('gửi bằng Enter')
   })
 })
 
 describe('store — auth toggle branches', () => {
   it('toggles signup back to login', async () => {
-    const { result } = await setup()
+    const { result } = await renderStore({ world: 'real', path: '/login' })
     await act(async () => result.current.v.authToggleAct()) // → signup
     expect(result.current.v.authTitle).toBe('Tạo tài khoản')
     await act(async () => result.current.v.authToggleAct()) // signup → login
@@ -305,10 +300,12 @@ describe('store — auth toggle branches', () => {
   })
 })
 
-describe('store — auth profiles + connection test', () => {
+describe('store — auth profiles + connection test (token-less local fallback)', () => {
+  // without a session the credential CANNOT be sealed server-side — the
+  // profile lives locally (untested) until the connection test runs
   it('adds an api-key profile and a valid key tests as active', async () => {
     vi.useFakeTimers()
-    const { result } = await setup()
+    const { result } = await renderStore({ world: 'real', path: '/login' })
     const claude = () => result.current.v.providers.find((p) => p.id === 'claude')!
     await act(async () => claude().addProfile('api_key', 'Khóa mới', 'sk-ant-new-key-123456'))
     const added = () => result.current.s.profiles.claude.at(-1)!
@@ -322,7 +319,7 @@ describe('store — auth profiles + connection test', () => {
   })
   it('a too-short key tests as error, and remove clears the profile', async () => {
     vi.useFakeTimers()
-    const { result } = await setup()
+    const { result } = await renderStore({ world: 'real', path: '/login' })
     const gemini = () => result.current.v.providers.find((p) => p.id === 'gemini')!
     expect(gemini().badge).toBe('Chưa kết nối')
     await act(async () => gemini().addProfile('api_key', '', 'x'))
@@ -346,47 +343,81 @@ describe('store — auth profiles + connection test', () => {
 })
 
 describe('store — file download', () => {
-  it('downloadPreview generates a blob and triggers an anchor download', async () => {
-    URL.createObjectURL = vi.fn(() => 'blob:x')
-    URL.revokeObjectURL = vi.fn()
+  it('downloadPreview ships the local object URL through an anchor', async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const { result } = await setup()
-    await act(async () => result.current.v.openMd())
+    await act(async () =>
+      result.current.v.previewFile({ kind: 'image', name: 'anh.png', open: 'image', url: 'blob:staged-1' }),
+    )
     await act(async () => result.current.v.downloadPreview())
-    expect(URL.createObjectURL).toHaveBeenCalled()
     expect(click).toHaveBeenCalled()
     click.mockRestore()
   })
+
+  it('downloadPreview fetches the SERVER copy for a fileId and revokes the blob', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['%PDF']), { status: 200 })))
+    URL.createObjectURL = vi.fn(() => 'blob:dl-1')
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const { result } = await setup()
+    await act(async () =>
+      result.current.v.previewFile({ kind: 'pdf', name: 'brief.pdf', open: 'pdf', fileId: 'F9' }),
+    )
+    await act(async () => result.current.v.downloadPreview())
+    await waitFor(() => expect(click).toHaveBeenCalled())
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:dl-1'))
+    click.mockRestore()
+    vi.unstubAllGlobals()
+  })
+
+  it('openPreviewExternal opens the server copy or the local url in a new tab', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['x']), { status: 200 })))
+    URL.createObjectURL = vi.fn(() => 'blob:ext-1')
+    URL.revokeObjectURL = vi.fn()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { result } = await setup()
+    await act(async () =>
+      result.current.v.previewFile({ kind: 'csv', name: 'd.csv', open: 'csv', fileId: 'F8' }),
+    )
+    await act(async () => result.current.v.openPreviewExternal())
+    await waitFor(() => expect(open).toHaveBeenCalledWith('blob:ext-1', '_blank', 'noopener'))
+    // a local-url preview opens directly — no fetch round-trip
+    await act(async () =>
+      result.current.v.previewFile({ kind: 'image', name: 'a.png', open: 'image', url: 'blob:loc-2' }),
+    )
+    await act(async () => result.current.v.openPreviewExternal())
+    expect(open).toHaveBeenCalledWith('blob:loc-2', '_blank', 'noopener')
+    open.mockRestore()
+    vi.unstubAllGlobals()
+  })
 })
 
-describe('store — streaming chat engine', () => {
-  it('appends the user message, then streams a Nova reply token by token', async () => {
-    vi.useFakeTimers()
+describe('store — dead project link resilience', () => {
+  it('an unknown /projects/:id heals to the ACTIVE project instead of crashing', async () => {
+    const { result } = await renderStore({ path: '/projects/ghost/config' })
+    // the active conversation (c1) lives in Aurora — the view heals there
+    expect(result.current.v.viewProjectName).toBe('Aurora')
+    expect(result.current.v.viewProjectFiles.length).toBeGreaterThan(0)
+    expect(result.current.v.viewProjectConvs.map((c) => c.id)).toContain('c1')
+  })
+})
+
+describe('store — streaming chat engine (real proxy path)', () => {
+  it('appends the user message, then the reply streams through the parser', async () => {
     const { result } = await setup()
     await act(async () => result.current.set({ draft: 'Viết email cho mình' }))
     await act(async () => result.current.v.send())
-    // user message lands immediately; assistant is "thinking"
-    expect(result.current.v.sent.at(-1)?.who).toBe('THÀNH')
-    expect(result.current.s.typing).toBe(true)
-    // after the thinking pause, an empty Nova bubble appears and starts filling
-    await act(async () => vi.advanceTimersByTime(700))
-    const nova = result.current.v.sent.at(-1)
-    expect(nova?.role).toBe('assistant')
-    const partial = msgText(nova)
-    await act(async () => vi.advanceTimersByTime(120))
-    expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(partial.length)
-    // streaming completes
-    await act(async () => vi.advanceTimersByTime(5000))
+    // the user turn landed; the hermetic stream finished the reply
+    expect(result.current.v.sent.at(-2)?.who).toBe('THÀNH')
     expect(result.current.s.typing).toBe(false)
+    expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
     expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(0)
   })
 
   it('a streamed reply records usage; an account profile meters as free', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     await act(async () => result.current.set({ draft: 'tính chi phí giúp mình' }))
     await act(async () => result.current.v.send())
-    await act(async () => vi.advanceTimersByTime(8000))
     const nova = result.current.v.sent.at(-1)!
     expect(nova.usage).toBeDefined()
     expect(nova.usage!.modelId).toBe('claude-opus-4-8')
@@ -404,7 +435,6 @@ describe('store — streaming chat engine', () => {
   })
 
   it('an api-key profile meters real cost on the usage line', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     await act(async () =>
       result.current.set({
@@ -416,7 +446,6 @@ describe('store — streaming chat engine', () => {
     )
     await act(async () => result.current.set({ draft: 'phân tích số liệu bán hàng' }))
     await act(async () => result.current.v.send())
-    await act(async () => vi.advanceTimersByTime(8000))
     const nova = result.current.v.sent.at(-1)!
     expect(nova.usage!.modelId).toBe('gpt-5')
     expect(nova.usage!.profileId).toBe('pf-openai-key')
@@ -427,63 +456,55 @@ describe('store — streaming chat engine', () => {
   })
 
   it('a message composed on Home starts a fresh conversation instead of appending', async () => {
-    vi.useFakeTimers()
     const LINE = 'Lên kế hoạch du lịch Đà Lạt cuối tuần này giúp mình nhé'
     const DRAFT = `${LINE}\n\n- chỗ ở\n- lịch trình`
-    const { result, router } = await renderStore({ world: 'demo', path: '/new' })
+    const { result, router } = await renderStore({ path: '/new' })
     const before = result.current.s.conversations.length
-    const demoLen = visiblePath(result.current.s.threads.c1).length
+    const fixtureLen = visiblePath(result.current.s.threads.c1).length
     // files staged in another conversation must NOT leak into the new chat
     const c1Tray = result.current.s.staged.c1 ?? []
     expect(result.current.v.hasStaged).toBe(false)
     await act(async () => result.current.set({ draft: DRAFT }))
     await act(async () => result.current.v.send())
     // a new conversation exists — born UNNAMED (the UI shows a muted
-    // “Untitled”) — in the composer's visible project (c1 was cached →
-    // aurora), and the URL moved there
+    // “Untitled” until D3 names it) — in the composer's visible project
+    // (c1 was cached → aurora), and the URL moved there
     const conv = result.current.s.conversations[0]
     expect(result.current.s.conversations).toHaveLength(before + 1)
     expect(conv.id).not.toBe('c1')
-    expect(conv.title).toBeNull()
     expect(conv.projectId).toBe('aurora')
-    expect(router.state.location.pathname).toBe(`/demo/chat/${conv.id}`)
+    expect(router.state.location.pathname).toBe(`/chat/${conv.id}`)
     // the full message landed in the new thread with no inherited attachments;
-    // the demo showcase and its tray are untouched
+    // the fixture showcase and its tray are untouched
     const first = result.current.v.sent.at(0)
     expect(msgText(first)).toBe(DRAFT)
     expect(first?.blocks.some((b) => b.type === 'files')).toBe(false)
-    expect(visiblePath(result.current.s.threads.c1)).toHaveLength(demoLen)
+    expect(visiblePath(result.current.s.threads.c1)).toHaveLength(fixtureLen)
     expect(result.current.s.staged.c1 ?? []).toEqual(c1Tray)
-    // D3 demo stand-in: the finished reply names the conversation from the
-    // prompt's FIRST LINE (the real world asks the LLM instead)
-    await act(async () => vi.advanceTimersByTime(60_000))
-    expect(result.current.s.conversations.find((c) => c.id === conv.id)?.title).toBe(
-      `${LINE.slice(0, 48)}…`,
+    // D3: the completed reply asks the model for a title (fire-and-forget)
+    await waitFor(() =>
+      expect(
+        result.current.s.conversations.find((c) => c.id === conv.id)?.title,
+      ).toBeTruthy(),
     )
   })
 
-  it('a fresh chat hides the demo thread and shows the real exchange', async () => {
-    vi.useFakeTimers()
+  it('a fresh chat starts its own thread and shows the real exchange', async () => {
     const { result } = await setup()
     await act(async () => result.current.v.pNewChat())
-    // (on Home the VM still mirrors the cached last conversation — the home
-    // view simply doesn't render a thread; assertions apply after the send)
     await act(async () => result.current.set({ draft: 'xin chào' }))
     await act(async () => result.current.v.send())
-    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.v.isEmptyChat).toBe(false)
-    expect(result.current.v.hasDemo).toBe(false)
     expect(result.current.v.sent.some((m) => m.role === 'assistant')).toBe(true)
   })
 })
 
 describe('store — per-conversation attachments', () => {
   it('swaps the staged tray per conversation; sending clears it', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     const open = (id: string) =>
       result.current.v.sideConvs.find((c) => c.id === id)!.open()
-    // demo conv c1 seeds two attachments
+    // fixture conv c1 seeds two attachments
     expect(result.current.v.staged).toHaveLength(2)
     // a real conversation starts with an empty tray
     await act(async () => open('c2'))
@@ -537,15 +558,13 @@ describe('store — composer canSend & stop', () => {
     expect(result.current.s.draft).toBe('xin chào') // still not sent
   })
 
-  it('stop halts an in-flight streamed reply for good', async () => {
-    vi.useFakeTimers()
+  it('stop() clears the in-flight state and stays stopped', async () => {
     const { result } = await setup()
     await act(async () => result.current.set({ draft: 'Viết email' }))
     await act(async () => result.current.v.send())
-    expect(result.current.s.typing).toBe(true)
+    // the hermetic stream completes synchronously — stop() must still be a
+    // safe idempotent clear (the mid-stream abort is covered in MessageView)
     await act(async () => result.current.v.stop())
-    expect(result.current.s.typing).toBe(false)
-    await act(async () => vi.advanceTimersByTime(5000))
     expect(result.current.s.typing).toBe(false)
   })
 })
@@ -602,26 +621,20 @@ describe('store — projects + closeMenus', () => {
 
 describe('store — message versions (edit / regenerate / navigate)', () => {
   it('editing a user message creates version 2, drops the old tail, and re-runs', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
-    const before = result.current.v.sent.length // demo c1: 4 messages
+    const before = result.current.v.sent.length // fixture c1: 4 messages
     const userMsg = result.current.v.sent[2] // c1-3 (user)
     await act(async () => result.current.v.startEdit(userMsg.id))
     expect(result.current.v.editingMsg).toBe(userMsg.id)
     await act(async () => result.current.v.saveEdit('câu hỏi đã sửa'))
-    // version 2 selected, old reply gone until the stream lands
-    expect(msgText(result.current.v.sent.at(-1))).toBe('câu hỏi đã sửa')
-    expect(result.current.v.versions[result.current.v.sent.at(-1)!.id]).toEqual({
-      index: 2,
-      count: 2,
-    })
-    await act(async () => vi.advanceTimersByTime(6000))
-    // new reply streamed under the edited version
+    // version 2 selected; the re-run reply streamed in under it
+    const edited = result.current.v.sent[2]
+    expect(msgText(edited)).toBe('câu hỏi đã sửa')
+    expect(result.current.v.versions[edited.id]).toEqual({ index: 2, count: 2 })
     expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
     expect(result.current.v.sent.length).toBe(4) // a,b, user-v2, new reply
     // navigate back to version 1 — the ORIGINAL tail returns
-    const v2 = result.current.v.sent[2]
-    await act(async () => result.current.v.selectVersion(v2.id, -1))
+    await act(async () => result.current.v.selectVersion(edited.id, -1))
     expect(result.current.v.sent.length).toBe(before)
     expect(result.current.v.sent[2].id).toBe(userMsg.id)
   })
@@ -640,11 +653,9 @@ describe('store — message versions (edit / regenerate / navigate)', () => {
   })
 
   it('regenerate adds a sibling reply version under the same prompt', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     const reply = result.current.v.sent[1] // c1-2 assistant
     await act(async () => result.current.v.regenerate(reply.id))
-    await act(async () => vi.advanceTimersByTime(6000))
     const now = result.current.v.sent[1]
     expect(now.role).toBe('assistant')
     expect(now.id).not.toBe(reply.id)
@@ -738,20 +749,17 @@ describe('store — projects (CRUD + membership)', () => {
   })
 
   it('a new chat inherits the active project; newChatInProject targets a given one', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     await act(async () => result.current.v.pNewChat())
     await act(async () => result.current.set({ draft: 'a' }))
     await act(async () => result.current.v.send())
     const a = result.current.s.activeConv
     expect(result.current.s.conversations.find((c) => c.id === a)?.projectId).toBe('aurora')
-    await act(async () => vi.advanceTimersByTime(5000))
     await act(async () => result.current.v.newChatInProject('chung'))
     await act(async () => result.current.set({ draft: 'b' }))
     await act(async () => result.current.v.send())
     const b = result.current.s.activeConv
     expect(result.current.s.conversations.find((c) => c.id === b)?.projectId).toBe('chung')
-    await act(async () => vi.advanceTimersByTime(5000))
   })
 
   it('toggling a per-project preset is isolated to that project', async () => {

@@ -49,8 +49,8 @@ afterEach(() => vi.useRealTimers())
 
 async function withRealProfile() {
   const handle = await renderStore()
-  // real world: BE3 owns addProfile server-side — inject the live profile
-  // directly so it is the sole NON-demo claude profile the router picks
+  // BE3 owns addProfile server-side — inject the live profile directly so it
+  // is the sole claude profile the router can pick
   await act(async () =>
     handle.result.current.set((x) => ({
       profiles: {
@@ -67,7 +67,7 @@ async function withRealProfile() {
 describe('real provider routing (nova-api proxy)', () => {
   // generous timeout: the file's FIRST test bears the whole import/transform
   // cost under coverage instrumentation on slow parallel runs
-  it('a non-demo profile routes the send through the proxy with real usage', { timeout: 15_000 }, async () => {
+  it('a configured profile routes the send through the proxy with real usage', { timeout: 15_000 }, async () => {
     const { result } = await withRealProfile()
     await act(async () => result.current.set({ draft: 'chào Nova' }))
     await act(async () => result.current.v.send())
@@ -82,7 +82,7 @@ describe('real provider routing (nova-api proxy)', () => {
     })
     expect(result.current.s.typing).toBe(false)
 
-    // the request carried the REAL credential (never a seeded demo one) and
+    // the request carried the injected credential and
     // the visible history ending in the prompt
     expect(calls[0].profile?.credential).toBe('sk-ant-real-123')
     expect(calls[0].messages.at(-1)).toEqual({ role: 'user', content: 'chào Nova' })
@@ -221,8 +221,8 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(result.current.s.conversations.some((c) => c.id === 'cx')).toBe(false)
   })
 
-  it('demo world: deleting a conversation clears its error card, revokes object\n     URLs and never calls the server', async () => {
-    const { result } = await renderStore({ world: 'demo' })
+  it('deleting a conversation clears its error card, revokes object URLs and\n     deletes its server files', async () => {
+    const { result } = await renderStore()
     URL.revokeObjectURL = vi.fn()
     await act(async () =>
       result.current.set((x) => ({
@@ -252,7 +252,7 @@ describe('real provider routing (nova-api proxy)', () => {
     await act(async () => {
       vi.advanceTimersByTime(5000)
     })
-    expect(deleteFile).not.toHaveBeenCalled()
+    expect(deleteFile).toHaveBeenCalledWith('srv-x')
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:z')
     expect(result.current.s.errorConv).toBeNull()
     expect(result.current.s.errorDetail).toBeNull()
@@ -288,7 +288,7 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(result.current.s.conversations.find((c) => c.id === 'cs')?.shareId).toBeUndefined()
   })
 
-  it('BE4 — share failure paths toast and never corrupt state; demo copies only', async () => {
+  it('BE4 — share failure paths toast and never corrupt state', async () => {
     localStorage.setItem('nova.auth.token', 'tok')
     const { result } = await renderStore({ path: '/onboarding' })
     await act(async () =>
@@ -329,11 +329,6 @@ describe('real provider routing (nova-api proxy)', () => {
     await act(async () => conv().unshare())
     expect(result.current.s.conversations.find((c) => c.id === 'ce')?.shareId).toBe('sh-e')
 
-    // demo world: the showcase copy path never touches the server
-    const demo = await renderStore({ world: 'demo' })
-    await act(async () => demo.result.current.v.sideConvs[0].share())
-    expect(demo.result.current.s.toast).toBe('Đã chép liên kết chia sẻ')
-    expect(createShare).toHaveBeenCalledTimes(1) // only the failed attempt above
   })
 
   it('BE4 — deleting a shared conversation revokes its live share', async () => {
@@ -355,13 +350,15 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(revokeShare).toHaveBeenCalledWith('sh-9')
   })
 
-  it('demo world: deleteAccount is a hard no-op', async () => {
-    const { result } = await renderStore({ world: 'demo' })
+  it('a server-refused account delete fails safely and keeps local state', async () => {
+    // no auth service mock here — the hermetic 503 backend refuses the delete
+    const { result } = await renderStore()
     let ok = true
     await act(async () => {
       ok = await result.current.v.deleteAccount()
     })
     expect(ok).toBe(false)
+    expect(result.current.s.conversations.length).toBeGreaterThan(0)
   })
 
   it('BUG-1 — a removed tray pill deletes its uploaded file server-side', async () => {
@@ -552,16 +549,6 @@ describe('real provider routing (nova-api proxy)', () => {
     expect(vi.mocked(streamChat)).not.toHaveBeenCalled()
   })
 
-  it('demo-only profiles never leave the device — the fake layer answers', async () => {
-    vi.useFakeTimers()
-    const { result } = await renderStore({ world: 'demo' })
-    await act(async () => result.current.set({ draft: 'xin chào demo' }))
-    await act(async () => result.current.v.send())
-    await act(async () => vi.advanceTimersByTime(9000))
-    expect(streamChat).not.toHaveBeenCalled()
-    expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
-    expect(msgText(result.current.v.sent.at(-1)).length).toBeGreaterThan(0)
-  })
 })
 
 describe('BYOK nudge — every mutation path blocks softly when no provider', () => {

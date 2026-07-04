@@ -45,6 +45,15 @@ describe('B1 — deleteFile cleanup', () => {
     expect(await deleteFile('f-1')).toBe(false)
     localStorage.removeItem('nova.auth.token')
   })
+
+  it('without a session the DELETE goes out bare — the server decides', async () => {
+    localStorage.removeItem('nova.auth.token')
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect(await deleteFile('f-2')).toBe(false)
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect((init.headers as Record<string, string>).authorization).toBeUndefined()
+  })
 })
 
 /** a controllable XMLHttpRequest stand-in — fetch still has no upload progress */

@@ -31,7 +31,7 @@ describe('global keyboard shortcuts', () => {
   })
 
   it('Escape closes an open media preview', async () => {
-    await renderApp((s) => s.v.openPdf())
+    await renderApp((s) => s.v.previewFile({ kind: 'pdf', name: 'brief.pdf', open: 'pdf' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

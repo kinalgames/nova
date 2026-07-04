@@ -52,17 +52,14 @@ const TONE: Record<string, string> = {
 
 type V = ReturnType<typeof useStore>['v']
 
-function openPreview(v: V, kind: PreviewKind) {
-  if (kind === 'image') v.openLightbox()
-  else if (kind === 'pdf') v.openPdf()
-  else if (kind === 'md') v.openMd()
-  else if (kind === 'csv') v.openCsv()
-  else if (kind === 'code') v.openCode()
+/** open a preview for a block reference (source chip / action) — the item
+ *  carries no server file, so Preview renders what it can (or “unavailable”) */
+function openPreview(v: V, kind: PreviewKind, name = '') {
+  v.previewFile({ kind, name, open: kind })
 }
 
 function runAction(v: V, action: MsgAction['action']) {
   if (action === 'copy') v.copyCode()
-  else if (action === 'retry') v.setError()
   else openPreview(v, action)
 }
 
@@ -498,7 +495,7 @@ export function MessageView({
   isLast,
 }: {
   message: Message
-  /** overrides the message's render state (demo switcher / live stream) */
+  /** overrides the message's render state (error card / approval / stream) */
   state?: MsgState
   /** live typing caret on the final text block */
   typing?: boolean
@@ -580,12 +577,8 @@ export function MessageView({
                 {v.errorAction === 'providers' ? t('chat.noProviderTitle') : t('chat.errorTitle')}
               </div>
               <div className="mt-0.5 text-ui leading-normal text-danger-text">
-                {/* the SPECIFIC live error when present; the demo card keeps its
-                    generic copy + fake trace tail */}
+                {/* the SPECIFIC error when present; a generic fallback otherwise */}
                 {v.errorDetail ?? t('chat.errorBody')}
-                {v.advanced && !v.errorDetail && (
-                  <span className="font-mono text-eyebrow text-danger-text"> · err 503 · stream_closed</span>
-                )}
                 {/* B4 — correlation id: quote this to match server logs */}
                 {v.errorRequestId && (
                   <div className="mt-1 font-mono text-eyebrow text-muted">req {v.errorRequestId}</div>

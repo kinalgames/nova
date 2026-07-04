@@ -28,10 +28,10 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## Trạng thái repo
 
 - **CI XANH** (gates + e2e). Push thẳng main, mỗi commit kèm "Verified:".
-- Web: 607 unit tổng (`npm run test` root; web 488/53 file) +
-  25 e2e · coverage floors web **95/90/94/96** (branches 90.08 sát floor,
-  ĐỪNG hạ — Phase C xóa demo sẽ đổi pool). Unit suite đã chuyển sang
-  fixture-world default (Phase B) — xem mục "Gỡ demo mode".
+- 597 unit tổng (`npm run test` root; web 478/51 file) + 25 e2e · coverage
+  floors web **95/90/94/96** (branches 90.18, jitter ±1 point đã quan sát —
+  giữ buffer ≥3 khi thêm/xóa test). Demo mode ĐÃ XÓA — unit suite chạy
+  fixture thật + hermetic SSE; xem mục "Gỡ demo mode".
 - Dev local: web `npm run dev` (:5173); api `cd apps/api && npx wrangler
   dev --port 8787` (session bash `dev`; **restart wrangler sau khi đổi
   `.dev.vars`**). D1 local đã migrate tới `0001` (provider_credential).
@@ -299,11 +299,38 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
     → greeting), accent swatch + hidden file input UI (ProjectConfig),
     QuietMode name-fallback + Shift+Enter-không-send. Branches 90.08%
     (floor 90 — sát, để Phase C nới khi xóa demo-defensive branches).
-- **Phase C (KẾ TIẾP)**: xóa 7 routes `demo.*.tsx` + 3 seed
-  `data/seed*.ts` + `services/chat.ts` + WorldLink demo-logic +
-  DEMO_PERSIST_KEY + isDemo/hasDemo + entry "Khám phá demo" (Auth.tsx)
-  + `/demo` pathToView. Fixture phải standalone (inline seed vào
-  test/). E2e có demo flow nào thì cập nhật theo.
+- **Phase C (DONE — cùng phiên)**: demo mode ĐÃ XÓA HOÀN TOÀN.
+  - Xóa: 7 routes `demo.*.tsx`, `data/seed*.ts` (cả en/vi/test),
+    `services/chat.ts` (composeReply), WorldLink (→ Link thường),
+    DEMO_PERSIST_KEY/persistKeyFor, StoreProvider `demo` prop,
+    isDemo/hasDemo/exitDemo/demo switcher + setStream/setError/
+    setApproval (setDone GIỮ — stop/clear thật), badge DEMO TopBar,
+    entry "Khám phá demo" (Auth), `/demo` pathToView, i18n demo keys,
+    flag `demo` trên Conversation/AuthProfile/StagedFile.
+  - Preview real-source: `previewFile` là opener duy nhất (openMd/
+    openCsv/openPdf/openCode/openLightbox đã xóa); không source
+    (fileId/url) → panel "không có bản xem trước" (i18n
+    preview.unavailable), ảnh giữ gradient placeholder.
+    downloadPreview/openPreviewExternal fetch bản THẬT theo
+    fileId/url (downloadUrl helper), ẩn nút khi không có source —
+    hết sample-body giả (`previewSample` đã xóa). Composer bỏ menu
+    "Chụp màn hình" giả (backlog: capture thật ở desktop app).
+    MessageView bỏ fake "err 503" span khi thiếu errorDetail.
+  - Test infra: `test/showcase.ts` = data test-owned (vịnh viễn,
+    KHÔNG có trong product); `showcaseFixture()` (fixture.ts);
+    setup.ts hermetic fetch trả **SSE Nova-contract** cho POST
+    /v1/chat (MOCK_REPLY) → send-tests chạy qua streamChat parser
+    THẬT; util.tsx bỏ world:'demo' (còn default fixture · 'real' ·
+    auth-path bare). Mid-stream tests dùng per-file vi.mock llm
+    (hangingStream).
+  - E2e: `e2e/seed.ts` — seedApp (localStorage PERSIST_KEY + token,
+    local-first boot thật) + mockChat (route /v1/chat SSE, capture
+    request → assert system prompt thật chứa instructions Aurora).
+    25/25 xanh.
+  - CV state condition: `(errorHere || respApproval || isStream)` —
+    approval/stream renderer GIỮ cho agentic, reachable + testable.
+  - Coverage sau xóa demo: pool 2099 branches; actual 90.18 (buffer
+    +3 trên jitter ±1 đã quan sát), floors giữ 95/90/94/96.
 
 ### D5 email verification (2026-07-04)
 
@@ -403,9 +430,9 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
 
 ## Số liệu gate hiện hành
 
-- typecheck 0 · lint 0 (7 warnings pre-existing trong store.tsx) ·
-  unit web 488/488 (~26s) · e2e 25/25 (~16s) · coverage web 96.08 /
-  90.08 / 95.8 / 97.57 trên floors 95/90/94/96 · build sạch.
+- typecheck 0 · lint 0 (warnings pre-existing trong store.tsx) · unit
+  597/597 root (web 478, ~27s) · e2e 25/25 (~13s) · coverage web 95.97 /
+  90.18 / 95.9 / 97.63 trên floors 95/90/94/96 · build sạch.
 - Lệnh chuẩn trước commit:
   `npm run typecheck && npm run lint && npm run test && npm run build && git commit …`
   (e2e + coverage thêm khi chạm UI/logic tương ứng).

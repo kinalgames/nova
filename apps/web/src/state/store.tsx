@@ -27,7 +27,6 @@ import {
   type ProviderId,
   type SlotId,
 } from '../data/defs'
-import { getSeed } from '../data/seed'
 import type {
   AuthProfile,
   AuthView,
@@ -46,8 +45,7 @@ import {
   exportMarkdown,
   groupConvs,
 } from './organize'
-import { loadPersisted, PERSIST_KEY, persistKeyFor } from './persist'
-import { composeReply, estimateTokens, thinkingDelay } from '../services/chat'
+import { loadPersisted, PERSIST_KEY } from './persist'
 import { HAS_API, streamChat } from '../services/llm'
 import {
   changePassword as changePasswordApi,
@@ -88,13 +86,13 @@ import {
   appendToLeaf,
   emptyThread,
   sanitizeThreads,
-  fromLinear,
   selectSibling,
   siblingInfo,
   updateMessage,
   visiblePath,
 } from './thread'
-import { describeUpload, downloadFile, openFile, previewSample } from '../services/files'
+import { describeUpload, downloadFile, downloadUrl } from '../services/files'
+import { fetchFileObjectUrl } from '../services/preview'
 
 const ACCENT_DEFAULT = 'var(--accent)'
 
@@ -103,13 +101,6 @@ const ACCENT_DEFAULT = 'var(--accent)'
 export const HOME_TRAY = '__home__'
 
 const stagedKeyOf = (nav: NavState) => (nav.view === 'home' ? HOME_TRAY : nav.activeConv)
-
-/** demo-mode stand-in for the LLM auto-title: first non-empty line of the
- * prompt, capped, so markdown fences and newlines stay out of the sidebar */
-function titleFrom(text: string): string {
-  const line = (text.split('\n').find((l) => l.trim()) ?? text).trim()
-  return line.length > 48 ? `${line.slice(0, 48)}…` : line
-}
 
 const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
@@ -129,8 +120,7 @@ export interface NavState {
 type Navigate = ReturnType<typeof useNavigate>
 
 function pathToView(rawPathname: string): { view: ViewName; authView: AuthView } {
-  // the demo tree mirrors the app routes under /demo — same views
-  const pathname = rawPathname.replace(/^\/demo(?=\/|$)/, '') || '/'
+  const pathname = rawPathname || '/'
   if (pathname.startsWith('/chat/')) return { view: 'conversation', authView: null }
   if (pathname.startsWith('/projects/') && pathname.endsWith('/config'))
     return { view: 'projectcfg', authView: null }
@@ -265,10 +255,8 @@ function sanitizeSlots(slots: Record<SlotId, ModelRef> | undefined): Record<Slot
   return { smart: fix('smart'), fast: fix('fast') }
 }
 
-function initialState(demo: boolean): NovaState {
-  const p = loadPersisted(persistKeyFor(demo))
-  // the language detected at first boot decides which seed bundle persists
-  const seed = getSeed()
+function initialState(): NovaState {
+  const p = loadPersisted(PERSIST_KEY)
   const noPresets = { code: false, design: false, research: false, writing: false, data: false }
   return {
     advanced: p.advanced ?? true,
@@ -286,45 +274,21 @@ function initialState(demo: boolean): NovaState {
     errorRequestId: null,
     errorAction: null,
     errorConv: null,
-    projects:
-      p.projects ??
-      (demo
-        ? seed.projects.map((d) => ({
-            ...d,
-            presets:
-              d.id === 'aurora'
-                ? { code: false, design: true, research: true, writing: true, data: false }
-                : noPresets,
-            files: d.id === 'aurora' ? seed.projectFiles : [],
-          }))
-        : [
-            {
-              id: 'chung',
-              name: i18n.t('projects.defaultName'),
-              description: '',
-              accent: 'var(--faint)',
-              isDefault: true,
-              presets: noPresets,
-              files: [],
-            },
-          ]),
-    // seeds get staggered activity times so the date groups have content:
-    // c1 today · c2 yesterday · c3 this week · c4 older
-    conversations:
-      p.conversations ??
-      (demo
-        ? seed.convs.map((c, i) => ({
-            ...c,
-            updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000,
-          }))
-        : []),
+    projects: p.projects ?? [
+      {
+        id: 'chung',
+        name: i18n.t('projects.defaultName'),
+        description: '',
+        accent: 'var(--faint)',
+        isDefault: true,
+        presets: noPresets,
+        files: [],
+      },
+    ],
+    conversations: p.conversations ?? [],
     deleting: [],
-    activeConv: p.activeConv ?? (demo ? 'c1' : ''),
-    threads: p.threads
-      ? sanitizeThreads(p.threads)
-      : demo
-        ? Object.fromEntries(Object.entries(seed.threads).map(([id, ms]) => [id, fromLinear(ms)]))
-        : {},
+    activeConv: p.activeConv ?? '',
+    threads: p.threads ? sanitizeThreads(p.threads) : {},
     editingMsg: null,
     copiedMsg: null,
     toast: null,
@@ -349,11 +313,7 @@ function initialState(demo: boolean): NovaState {
     barOn: p.barOn ?? true,
     copied: false,
     tokenPct: '42%',
-    profiles:
-      p.profiles ??
-      (demo
-        ? structuredClone(seed.profiles)
-        : { claude: [], gemini: [], openai: [], ollama: [] }),
+    profiles: p.profiles ?? { claude: [], gemini: [], openai: [], ollama: [] },
     autoRotate: p.autoRotate ?? true,
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
@@ -366,15 +326,7 @@ function initialState(demo: boolean): NovaState {
       writing: true,
       data: false,
     },
-    staged: demo
-      ? {
-          // the demo conversation's tray showcases the staged-attachment UI
-          c1: [
-            { id: 'demo-img', kind: 'image', name: 'moodboard.png', size: '820 KB', demo: true },
-            { id: 'demo-pdf', kind: 'pdf', name: 'Brief-Aurora.pdf', size: '1.2 MB', demo: true },
-          ],
-        }
-      : {},
+    staged: {},
     accent: p.accent ?? ACCENT_DEFAULT,
     showShortcutsBar: true,
     vw: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -404,15 +356,12 @@ export function StoreProvider({
   children,
   initial,
   onStore,
-  demo = false,
 }: {
   children: ReactNode
   initial?: Partial<NovaState>
   onStore?: (store: Store) => void
-  /** demo world (/demo routes): seeded showcase data, its own namespace */
-  demo?: boolean
 }) {
-  const [s, setS] = useState<NovaState>(() => ({ ...initialState(demo), ...initial }))
+  const [s, setS] = useState<NovaState>(() => ({ ...initialState(), ...initial }))
   const sRef = useRef(s)
   sRef.current = s
   const [prefersDark, setPrefersDark] = useState(
@@ -437,14 +386,13 @@ export function StoreProvider({
     // sRef (not s) so the dependency list stays the explicit persisted fields
     const p = persistSliceOf(sRef.current)
     try {
-      localStorage.setItem(persistKeyFor(demo), JSON.stringify(p))
+      localStorage.setItem(PERSIST_KEY, JSON.stringify(p))
     } catch {
       /* ignore */
     }
     // BE2: mirror the change to the per-user op-log (debounced diff push).
     // Only after the boot pull primed `syncedRecords` — never race hydration.
-    // The demo world never syncs.
-    if (!demo && syncReady() && syncedRecords !== null) {
+    if (syncReady() && syncedRecords !== null) {
       clearTimeout(syncPushTimer)
       const snapshot = p
       syncPushTimer = setTimeout(() => {
@@ -460,7 +408,6 @@ export function StoreProvider({
       }, 800)
     }
   }, [
-    demo,
     s.theme,
     s.advanced,
     s.accent,
@@ -567,7 +514,7 @@ export function StoreProvider({
   // wins for records it has; a fresh server gets the local data pushed up
   // (that IS the localStorage import path).
   const hydrateSync = useCallback(() => {
-    if (demo || !syncReady()) return () => {}
+    if (!syncReady()) return () => {}
     let stop = false
     void pullOps(0).then((res) => {
       if (stop || !res) return
@@ -608,7 +555,7 @@ export function StoreProvider({
     // start at MOUNT in any API-backed world: the manager itself waits for a
     // token (gating on login-derived state here once left the socket dead —
     // no dep changed after sign-in, so the effect never re-ran)
-    if (demo || !HAS_API) return
+    if (!HAS_API) return
     return startLiveSync({
       onFrame: (f) => {
         if (f.type === 'hello') {
@@ -629,13 +576,13 @@ export function StoreProvider({
       },
     })
     // s.accountId: login/logout flips syncReady — reconnect under the new identity
-  }, [demo, s.accountId, applyRemoteOps, pullDelta])
+  }, [s.accountId, applyRemoteOps, pullDelta])
 
   // BE3: real mode reads provider credentials from the server (sealed BYOK).
   // The first hydration MIGRATES any client-held real profiles up once — the
   // secret leaves the browser one last time, then only hints remain.
   const hydrateCredentials = useCallback(async () => {
-    if (demo || !HAS_API || !getToken()) return
+    if (!HAS_API || !getToken()) return
     let rows = await listCredentials()
     if (!rows) return
     if (rows.length === 0) {
@@ -643,7 +590,7 @@ export function StoreProvider({
       let migrated = false
       for (const pid of Object.keys(local) as ProviderId[]) {
         for (const f of local[pid] ?? []) {
-          if (!f.demo && !f.server && f.credential.trim()) {
+          if (!f.server && f.credential.trim()) {
             await addCredential(pid, f.kind, f.name, f.credential)
             migrated = true
           }
@@ -662,13 +609,13 @@ export function StoreProvider({
     const profiles: NovaState['profiles'] = { claude: [], gemini: [], openai: [], ollama: [] }
     for (const r of rows) profiles[r.providerId]?.push(fromServer(r))
     set({ profiles })
-  }, [demo, set])
+  }, [set])
 
   // Social OAuth lands with a fresh token but NOTHING persisted about the
   // account — boot resolves the session user once and adopts it (and heals
   // stale info for every login kind). Mirrors submitAuth's account guard.
   const hydrateUser = useCallback(async () => {
-    if (demo || !HAS_API || !getToken()) return
+    if (!HAS_API || !getToken()) return
     const me = await fetchMe()
     if (!me) return
     const prev = sRef.current
@@ -681,7 +628,7 @@ export function StoreProvider({
       }
       __resetSync()
       set(() => ({
-        ...initialState(false),
+        ...initialState(),
         accountId: me.id,
         userName: me.name,
         userEmail: me.email,
@@ -697,7 +644,7 @@ export function StoreProvider({
         hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
       })
     }
-  }, [demo, set])
+  }, [set])
 
   /** adopt a signed-in profile into local state — resets the device when a
    *  DIFFERENT account was here before (never mix two users' local data) */
@@ -712,7 +659,7 @@ export function StoreProvider({
         }
         __resetSync()
         set(() => ({
-          ...initialState(false),
+          ...initialState(),
           accountId: me.id,
           userName: me.name,
           userEmail: me.email,
@@ -735,10 +682,10 @@ export function StoreProvider({
   // T8: real mode also pulls the server-side month usage roll-up — the
   // Settings meter then reflects EVERY device, not just this one's threads
   const hydrateUsage = useCallback(async () => {
-    if (demo || !HAS_API || !getToken()) return
+    if (!HAS_API || !getToken()) return
     const rows = await fetchMonthUsage()
     if (rows) set({ serverUsage: rows })
-  }, [demo, set])
+  }, [set])
 
   useEffect(() => {
     triggerCredHydrate = () => {
@@ -827,12 +774,11 @@ export function StoreProvider({
 
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (st) => st.location.pathname })
-  /** world-aware navigate — the demo tree mirrors the app routes under /demo */
   const goTo = useCallback(
     (to: string, params?: Record<string, string>) => {
-      void navigate({ to: demo ? `/demo${to}` : to, params } as Parameters<typeof navigate>[0])
+      void navigate({ to, params } as Parameters<typeof navigate>[0])
     },
-    [navigate, demo],
+    [navigate],
   )
   const settingsTabSearch = useRouterState({
     select: (st) => (st.location.search as { settings?: SettingsTab }).settings,
@@ -915,32 +861,19 @@ export function StoreProvider({
       const proj = prev.projects.find(
         (p) => p.id === prev.conversations.find((c) => c.id === conv)?.projectId,
       )
-      const projName = proj?.name ?? i18n.t('projects.defaultName')
       // routing: the active slot names a {provider, model}; rotation picks the
-      // auth profile (sticky + ordered fallback) the request bills against
+      // auth profile (sticky + ordered fallback) the request bills against —
+      // for EVERY provider the proxy speaks (claude/gemini/openai/ollama)
       const ref = prev.slots[prev.activeSlot]
-      const model = findModel(ref)
-      const profile = pickProfile(
-        prev.profiles[ref.providerId] ?? [],
-        prev.stickyProfile[ref.providerId],
-        prev.autoRotate,
-      )
-      if (profile && prev.stickyProfile[ref.providerId] !== profile.id)
-        set((x) => ({ stickyProfile: { ...x.stickyProfile, [ref.providerId]: profile.id } }))
-
-      // REAL provider path: a user-added (non-demo) profile + a reachable API
-      // routes the chat through nova-api instead of the fake layer — for EVERY
-      // provider the proxy speaks (claude/gemini/openai/ollama). Rotation over
-      // the real profiles only — seeded showcase credentials never leave
-      // the device.
-      const liveProfile =
-        HAS_API
-          ? pickProfile(
-              (prev.profiles[ref.providerId] ?? []).filter((f) => !f.demo),
-              prev.stickyProfile[ref.providerId],
-              prev.autoRotate,
-            )
-          : null
+      const liveProfile = HAS_API
+        ? pickProfile(
+            prev.profiles[ref.providerId] ?? [],
+            prev.stickyProfile[ref.providerId],
+            prev.autoRotate,
+          )
+        : null
+      if (liveProfile && prev.stickyProfile[ref.providerId] !== liveProfile.id)
+        set((x) => ({ stickyProfile: { ...x.stickyProfile, [ref.providerId]: liveProfile.id } }))
       if (liveProfile) {
         const replyId = uid()
         const instructions = proj?.isDefault ? '' : (proj?.description ?? '')
@@ -1100,103 +1033,29 @@ export function StoreProvider({
         return
       }
 
-      // REAL product: no fake replies. Surface a clear, PERSISTENT error card
-      // in the chat (not a 2s toast that vanishes) with a button to add a
-      // provider — reuses the same danger card as live provider errors.
-      if (!demo) {
-        const replyId = uid()
-        set((x) => ({
-          typing: false,
-          respState: 'error',
-          errorDetail: i18n.t('chat.noProviderBody'),
-          errorRequestId: null,
-          errorAction: 'providers',
-          errorConv: conv,
-          threads: {
-            ...x.threads,
-            [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
-              id: replyId,
-              role: 'assistant',
-              who: (prev.assistantName.trim() || 'Nova').toUpperCase(),
-              blocks: [{ type: 'text', size: 'lead', text: '' }],
-            }),
-          },
-        }))
-        return
-      }
-
-      const reply = composeReply(prompt, {
-        slot: prev.activeSlot,
-        thinking: prev.thinkingLevel,
-        project: projName,
-        // project instructions steer the reply — the default project has none
-        instructions: proj?.isDefault ? '' : (proj?.description ?? ''),
-      })
-      const words = reply.split(' ')
-      const step = model.pace
-      // fake usage estimate — the real backend records exact counts later
-      const usage = {
-        inputTokens: estimateTokens(prompt),
-        outputTokens: estimateTokens(reply),
-        modelId: model.id,
-        profileId: profile?.id ?? '',
-        at: Date.now(),
-      }
+      // No usable profile: surface a clear, PERSISTENT error card in the chat
+      // (not a 2s toast that vanishes) with a button to add a provider —
+      // reuses the same danger card as live provider errors.
       const replyId = uid()
       set((x) => ({
-        typing: true,
-        typingLabel:
-          prev.thinkingLevel === 'off' ? i18n.t('chat.writingLabel') : i18n.t('chat.thinkingLabel'),
-        // message activity moves the conversation into today's group
-        conversations: x.conversations.map((c) =>
-          c.id === conv ? { ...c, updatedAt: Date.now() } : c,
-        ),
+        typing: false,
+        respState: 'error',
+        errorDetail: i18n.t('chat.noProviderBody'),
+        errorRequestId: null,
+        errorAction: 'providers',
+        errorConv: conv,
+        threads: {
+          ...x.threads,
+          [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
+            id: replyId,
+            role: 'assistant',
+            who: (prev.assistantName.trim() || 'Nova').toUpperCase(),
+            blocks: [{ type: 'text', size: 'lead', text: '' }],
+          }),
+        },
       }))
-      // after a "thinking" pause, append an empty Nova bubble and stream into it
-      t1.current = setTimeout(() => {
-        set((x) => ({
-          typingLabel: i18n.t('chat.writingLabel'),
-          threads: {
-            ...x.threads,
-            [conv]: appendChild(x.threads[conv] ?? emptyThread(), parentId, {
-              id: replyId,
-              role: 'assistant',
-              who: (prev.assistantName.trim() || 'Nova').toUpperCase(),
-              blocks: [{ type: 'text', size: 'lead', text: '' }],
-            }),
-          },
-        }))
-        let i = 0
-        tc.current = setInterval(() => {
-          i += 1
-          set((x) => ({
-            threads: {
-              ...x.threads,
-              [conv]: updateMessage(x.threads[conv], replyId, {
-                blocks: [{ type: 'text', size: 'lead', text: words.slice(0, i).join(' ') }],
-              }),
-            },
-          }))
-          if (i >= words.length) {
-            clearInterval(tc.current)
-            set((x) => ({
-              typing: false,
-              tokenPct: `${Math.min(98, 42 + words.length)}%`,
-              // D3 demo stand-in: the finished first reply names an unnamed
-              // conversation from the prompt (the real world asks the LLM)
-              conversations: x.conversations.map((k) =>
-                k.id === conv && k.title === null ? { ...k, title: titleFrom(prompt) } : k,
-              ),
-              threads: {
-                ...x.threads,
-                [conv]: updateMessage(x.threads[conv], replyId, { usage }),
-              },
-            }))
-          }
-        }, step)
-      }, thinkingDelay(prev.thinkingLevel))
     },
-    [set, demo, navigate],
+    [set, navigate],
   )
 
   // BYOK gate: with NO live profile for the active model, sending would only
@@ -1204,13 +1063,12 @@ export function StoreProvider({
   // screen IS the notification. Block the mutation, keep the user's draft
   // intact, and pulse the nudge to pull the eye to the one next step.
   const nudgeInstead = useCallback((): boolean => {
-    if (demo) return false
     const st = sRef.current
     const providerId = st.slots[st.activeSlot].providerId
-    if ((st.profiles[providerId] ?? []).some((f) => !f.demo)) return false
+    if ((st.profiles[providerId] ?? []).length > 0) return false
     set((x) => ({ nudgeNonce: x.nudgeNonce + 1 }))
     return true
-  }, [set, demo])
+  }, [set])
 
   const send = useCallback(() => {
     // empty composer is a no-op: never send a message the user didn't write
@@ -1425,7 +1283,7 @@ export function StoreProvider({
         set({ toast: i18n.t('upload.max') })
         return
       }
-      const live = HAS_API && !demo && !!getToken()
+      const live = HAS_API && !!getToken()
       // instant validation — an impossible file becomes a danger pill with a
       // reason, no network call ever fires
       const reason = live ? rejectUpload(file) : null
@@ -1460,7 +1318,7 @@ export function StoreProvider({
         else patchItem({ progress: undefined, error: i18n.t('upload.failed') })
       })
     },
-    [set, demo],
+    [set],
   )
 
   // optimistic conversation delete: flag it, then remove for real after a 5s
@@ -1477,14 +1335,14 @@ export function StoreProvider({
         // and its staged tray — nothing may leak
         // a live share dies with its conversation (fail-soft)
         const shared = sRef.current.conversations.find((k) => k.id === id)?.shareId
-        if (shared && HAS_API && !demo) void revokeShare(shared)
+        if (shared && HAS_API) void revokeShare(shared)
         const th = sRef.current.threads[id]
         if (th) {
           for (const m of Object.values(th.byId)) {
             for (const b of m.blocks) {
               if (b.type !== 'files') continue
               for (const f of b.items) {
-                if (f.fileId && HAS_API && !demo) void deleteFile(f.fileId)
+                if (f.fileId && HAS_API) void deleteFile(f.fileId)
                 if (f.url?.startsWith('blob:')) URL.revokeObjectURL(f.url)
               }
             }
@@ -1494,7 +1352,7 @@ export function StoreProvider({
           if (f.url?.startsWith('blob:')) URL.revokeObjectURL(f.url)
           // uploaded-but-never-sent tray files die with the conversation too;
           // in-flight ones delete themselves when they land
-          if (f.fileId && HAS_API && !demo) void deleteFile(f.fileId)
+          if (f.fileId && HAS_API) void deleteFile(f.fileId)
           if (f.progress !== undefined) abortedUploads.add(f.id)
         }
         set((x) => {
@@ -1563,7 +1421,6 @@ export function StoreProvider({
       deriveValues(s, set, {
         go,
         goTo,
-        demo,
         send,
         stop,
         copyCode,
@@ -1581,7 +1438,7 @@ export function StoreProvider({
         setFeedback,
         adoptAccount,
       }),
-    [s, set, go, goTo, demo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount],
+    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount],
   )
 
   const store: Store = useMemo(
@@ -1605,9 +1462,7 @@ function deriveValues(
   set: (u: Updater) => void,
   extra: {
     go: (v: ViewName) => void
-    /** world-aware path navigate (prefixes /demo inside the demo tree) */
     goTo: (to: string, params?: Record<string, string>) => void
-    demo: boolean
     send: () => void
     stop: () => void
     copyCode: () => void
@@ -1629,7 +1484,6 @@ function deriveValues(
   const {
     go,
     goTo,
-    demo,
     send,
     stop,
     copyCode,
@@ -1775,11 +1629,11 @@ function deriveValues(
           exportJsonOf(c, s.threads[c.id]),
           'application/json',
         ),
-      // BE4 — create (or re-copy) the real unlisted share link; the demo
+      // BE4 — create (or re-copy) the real unlisted share link; without an
       // world keeps its showcase copy behaviour
       share: () => {
         void (async () => {
-          if (!HAS_API || demo) {
+          if (!HAS_API) {
             try {
               await navigator.clipboard?.writeText(`https://nova.app/share/${c.id}`)
             } catch {
@@ -1932,7 +1786,6 @@ function deriveValues(
     return { inTok, outTok, cost }
   })()
 
-  const activeIsDemo = !!activeConvObj?.demo
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
   const toolToggle = (k: keyof NovaState['tools']) => () =>
@@ -1981,7 +1834,7 @@ function deriveValues(
     const fallbackName = kind === 'account' ? t('settings.kindAccount') : t('settings.kindApiKey')
     // real mode with a session seals the credential server-side — the browser
     // keeps only the returned hint
-    if (!demo && HAS_API && getToken()) {
+    if (HAS_API && getToken()) {
       void addCredential(providerId, kind, name.trim() || fallbackName, credential.trim()).then(
         (row) => {
           if (!row) return
@@ -2048,7 +1901,7 @@ function deriveValues(
     // a server-backed credential gets a REAL probe: a 1-token chat through
     // the stored id against the provider's cheapest model
     const row = s.profiles[providerId]?.find((f) => f.id === profileId)
-    if (row?.server && !demo && HAS_API) {
+    if (row?.server && HAS_API) {
       set({ testingProfile: profileId })
       const model = findProvider(providerId).models.at(-1)?.id ?? ''
       void pingCredential(profileId, providerId, model).then((status) => {
@@ -2175,7 +2028,7 @@ function deriveValues(
   )
   const sideConvs = sideList.map(mapConv)
   // a real-product fresh boot has no conversations yet — the sidebar invites
-  const sidebarEmpty = !demo && s.conversations.filter((c) => !c.archived).length === 0
+  const sidebarEmpty = s.conversations.filter((c) => !c.archived).length === 0
   // date-grouped recents: pinned · hôm nay · hôm qua · tuần này · cũ hơn
   const sideGroups = groupConvs(sideList).map((g) => ({
     id: g.id,
@@ -2202,8 +2055,6 @@ function deriveValues(
     go: () => go('conversation'),
   }))
 
-  const stBg = (val: string) => (rs === val ? 'var(--panel)' : 'transparent')
-  const stFg = (val: string) => (rs === val ? 'var(--text)' : 'var(--muted)')
 
   return {
     webCheck: chk('web'),
@@ -2245,8 +2096,6 @@ function deriveValues(
     toggleArchived: () => set((x) => ({ archivedOpen: !x.archivedOpen })),
     toast: s.toast,
     sidebarEmpty,
-    isDemo: demo,
-    exitDemo: () => navigate({ to: '/' }),
     pickProjects,
     setBg: nav.settingsOpen ? 'var(--accent-soft)' : 'transparent',
     setFg: nav.settingsOpen ? accentText : 'var(--text-2)',
@@ -2255,7 +2104,7 @@ function deriveValues(
     // BYOK nudge — the ACTIVE model's provider has no live profile: chat
     // surfaces “connect a provider” instead of a silent empty screen
     needsProvider:
-      !demo && (s.profiles[s.slots[s.activeSlot].providerId] ?? []).filter((f) => !f.demo).length === 0,
+      (s.profiles[s.slots[s.activeSlot].providerId] ?? []).length === 0,
     nudgeNonce: s.nudgeNonce,
     nudgeLogin: !s.accountId,
     nudgeGo: () => {
@@ -2332,7 +2181,7 @@ function deriveValues(
     // D — profile, data controls, cheatsheet
     stylesState: s.styles,
     userName: s.userName,
-    userEmail: s.userEmail ?? t('user.demoEmail'),
+    userEmail: s.userEmail ?? '',
     userFirstName: s.userName.trim().split(/\s+/)[0] || s.userName,
     setUserName: (name: string) => set({ userName: name }),
     assistantName: s.assistantName,
@@ -2340,17 +2189,17 @@ function deriveValues(
       set({ assistantName: name })
       // keep the server column in step (it feeds /v1/me and the onboarding
       // marker) — debounced so typing doesn't storm PATCH requests
-      if (!HAS_API || demo || !getToken()) return
+      if (!HAS_API || !getToken()) return
       clearTimeout(nameSaveTimer)
       nameSaveTimer = setTimeout(() => void updateMe({ assistantName: name.trim() || 'Nova' }), 800)
     },
     systemPrompt: s.systemPrompt,
     setSystemPrompt: (text: string) => set({ systemPrompt: text }),
     exportAllData: () =>
-      downloadFile('nova-data.json', localStorage.getItem(persistKeyFor(demo)) ?? '{}', 'application/json'),
+      downloadFile('nova-data.json', localStorage.getItem(PERSIST_KEY) ?? '{}', 'application/json'),
     /* v8 ignore next 4 — hard navigation, not reachable from the unit env */
     clearAllData: () => {
-      localStorage.removeItem(persistKeyFor(demo))
+      localStorage.removeItem(PERSIST_KEY)
       window.location.reload()
     },
     cheatsheet: s.cheatsheet,
@@ -2386,15 +2235,6 @@ function deriveValues(
     traceCaret: s.traceOpen ? t('chat.traceHide') : rs === 'stream' ? '' : t('chat.traceCaretDone'),
     toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
     traceOpen: s.traceOpen,
-    setStream: () => set({ respState: 'stream' }),
-    setDone: () => set({ respState: 'done' }),
-    setError: () => set({ respState: 'error' }),
-    stBgStream: stBg('stream'),
-    stFgStream: stFg('stream'),
-    stBgDone: stBg('done'),
-    stFgDone: stFg('done'),
-    stBgError: stBg('error'),
-    stFgError: stFg('error'),
     // composer
     chatProject: activeProject?.name ?? t('projects.defaultName'),
     staged: activeStaged,
@@ -2410,7 +2250,7 @@ function deriveValues(
         // an in-flight upload so it deletes itself when it lands
         const item = (x.staged[key] ?? []).find((f) => f.id === id)
         if (item?.url?.startsWith('blob:')) URL.revokeObjectURL(item.url)
-        if (item?.fileId && HAS_API && !demo) void deleteFile(item.fileId)
+        if (item?.fileId && HAS_API) void deleteFile(item.fileId)
         if (item && item.progress !== undefined) abortedUploads.add(item.id)
         return {
           staged: {
@@ -2419,9 +2259,8 @@ function deriveValues(
           },
         }
       }),
-    openLightbox: () => set({ preview: { kind: 'image', name: 'moodboard.png' } }),
     openStaged: (f: StagedFile) =>
-      set({ preview: { kind: f.kind, name: f.name, url: f.url } }),
+      set({ preview: { kind: f.kind, name: f.name, url: f.url, ...(f.fileId ? { fileId: f.fileId } : {}) } }),
     // real message attachment — carries fileId so Preview fetches the actual
     // bytes/text; a local url (staged blob) is used directly when present
     previewFile: (f: MsgAttachment) =>
@@ -2444,25 +2283,29 @@ function deriveValues(
     isPrevCode: s.preview?.kind === 'code',
     isPrevCsv: s.preview?.kind === 'csv',
     isPrevMd: s.preview?.kind === 'md',
-    previewMeta:
-      s.preview?.meta ??
-      (s.preview?.kind === 'image'
-        ? '1440×960 · 820 KB'
-        : (getSeed().previewMeta as Record<string, string>)[s.preview?.kind || ''] || ''),
-    openPdf: () => set({ preview: { kind: 'pdf', name: getSeed().previewNames.pdf } }),
-    openCode: () => set({ preview: { kind: 'code', name: getSeed().previewNames.code } }),
-    openCsv: () => set({ preview: { kind: 'csv', name: getSeed().previewNames.csv } }),
-    openMd: () => set({ preview: { kind: 'md', name: getSeed().previewNames.md } }),
+    previewMeta: s.preview?.meta ?? '',
     closePreview: () => set({ preview: null }),
+    // download / open ship the bytes the app actually has — the server copy
+    // (fileId) or the local object URL — never generated stand-in content
     downloadPreview: () => {
-      if (!s.preview) return
-      const { type, body } = previewSample(s.preview.kind)
-      downloadFile(s.preview.name, body, type)
+      const p = s.preview
+      if (!p) return
+      if (p.fileId)
+        void fetchFileObjectUrl(p.fileId).then((u) => {
+          if (!u) return
+          downloadUrl(p.name, u)
+          setTimeout(() => URL.revokeObjectURL(u), 0)
+        })
+      else if (p.url) downloadUrl(p.name, p.url)
     },
     openPreviewExternal: () => {
-      if (!s.preview) return
-      const { type, body } = previewSample(s.preview.kind)
-      openFile(body, type)
+      const p = s.preview
+      if (!p) return
+      if (p.fileId)
+        void fetchFileObjectUrl(p.fileId).then((u) => {
+          if (u) window.open(u, '_blank', 'noopener')
+        })
+      else if (p.url) window.open(p.url, '_blank', 'noopener')
     },
     scrollRef,
     // theme: CSS owns the palette; we only signal which sheet we're on
@@ -2483,7 +2326,7 @@ function deriveValues(
       // the server column is the durable onboarding marker — social logins
       // route through /onboarding until it is set (fire-and-forget: the
       // op-log sync still carries the name for every device either way)
-      if (HAS_API && !demo && getToken()) void updateMe({ assistantName })
+      if (HAS_API && getToken()) void updateMe({ assistantName })
       navigate({ to: '/' })
     },
     showAuth: nav.authView !== null,
@@ -2491,9 +2334,9 @@ function deriveValues(
     isLogin: nav.authView !== 'signup',
     // D4 — account security & deletion
     hasPassword: s.hasPassword ?? false,
-    accountDeletable: HAS_API && !demo && !!s.userEmail,
+    accountDeletable: HAS_API && !!s.userEmail,
     // D5 — soft email-verification nudge: shown while signed in and unverified
-    needsVerify: !demo && nav.authView === null && !!s.accountId && s.emailVerified === false,
+    needsVerify: nav.authView === null && !!s.accountId && s.emailVerified === false,
     emailVerified: s.emailVerified === true,
     resendVerify: async (): Promise<void> => {
       const err = await resendVerification(s.userEmail ?? '')
@@ -2505,7 +2348,7 @@ function deriveValues(
       return err
     },
     deleteAccount: async (): Promise<boolean> => {
-      if (!HAS_API || demo) return false
+      if (!HAS_API) return false
       const ok = await deleteAccountApi()
       if (!ok) {
         showToast(t('account.deleteFailed'))
@@ -2524,9 +2367,9 @@ function deriveValues(
     },
     logout: async () => {
       // revoke BEFORE navigating — /login's bootstrap re-adopts any cookie
-      // session that is still alive, which would undo the logout (demo never
+      // session that is still alive, which would undo the logout (offline
       // touches the real auth server)
-      if (HAS_API && !demo) await signOut()
+      if (HAS_API) await signOut()
       set({ userEmail: undefined })
       __resetSync() // the next login re-hydrates/imports from scratch
       navigate({ to: '/login' })
@@ -2581,15 +2424,11 @@ function deriveValues(
         : () => navigate({ to: '/signup' }),
     // approval
     respApproval: rs === 'approval',
-    setApproval: () => set({ respState: 'approval', traceOpen: false }),
+    // clears any transient response state (stop a stream view, dismiss a card)
+    setDone: () => set({ respState: 'done' }),
     approveTool: () => set({ respState: 'done' }),
     denyTool: () => set({ respState: 'done' }),
-    stBgApproval: rs === 'approval' ? 'var(--panel)' : 'transparent',
-    stFgApproval: rs === 'approval' ? 'var(--text)' : 'var(--muted)',
-    // empty / demo — the scripted showcase thread belongs to the demo
-    // conversation only; every other conversation shows its real thread
-    isEmptyChat: activeThread.length === 0 && !activeIsDemo,
-    hasDemo: activeIsDemo,
+    isEmptyChat: activeThread.length === 0,
     // thinking
     thinkingLevel: s.thinkingLevel,
     thinkLabel: t(

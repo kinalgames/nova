@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 
@@ -219,14 +218,6 @@ export function Auth() {
               >
                 {v.authToggleLink}
               </button>
-            </div>
-            <div className="mt-3 text-center">
-              <Link
-                to="/demo"
-                className="text-ui text-faint underline underline-offset-2 hover:text-muted"
-              >
-                {t('authForm.tryDemo')}
-              </Link>
             </div>
           </>
         )}

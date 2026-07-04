@@ -10,10 +10,9 @@ hard borders, **flat at rest** (only overlays — palette, popovers, dropdowns,
 lightbox — cast shadow), ink-on-paper color, and type as the hero (display
 font **Fraunces**, body **Geist**, mono **Geist Mono**).
 
-> The web app runs on **fake data and a fake service layer** (kept as demo
-> mode). The behavior matches production — streaming replies, per-conversation
-> history, provider profiles, file download, validated auth — so it is a
-> runnable MVP; the real API is being built in `apps/api`.
+> The web app runs entirely on **real data and the real service layer**
+> (`apps/api` — auth, provider proxy, sealed BYOK, sync, files). Tests seed a
+> showcase fixture (`src/test/showcase.ts`); the product ships no sample data.
 
 ## Monorepo
 
@@ -100,9 +99,9 @@ Every screen and control from the design, fully interactive:
 - **Home** — time-aware greeting + intent suggestions.
 - **Conversation** — a structured **message + block model** (`MessageView`
   replays text with inline markdown, image/file attachments, a collapsible
-  tool-use trace, tables, sources, actions) and a **demo state switcher**:
-  Đang soạn (stream) · Chờ duyệt (approval) · Hoàn tất (done) · Lỗi (error).
-  The scripted showcase (c1) is seed data replayed by the same renderer.
+  tool-use trace, tables, sources, actions — renderers kept live for the
+  agentic roadmap) plus response states on the last reply: streaming ·
+  approval prompt · error card.
 - **Composer** — "Add to chat" (＋) popover with real file upload, staged
   attachments, project picker, thinking-level menu (Tắt / Thấp / Vừa / Cao),
   tool toggles.

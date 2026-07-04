@@ -25,7 +25,8 @@ export interface Preview {
   /** Object URL for a real uploaded image (optional). */
   url?: string
   /** R2 file id — when set, Preview fetches and renders the REAL content
-   *  (blob for image/pdf, text for code/csv/md); absent = demo seed doc */
+   *  (blob for image/pdf, text for code/csv/md); absent with no url =
+   *  nothing to render (Preview says so) */
   fileId?: string
   /** meta line under the title (size · pages…) for a real file */
   meta?: string
@@ -45,8 +46,6 @@ export interface StagedFile {
   /** validation/upload failure — the tray pill renders danger and the
    *  file never rides along with a send */
   error?: string
-  /** Demo placeholder (gradient image / pdf chip) when no real file. */
-  demo?: boolean
 }
 
 export type BlockTone = 'danger' | 'success' | 'warn' | 'muted' | 'accent'
@@ -92,7 +91,7 @@ export interface MsgAttachment {
 export interface MsgAction {
   icon: IconName
   label: string
-  action: 'copy' | 'retry' | PreviewKind
+  action: 'copy' | PreviewKind
 }
 
 /** a renderable content block inside a message */
@@ -104,7 +103,7 @@ export type Block =
   | { type: 'sources'; items: { n: number; label: string; open: PreviewKind }[] }
   | { type: 'actions'; items: MsgAction[] }
 
-/** assistant in-flight states (the demo switcher maps to the last message) */
+/** assistant in-flight states rendered on the last message */
 export type MsgState = 'streaming' | 'error' | 'approval'
 
 export interface Message {
@@ -133,8 +132,6 @@ export interface Conversation {
   shareId?: string
   /** the project this conversation belongs to (default 'chung') */
   projectId: string
-  /** the seeded showcase conversation that renders the scripted tool-trace */
-  demo?: boolean
   /** user-pinned to the top of the recent list */
   pinned?: boolean
   /** epoch ms of the last message activity — drives date grouping; data

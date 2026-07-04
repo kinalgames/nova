@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test'
+import { seedApp } from './seed'
+
+test.beforeEach(async ({ page }) => seedApp(page))
 
 // Mobile-truth guards — the class of bugs jsdom can never see: real layout,
 // stacking contexts and touch semantics. Runs emulated iPhone (hasTouch +
@@ -7,7 +10,7 @@ import { test, expect } from '@playwright/test'
 test('drawer conversation menu sits ABOVE the scrim and its items accept taps', async ({
   page,
 }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   await page.getByRole('button', { name: 'Mở menu' }).tap()
   await page
     .locator('[role=dialog] button[aria-label="Tùy chọn cuộc trò chuyện"]')
@@ -24,17 +27,17 @@ test('drawer conversation menu sits ABOVE the scrim and its items accept taps', 
 })
 
 test('tapping a conversation navigates and closes the drawer', async ({ page }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   await page.getByRole('button', { name: 'Mở menu' }).tap()
   await page.locator('[role=dialog] a[href*="/chat/c2"]').tap()
-  await expect(page).toHaveURL(/\/demo\/chat\/c2$/)
+  await expect(page).toHaveURL(/\/chat\/c2$/)
   await expect(page.locator('[role=dialog]')).not.toBeVisible()
 })
 
 test('touch geometry: 44px tap boxes with centered icons, compact conv rows', async ({
   page,
 }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   const centered = async (btn: ReturnType<typeof page.locator>) => {
     const b = (await btn.boundingBox())!
     const s = (await btn.locator('svg').boundingBox())!
@@ -66,7 +69,7 @@ test('touch geometry: 44px tap boxes with centered icons, compact conv rows', as
 test('no overlay steals taps from visible controls (top bar, then open drawer)', async ({
   page,
 }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   // evaluate() has no auto-wait — anchor on a rendered control first
   await expect(page.getByRole('button', { name: 'Mở menu' })).toBeVisible()
   // every visible control inside the root must be hit at its own center —
@@ -98,7 +101,7 @@ test('no overlay steals taps from visible controls (top bar, then open drawer)',
 })
 
 test('drawer delete shows a tappable undo that restores the row', async ({ page }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   await page.getByRole('button', { name: 'Mở menu' }).tap()
   const rows = page.locator('[role=dialog] a[href*="/chat/"]')
   const before = await rows.count()
@@ -115,7 +118,7 @@ test('drawer delete shows a tappable undo that restores the row', async ({ page 
 test('composer thinking menu opens ABOVE everything and the lightbox round-trips', async ({
   page,
 }) => {
-  await page.goto('/demo/chat/c1')
+  await page.goto('/chat/c1')
   await page.getByRole('button', { name: /Mức suy nghĩ/ }).tap()
   const menu = page.locator('[role=menu]')
   await expect(menu).toBeVisible()
@@ -127,8 +130,8 @@ test('composer thinking menu opens ABOVE everything and the lightbox round-trips
   })
   expect(owns).toBe(true)
   await page.keyboard.press('Escape')
-  // attachment preview lightbox opens and closes cleanly
-  await page.getByRole('button', { name: /Mở moodboard/ }).tap()
+  // message image tile opens the preview lightbox and it closes cleanly
+  await page.getByRole('button', { name: /moodboard\.png/ }).first().tap()
   await expect(page.locator('.bg-scrim-lightbox')).toBeVisible()
   await page.getByRole('button', { name: 'Đóng' }).last().tap()
   await expect(page.locator('.bg-scrim-lightbox')).not.toBeVisible()

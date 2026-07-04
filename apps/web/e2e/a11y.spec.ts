@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { seedApp } from './seed'
 
 // Contrast on a handful of small brand-coloured labels (accent/success/danger
 // on tinted chips) is tracked separately: fixing it properly needs dedicated
@@ -7,7 +8,8 @@ import AxeBuilder from '@axe-core/playwright'
 const CONTRAST_BASELINE = 6
 
 test('app shell: no structural a11y violations; contrast within baseline', async ({ page }) => {
-  await page.goto('/demo')
+  await seedApp(page)
+  await page.goto('/')
   await page.waitForSelector('#root > div')
 
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()

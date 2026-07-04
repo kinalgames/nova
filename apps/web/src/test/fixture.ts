@@ -1,38 +1,29 @@
-// Test fixture — the seeded showcase data as a REAL-world store slice, so the
-// unit suite no longer depends on the demo route/runtime. Built from the same
-// seed the demo used, so existing assertions (c1/c2/c3, Aurora, message text)
-// keep matching. When demo is deleted, this fixture is what tests seed instead.
+// Test fixture — the showcase content as a REAL-world store slice. The unit
+// suite renders the real route tree seeded with this state: a signed-in user
+// with configured providers browsing their own conversations. Data lives in
+// test/showcase.ts (test-owned; the product ships no sample data).
 
-import { getSeed } from '../data/seed'
 import { fromLinear } from '../state/thread'
 import type { NovaState } from '../state/types'
+import { showcaseConvs, showcaseProfiles, showcaseProjects, showcaseThreads } from './showcase'
 
-const noPresets = { code: false, design: false, research: false, writing: false, data: false }
+/** the deterministic assistant reply the hermetic /v1/chat responder streams
+ *  (setup.ts) — send-tests assert against this exact text */
+export const MOCK_REPLY = 'Đã xử lý xong yêu cầu của bạn.'
 
-/** the demo showcase as a Partial<NovaState> for storeInit injection */
-export function demoFixture(): Partial<NovaState> {
-  const seed = getSeed()
+/** the showcase as a Partial<NovaState> for storeInit injection */
+export function showcaseFixture(): Partial<NovaState> {
   return {
-    projects: seed.projects.map((d) => ({
-      ...d,
-      presets:
-        d.id === 'aurora'
-          ? { code: false, design: true, research: true, writing: true, data: false }
-          : noPresets,
-      files: d.id === 'aurora' ? seed.projectFiles : [],
+    projects: structuredClone(showcaseProjects),
+    conversations: showcaseConvs.map((c, i) => ({
+      ...c,
+      updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000,
     })),
-    // real data has no demo flag — strip it so send-routing treats these as
-    // ordinary conversations
-    conversations: seed.convs.map((conv, i) => {
-      const { demo: _demo, ...c } = conv
-      void _demo // strip the seed's demo flag — fixture rows are ordinary convs
-      return { ...c, updatedAt: Date.now() - [2, 26, 96, 290][i % 4] * 3_600_000 }
-    }),
     activeConv: 'c1',
     threads: Object.fromEntries(
-      Object.entries(seed.threads).map(([id, ms]) => [id, fromLinear(ms)]),
+      Object.entries(showcaseThreads).map(([id, ms]) => [id, fromLinear(structuredClone(ms))]),
     ),
-    profiles: structuredClone(seed.profiles),
+    profiles: structuredClone(showcaseProfiles),
     staged: {
       c1: [
         { id: 'demo-img', kind: 'image', name: 'moodboard.png', size: '820 KB' },

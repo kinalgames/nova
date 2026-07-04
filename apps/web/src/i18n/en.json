@@ -87,11 +87,6 @@
     "headerFallback": "Conversation",
     "emptyTitle": "New conversation",
     "emptyBody": "Ask anything, attach files, or pick a suggestion. Nova remembers the context of the <b>{{project}}</b> project.",
-    "demoLabel": "demo:",
-    "stateStream": "Composing",
-    "stateApproval": "Awaiting approval",
-    "stateDone": "Done",
-    "stateError": "Error",
     "thinkingLabel": "Nova is thinking…",
     "writingLabel": "Writing a reply…",
     "novaWorking": "Nova is working",
@@ -236,10 +231,6 @@
     "newline": "New line inside a message",
     "close": "Close the open overlay"
   },
-  "demo": {
-    "badge": "DEMO",
-    "exit": "Exit"
-  },
   "errors": {
     "network": "Could not reach the server",
     "httpStatus": "Error {{status}}",
@@ -250,7 +241,6 @@
   "user": {
     "name": "Thanh Tran",
     "firstName": "Thanh",
-    "demoEmail": "thanh@kinal.co",
     "plan": "Pro plan",
     "who": "THANH"
   },
@@ -360,7 +350,8 @@
     "download": "Download",
     "open": "Open",
     "loading": "Loading…",
-    "loadFailed": "Couldn't load the file"
+    "loadFailed": "Couldn't load the file",
+    "unavailable": "No preview for this file — its content isn't stored on the server."
   },
   "authForm": {
     "email": "Email",
@@ -370,7 +361,6 @@
     "google": "Continue with Google",
     "github": "Continue with GitHub",
     "or": "or",
-    "tryDemo": "Explore the demo →",
     "soon": "Soon",
     "welcome": "Welcome to Nova",
     "welcomeSub": "A few quick choices so Nova fits you.",

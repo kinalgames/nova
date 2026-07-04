@@ -108,13 +108,11 @@ describe('<Composer> — cap-menu items', () => {
     expect(screen.queryByRole('button', { name: 'Bỏ moodboard.png' })).not.toBeInTheDocument()
   })
 
-  it('triggers the add-from-project and screenshot items', async () => {
+  it('triggers the add-from-project item', async () => {
     const user = makeUser()
     await renderComposer()
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     await user.click(within(await screen.findByRole('menu')).getByText('Thêm từ dự án'))
-    await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
-    await user.click(within(await screen.findByRole('menu')).getByText('Chụp màn hình'))
     await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
   })
 

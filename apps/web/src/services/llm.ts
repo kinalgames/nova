@@ -1,6 +1,5 @@
-// Real chat streaming through the nova-api provider proxy (SSE). The fake
-// composeReply layer remains the demo-mode fallback; this path activates when
-// a NON-DEMO auth profile exists for the routed provider.
+// Real chat streaming through the nova-api provider proxy (SSE). Sends route
+// here whenever an auth profile exists for the routed provider.
 
 import type { ChatProxyRequest } from '@nova/shared'
 import { getToken } from './token'

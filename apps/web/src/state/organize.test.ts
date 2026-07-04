@@ -74,6 +74,10 @@ describe('export serializers', () => {
     expect(exportMarkdown(c, undefined).trim()).toBe('# Kế hoạch Đà Lạt')
   })
 
+  it('an unnamed conversation exports under the Untitled heading', () => {
+    expect(exportMarkdown({ ...c, title: null }, undefined).trim()).toBe('# Untitled')
+  })
+
   it('json is lossless — full tree, parseable', () => {
     const parsed = JSON.parse(exportJson(c, thread))
     expect(parsed.conversation.id).toBe('x')

@@ -31,8 +31,6 @@ export interface AuthProfile {
   status: ProfileStatus
   /** epoch ms when a 'limited' profile becomes usable again */
   limitedUntil?: number
-  /** seeded showcase credential — never routed to a real provider */
-  demo?: boolean
   /** BE3: lives sealed on the server — `credential` holds only the …tail hint;
    *  chats reference it by id (credentialId), the secret never re-enters the client */
   server?: boolean

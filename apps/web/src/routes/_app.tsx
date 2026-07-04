@@ -7,15 +7,14 @@ import { TopBar } from '../components/TopBar'
 import { VerifyBanner } from '../components/VerifyBanner'
 
 export const Route = createFileRoute('/_app')({
-  // the real product requires a session — token-only so the app still opens
-  // offline; the showcase at /demo stays public
+  // the product requires a session — token-only so the app still opens offline
   beforeLoad: () => {
     if (!getToken()) throw redirect({ to: '/login' })
   },
   component: AppLayout,
 })
 
-/** the app shell — shared verbatim by the real tree (/_app) and /demo */
+/** the app shell — sidebar, top bar, view outlet, shortcut hints */
 export function AppLayout() {
   const { v } = useStore()
   const { t } = useTranslation()

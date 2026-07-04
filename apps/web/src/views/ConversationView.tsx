@@ -44,12 +44,11 @@ export function ConversationView() {
             {v.sent.map((m, i) => {
               const isLast = i === v.sent.length - 1
               const isAssistant = m.role === 'assistant'
-              // the demo conversation's last assistant message showcases the
-              // four response states via the switcher; a live reply streams.
-              // A REAL error (no provider / provider failure) also drives the
-              // danger card on the last assistant message.
+              // a REAL error (no provider / provider failure) drives the
+              // danger card on the last assistant message; a pending tool
+              // approval renders its prompt there too (agentic surface)
               const state =
-                isLast && isAssistant && (v.hasDemo || v.errorHere)
+                isLast && isAssistant && (v.errorHere || v.respApproval || v.isStream)
                   ? respToState(v.respState)
                   : undefined
               const typing = isLast && isAssistant && v.typing
@@ -75,18 +74,6 @@ export function ConversationView() {
         )}
         </div>
 
-        {/* demo state switcher — only on the scripted demo conversation */}
-        {v.hasDemo && (
-          <div className="flex shrink-0 justify-center px-3 pt-1">
-            <div className="inline-flex items-center gap-1 rounded-sm bg-fill p-0.5 text-meta">
-              <span className="px-1.5 text-muted">{t('chat.demoLabel')}</span>
-              <button type="button" onClick={v.setStream} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgStream, color: v.stFgStream }}>{t('chat.stateStream')}</button>
-              <button type="button" onClick={v.setApproval} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgApproval, color: v.stFgApproval }}>{t('chat.stateApproval')}</button>
-              <button type="button" onClick={v.setDone} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgDone, color: v.stFgDone }}>{t('chat.stateDone')}</button>
-              <button type="button" onClick={v.setError} className="cursor-pointer rounded-sm border-none px-2.5 py-1 text-left" style={{ background: v.stBgError, color: v.stFgError }}>{t('chat.stateError')}</button>
-            </div>
-          </div>
-        )}
 
         {!v.isEmptyChat && (
           <div className="px-4">

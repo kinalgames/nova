@@ -33,7 +33,7 @@ becomes their single home.
 | `user_settings` | persist slice | theme/styles/tools/slots/activeSlot/autoRotate/… as JSONB, versioned like `PERSIST_VERSION` |
 | `projects` | `Project` | name, description (= instructions, injected into the system prompt server-side), accent, presets JSONB, is_default |
 | `project_files` | `ProjectFile` | R2 object key + kind/name/meta; presigned upload |
-| `conversations` | `Conversation` | title, project_id, pinned, archived, **updated_at** (drives date grouping), demo flag dropped server-side |
+| `conversations` | `Conversation` | title, project_id, pinned, archived, **updated_at** (drives date grouping) |
 | `messages` | `Message` | id, conversation_id, **parent_id** (version tree), role, who, blocks **JSONB**, feedback, created_at |
 | `conversation_selection` | `Thread.selected` | the selected-version map per conversation (small JSONB on `conversations` is fine to start) |
 | `provider_profiles` | `AuthProfile` | provider_id, name, kind (`account`/`api_key`), **credential encrypted**, status, limited_until, priority (rotation order) |
@@ -71,8 +71,8 @@ sync runs in the background.
   the living spec the Rust core ports from.
 - **Web stays React** (already shipped) with its store as an optimistic
   cache over the same op-log endpoints; long-term the Rust core can compile
-  to WASM to unify. The fake service layer stays behind a **demo mode** flag
-  (logged-out experience + offline fallback + test harness).
+  to WASM to unify. (Demo mode and the fake service layer were removed
+  2026-07-04 — tests seed a showcase fixture instead.)
 - **Sequencing (decided)**: backend first (BE1–BE3 with op-log sync), native
   clients start once the API is stable.
 
@@ -135,10 +135,9 @@ single reload on `vite:preloadError`) · update-available toast
   Claude Code transport (Bearer + oauth beta flags + CLI identity block —
   EXPERIMENTAL, gray-zone vs provider terms, user's own subscription only).
   No sampling params are sent (models ≥4.7 reject them). The web client
-  routes through the proxy whenever a NON-DEMO profile exists for the
-  routed provider (seeded demo credentials never leave the device); real
-  usage lands on the message, 429 puts the profile into its cool-down so
-  rotation moves on. The model catalog now carries the REAL Anthropic
+  routes through the proxy whenever an auth profile exists for the routed
+  provider; real usage lands on the message, 429 puts the profile into its
+  cool-down so rotation moves on. The model catalog now carries the REAL Anthropic
   lineup (claude-opus-4-8 · claude-sonnet-5 · claude-haiku-4-5, current
   pricing). Server-side encrypted BYOK storage shipped (T2–T5): sealed
   credentials in D1, chats reference a credentialId, the secret never

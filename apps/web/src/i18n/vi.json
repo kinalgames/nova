@@ -87,11 +87,6 @@
     "headerFallback": "Cuộc trò chuyện",
     "emptyTitle": "Cuộc trò chuyện mới",
     "emptyBody": "Hỏi bất cứ điều gì, đính kèm tệp, hoặc chọn một gợi ý. Nova nhớ ngữ cảnh của dự án <b>{{project}}</b>.",
-    "demoLabel": "demo:",
-    "stateStream": "Đang soạn",
-    "stateApproval": "Chờ duyệt",
-    "stateDone": "Hoàn tất",
-    "stateError": "Lỗi",
     "thinkingLabel": "Nova đang suy nghĩ…",
     "writingLabel": "Đang viết câu trả lời…",
     "novaWorking": "Nova đang làm việc",
@@ -235,10 +230,6 @@
     "newline": "Xuống dòng trong tin nhắn",
     "close": "Đóng overlay đang mở"
   },
-  "demo": {
-    "badge": "DEMO",
-    "exit": "Thoát"
-  },
   "errors": {
     "network": "Không kết nối được máy chủ",
     "httpStatus": "Lỗi {{status}}",
@@ -249,7 +240,6 @@
   "user": {
     "name": "Thành Trần",
     "firstName": "Thành",
-    "demoEmail": "thanh@kinal.co",
     "plan": "Gói Pro",
     "who": "THÀNH"
   },
@@ -359,7 +349,8 @@
     "download": "Tải",
     "open": "Mở",
     "loading": "Đang tải…",
-    "loadFailed": "Không tải được tệp"
+    "loadFailed": "Không tải được tệp",
+    "unavailable": "Tệp này không có bản xem trước — nội dung chưa được lưu trên máy chủ."
   },
   "authForm": {
     "email": "Email",
@@ -369,7 +360,6 @@
     "google": "Tiếp tục với Google",
     "github": "Tiếp tục với GitHub",
     "or": "hoặc",
-    "tryDemo": "Khám phá bản demo →",
     "soon": "Sắp có",
     "welcome": "Chào mừng đến Nova",
     "welcomeSub": "Vài lựa chọn nhanh để Nova hợp với bạn.",

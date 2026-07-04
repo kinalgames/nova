@@ -8,10 +8,6 @@ import type { NovaState, Theme, ThinkLevel } from './types'
 export const PERSIST_PREFIX = 'nova.flow.settings'
 export const PERSIST_VERSION = 5
 export const PERSIST_KEY = `${PERSIST_PREFIX}.v${PERSIST_VERSION}`
-/** the demo world (/demo routes) persists in its own namespace */
-export const DEMO_PERSIST_KEY = `nova.flow.demo.v${PERSIST_VERSION}`
-
-export const persistKeyFor = (demo: boolean): string => (demo ? DEMO_PERSIST_KEY : PERSIST_KEY)
 /** oldest version a migration chain can start from */
 const OLDEST_MIGRATABLE = 4
 

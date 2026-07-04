@@ -10,7 +10,7 @@ import {
 import { routeTree } from '../routeTree.gen'
 import { StoreProvider, type Store } from '../state/store'
 import type { Message, NovaState } from '../state/types'
-import { demoFixture } from './fixture'
+import { showcaseFixture } from './fixture'
 
 /** the concatenated text of a message's text blocks (test convenience) */
 export const msgText = (m?: Message) =>
@@ -24,47 +24,37 @@ interface AppOpts {
   path?: string
   /** seed ephemeral UI state that has no URL (sidebarCollapsed, quiet, advanced…) */
   storeInit?: Partial<NovaState>
-  /** 'real' opts out of the demo-tree default (for sync/auth/product-boot tests) */
-  world?: 'demo' | 'real'
+  /** 'real' opts out of the showcase fixture (bare store: sync/auth/boot tests) */
+  world?: 'real'
 }
 
-/** auth/onboarding screens live in the real world; everything else the unit
- * suite exercises is the seeded showcase — the demo tree */
-const REAL_WORLD = ['/login', '/signup', '/onboarding', '/oauth-done', '/share']
-const isRealWorld = (path: string) =>
-  REAL_WORLD.some((p) => path === p || path.startsWith(`${p}?`) || path.startsWith(`${p}/`))
-const demoPath = (path: string) =>
-  path.startsWith('/demo') || isRealWorld(path) ? path : `/demo${path === '/' ? '' : path}`
+/** auth/onboarding/share screens are their own logged-out context — the
+ * signed-in fixture (data + token) would trip their guards */
+const AUTH_PATHS = ['/login', '/signup', '/onboarding', '/oauth-done', '/share']
+const isAuthPath = (path: string) =>
+  AUTH_PATHS.some((p) => path === p || path.startsWith(`${p}?`) || path.startsWith(`${p}/`))
 
 /**
  * Render the full routed app at a URL. Awaits the router's initial load so the
  * matched route (and the store inside the root layout) is mounted synchronously
  * before the test interacts. `drive` runs once against the live store after
  * mount (for ephemeral actions like opening a preview).
+ *
+ * Default world = a signed-in user with configured providers browsing the
+ * showcase fixture (test/fixture.ts). Pass `world: 'real'` for a bare store.
  */
 export async function renderApp(drive?: (store: Store) => void, opts: AppOpts = {}) {
   let captured: Store | null = null
   const path = opts.path ?? '/chat/c1'
-  // world resolution:
-  //  'real'    → the real route tree, caller-supplied state only
-  //  'demo'    → the /demo tree (kept for the few demo-specific tests)
-  //  default   → the real route tree seeded with the showcase FIXTURE, so the
-  //              suite no longer depends on the demo runtime (Phase B)
-  const entry = opts.world === 'demo' ? demoPath(path) : path
-  // auth/onboarding/share screens are their OWN real, logged-out context — the
-  // signed-in fixture (data + token) makes no sense there and would trip the
-  // guards, so those paths get the bare real tree even under the default world
-  const authPath = isRealWorld(path)
-  const fixtureWorld = opts.world !== 'real' && opts.world !== 'demo' && !authPath
-  const storeInit = fixtureWorld ? { ...demoFixture(), ...opts.storeInit } : opts.storeInit
-  // the fixture world is a signed-in user browsing their real conversations —
-  // give it a token so the /_app auth guard doesn't bounce it to /login. Never
-  // clobber a token the test set itself (a preview-auth test asserts its own).
+  const fixtureWorld = opts.world !== 'real' && !isAuthPath(path)
+  const storeInit = fixtureWorld ? { ...showcaseFixture(), ...opts.storeInit } : opts.storeInit
+  // the fixture user is signed in — a token keeps the /_app auth guard happy.
+  // Never clobber a token the test set itself (preview-auth asserts its own).
   if (fixtureWorld && !localStorage.getItem('nova.auth.token'))
     localStorage.setItem('nova.auth.token', 'test-token')
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: [entry] }),
+    history: createMemoryHistory({ initialEntries: [path] }),
     context: {
       storeInit,
       onStore: (s: Store) => {
@@ -100,7 +90,7 @@ export async function renderWithStore(ui: ReactNode, drive?: (store: Store) => v
   const rootRoute = createRootRoute({
     component: () => (
       <StoreProvider
-        demo
+        initial={showcaseFixture()}
         onStore={(s) => {
           captured = s
         }}

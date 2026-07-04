@@ -169,12 +169,6 @@ export function Composer({ placeholder }: { placeholder?: string } = {}) {
                       </div>
                     </div>
                   </DropdownMenu.Item>
-                  <DropdownMenu.Item onSelect={v.openLightbox} className={ROW}>
-                    <span className="flex size-[26px] flex-shrink-0 items-center justify-center rounded-sm bg-border text-text-2">
-                      <Icon n="expand" size={15} />
-                    </span>
-                    <div className="text-ui text-text">{t('composer.screenshot')}</div>
-                  </DropdownMenu.Item>
                   <DropdownMenu.Separator className="mx-2 my-1 h-px bg-border" />
                   <div className={POPUP_LABEL}>{t('composer.novaTools')}</div>
                   {(

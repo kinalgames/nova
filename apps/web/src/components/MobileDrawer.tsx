@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { WorldLink as Link } from './WorldLink'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useStore } from '../state/store'

@@ -1,14 +1,7 @@
-// Fake-but-real file actions: generate representative content for a previewed
-// asset and actually download / open it (Blob + object URL), like production.
+// Real file actions: classify uploads, download / open content the app
+// actually holds (Blob + object URL) — never generated stand-in bodies.
 
 import type { PreviewKind } from '../state/types'
-import { getSeed } from '../data/seed'
-
-/** representative body for a previewed demo document — locale-aware */
-export function previewSample(kind: PreviewKind): { type: string; body: string } {
-  const samples = getSeed().samples
-  return samples[kind] ?? samples.md
-}
 
 function withObjectUrl(content: string, type: string, consume: (url: string) => void) {
   if (typeof URL === 'undefined' || !URL.createObjectURL) return
@@ -35,20 +28,19 @@ export function describeUpload(file: File): { kind: PreviewKind; size: string; u
   return { kind, size, url }
 }
 
-/** Trigger a real browser download of `content` as `name`. */
-export function downloadFile(name: string, content: string, type: string) {
-  withObjectUrl(content, type, (url) => {
-    const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-  })
+/** Trigger a browser download of an already-materialized URL as `name`. */
+export function downloadUrl(name: string, url: string) {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
-/** Open `content` in a new tab (blob URL). */
-export function openFile(content: string, type: string) {
-  withObjectUrl(content, type, (url) => window.open(url, '_blank', 'noopener'))
+/** Trigger a real browser download of `content` as `name`. */
+export function downloadFile(name: string, content: string, type: string) {
+  withObjectUrl(content, type, (url) => downloadUrl(name, url))
 }
+

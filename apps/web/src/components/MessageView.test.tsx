@@ -1,10 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
+import { streamChat, type StreamHandlers } from '../services/llm'
 import { addSibling, fromLinear } from '../state/thread'
 import type { Message, MsgAttachment } from '../state/types'
+import type { ChatProxyRequest } from '@nova/shared'
 
-beforeEach(() => localStorage.clear())
+// regenerate / edit-and-rerun stream through the REAL send path — mock the
+// proxy transport so each test controls the stream (instant or hanging)
+vi.mock('../services/llm', () => ({
+  API_BASE: 'http://localhost:8787',
+  HAS_API: true,
+  streamChat: vi.fn(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+    h.onDelta('Trả lời mới')
+    h.onDone({ inputTokens: 3, outputTokens: 2 })
+  }),
+}))
+
+/** one reply that never finishes — the test stops it through the UI */
+const hangingStream = () =>
+  vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+    h.onDelta('đang viết…')
+    await new Promise<never>(() => {})
+  })
+
+beforeEach(() => {
+  localStorage.clear()
+  vi.mocked(streamChat).mockClear()
+})
 
 const msg = (id: string, role: Message['role'], text: string): Message => ({
   id,
@@ -18,11 +41,8 @@ const linear = () =>
 
 const forked = () => addSibling(linear(), 'a1', msg('a2', 'assistant', 'Trả lời hai'))
 
-// regenerate / edit-and-rerun exercise the streaming reply; the demo world's
-// fake engine gives a stoppable mid-stream, so these run there (Phase C moves
-// them onto the real streamChat path)
 const seed = (thread: ReturnType<typeof linear>) => async () =>
-  renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: thread } }), { world: 'demo' })
+  renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: thread } }))
 
 const imgMsg = (att: Partial<MsgAttachment>): Message => ({
   id: 'u9',
@@ -62,12 +82,15 @@ describe('B1 — real image tiles', () => {
     await waitFor(() => expect(tile.getAttribute('style')).toContain('blob:fetched-1'))
   })
 
-  it('a demo tile (no url, no fileId) keeps the gradient and the preview opener', async () => {
+  it('a sourceless tile (no url, no fileId) keeps the gradient; clicking it\n     opens the preview lightbox instead of a dead tab', async () => {
+    const user = makeUser()
     await renderApp((s) =>
       s.set({ activeConv: 'c1', threads: { c1: fromLinear([imgMsg({})]) } }),
     )
     const tile = await screen.findByRole('button', { name: /chart\.png/ })
     expect(tile.getAttribute('style')).toContain('linear-gradient')
+    await user.click(tile)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })
 
@@ -131,6 +154,7 @@ describe('per-message actions', () => {
 
   it('regenerates a reply as a new version, stoppable mid-stream', async () => {
     const user = makeUser()
+    hangingStream()
     await seed(linear())()
 
     await user.click(await screen.findByRole('button', { name: 'Tạo lại' }))
@@ -156,7 +180,6 @@ describe('real error card', () => {
         errorAction,
         errorDetail,
       }),
-      { world: 'demo' },
     )
 
   it('no-provider error shows the card + an Add-provider button (not silence)', async () => {
@@ -171,6 +194,7 @@ describe('real error card', () => {
 
   it('provider error shows the specific message + a Retry that regenerates', async () => {
     const user = makeUser()
+    hangingStream()
     await seedError('retry', 'rate_limited: quá tải')()
     expect(await screen.findByText('rate_limited: quá tải')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Thử lại' }))
@@ -197,6 +221,7 @@ describe('inline edit-and-rerun', () => {
 
   it('saves an edit as a new prompt version and re-runs the reply', async () => {
     const user = makeUser()
+    hangingStream()
     await seed(linear())()
 
     await screen.findByText('Prompt gốc')
@@ -250,7 +275,6 @@ describe('coverage — file pills open by kind + error retry', () => {
         errorConv: 'c1',
         errorDetail: 'boom',
       }),
-      { world: 'demo' },
     )
     await user.click(await screen.findByRole('button', { name: /Thử lại/ }))
     // retry drives regenerate → respState leaves the error state

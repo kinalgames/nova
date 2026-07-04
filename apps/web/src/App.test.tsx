@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { makeUser, renderApp } from './test/util'
 import { screen, within } from '@testing-library/react'
-import { DEMO_PERSIST_KEY } from './state/persist'
+import { PERSIST_KEY } from './state/persist'
 
 beforeEach(() => localStorage.clear())
 
@@ -49,8 +49,10 @@ describe('App — root redirect', () => {
   })
 
   it('redirects the root to the persisted last conversation', async () => {
+    // a real signed-in device: persisted state decides where '/' lands
+    localStorage.setItem('nova.auth.token', 'tok')
     localStorage.setItem(
-      DEMO_PERSIST_KEY,
+      PERSIST_KEY,
       JSON.stringify({
         activeConv: 'c3',
         conversations: [
@@ -59,7 +61,7 @@ describe('App — root redirect', () => {
         ],
       }),
     )
-    const { store } = await renderApp(undefined, { world: 'demo', path: '/' })
+    const { store } = await renderApp(undefined, { world: 'real', path: '/' })
     expect(store().v.headerTitle).toBe('b')
   })
 })
@@ -67,7 +69,7 @@ describe('App — root redirect', () => {
 describe('App — sending a message', () => {
   it('appends the typed message to the conversation', async () => {
     const user = makeUser()
-    await renderApp(undefined, { world: 'demo' })
+    await renderApp()
     const input = screen.getByRole('textbox', { name: 'Nhắn cho Nova' })
     await user.type(input, 'Phân tích quý 4 giúp mình')
     await user.click(screen.getByRole('button', { name: 'Gửi' }))

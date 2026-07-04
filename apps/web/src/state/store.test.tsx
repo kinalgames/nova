@@ -1,13 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
-import { DEMO_PERSIST_KEY } from './persist'
+import { PERSIST_KEY } from './persist'
+import { MOCK_REPLY } from '../test/fixture'
 import { msgText, renderStore } from '../test/util'
 
-// core store VM + the demo showcase (seeded attachments, fake send engine,
-// demo-namespace persistence). Runs in the demo world; Phase C re-homes the
-// world-agnostic checks on the fixture and drops the fake-engine ones.
 function setup() {
-  return renderStore({ world: 'demo' })
+  return renderStore()
 }
 
 beforeEach(() => localStorage.clear())
@@ -22,7 +20,7 @@ describe('store — initial state', () => {
     expect(result.current.v.dark).toBe(false)
   })
 
-  it('seeds two demo attachments on the demo conversation', async () => {
+  it('seeds two staged attachments on the fixture conversation', async () => {
     const { result } = await setup()
     expect(result.current.v.staged).toHaveLength(2)
     expect(result.current.v.hasStaged).toBe(true)
@@ -74,14 +72,14 @@ describe('store — tools', () => {
   })
 })
 
-describe('store — response demo states', () => {
-  it('moves through stream / error / approval / done', async () => {
+describe('store — response states', () => {
+  it('the isX flags mirror respState; setDone clears back to done', async () => {
     const { result } = await setup()
-    act(() => result.current.v.setStream())
+    act(() => result.current.set({ respState: 'stream' }))
     expect(result.current.v.isStream).toBe(true)
-    act(() => result.current.v.setError())
+    act(() => result.current.set({ respState: 'error' }))
     expect(result.current.v.isError).toBe(true)
-    act(() => result.current.v.setApproval())
+    act(() => result.current.set({ respState: 'approval' }))
     expect(result.current.v.respApproval).toBe(true)
     act(() => result.current.v.setDone())
     expect(result.current.v.isDone).toBe(true)
@@ -94,12 +92,19 @@ describe('store — theme persistence', () => {
     act(() => result.current.v.setDark())
     expect(result.current.s.theme).toBe('dark')
     expect(result.current.v.dark).toBe(true)
-    const saved = JSON.parse(localStorage.getItem(DEMO_PERSIST_KEY) || '{}')
+    const saved = JSON.parse(localStorage.getItem(PERSIST_KEY) || '{}')
     expect(saved.theme).toBe('dark')
   })
 
+  it('corrupted persisted JSON boots clean defaults instead of crashing', async () => {
+    localStorage.setItem(PERSIST_KEY, '{not-json')
+    const { result } = await setup()
+    expect(result.current.s.theme).toBe('light')
+    expect(result.current.s.activeSlot).toBe('smart')
+  })
+
   it('restores persisted settings on a fresh mount', async () => {
-    localStorage.setItem(DEMO_PERSIST_KEY, JSON.stringify({ activeSlot: 'fast', advanced: true }))
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ activeSlot: 'fast', advanced: true }))
     const { result } = await setup()
     expect(result.current.s.activeSlot).toBe('fast')
     expect(result.current.s.advanced).toBe(true)
@@ -107,7 +112,7 @@ describe('store — theme persistence', () => {
 
   it('heals persisted slots whose model was retired from the catalog', async () => {
     localStorage.setItem(
-      DEMO_PERSIST_KEY,
+      PERSIST_KEY,
       JSON.stringify({
         slots: {
           // claude-opus-4 was retired upstream — must fall back to the default
@@ -130,22 +135,19 @@ describe('store — theme persistence', () => {
 })
 
 describe('store — composer send', () => {
-  it('appends the user message immediately, then a Nova reply after the delay', async () => {
-    vi.useFakeTimers()
+  it('appends the user message and streams the reply through the proxy', async () => {
     const { result } = await setup()
-    act(() => result.current.set({ draft: 'Tóm tắt giúp mình' }))
-    act(() => result.current.v.send())
-    // user message in flight
-    expect(result.current.v.sent.at(-1)?.who).toBe('THÀNH')
-    expect(msgText(result.current.v.sent.at(-1))).toBe('Tóm tắt giúp mình')
-    expect(result.current.s.typing).toBe(true)
+    await act(async () => result.current.set({ draft: 'Tóm tắt giúp mình' }))
+    await act(async () => result.current.v.send())
+    // the user turn landed and the composer cleared
     expect(result.current.s.draft).toBe('')
-    // Nova answers after the scripted delay (project instructions lengthen
-    // the aurora reply, so give the stream room to finish)
-    act(() => vi.advanceTimersByTime(4000))
+    const user = result.current.v.sent.at(-2)
+    expect(user?.who).toBe('THÀNH')
+    expect(msgText(user)).toBe('Tóm tắt giúp mình')
+    // the hermetic stream finished the reply through the REAL parser
     expect(result.current.s.typing).toBe(false)
-    expect(result.current.v.sent.at(-1)?.who).toBe('NOVA')
     expect(result.current.v.sent.at(-1)?.role).toBe('assistant')
+    expect(msgText(result.current.v.sent.at(-1))).toBe(MOCK_REPLY)
   })
 
   it('ignores send when the draft is empty (no message, no typing)', async () => {

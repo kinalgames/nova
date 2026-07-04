@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { WorldLink as Link } from './WorldLink'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'

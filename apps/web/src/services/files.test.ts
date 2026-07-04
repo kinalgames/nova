@@ -1,19 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { describeUpload, downloadFile, openFile, previewSample } from './files'
-import type { PreviewKind } from '../state/types'
+import { describeUpload, downloadFile, downloadUrl } from './files'
 
 afterEach(() => vi.restoreAllMocks())
-
-describe('files service — previewSample', () => {
-  it('returns representative content for every preview kind', () => {
-    const kinds: PreviewKind[] = ['md', 'csv', 'code', 'pdf', 'image']
-    for (const k of kinds) {
-      const s = previewSample(k)
-      expect(s.type).toBeTruthy()
-      expect(s.body.length).toBeGreaterThan(0)
-    }
-  })
-})
 
 describe('files service — describeUpload', () => {
   const f = (name: string, type = '', size = 2048) =>
@@ -35,13 +23,9 @@ describe('files service — describeUpload', () => {
     expect(describeUpload(f('a.md', '', 512)).size).toBe('1 KB')
     expect(describeUpload(f('b.md', '', 3 * 1024 * 1024)).size).toBe('3.0 MB')
   })
-
-  it('previewSample falls back to the markdown sample for unknown kinds', () => {
-    expect(previewSample('nope' as PreviewKind)).toEqual(previewSample('md'))
-  })
 })
 
-describe('files service — download / open', () => {
+describe('files service — download', () => {
   it('downloadFile creates a blob URL and clicks an anchor', () => {
     URL.createObjectURL = vi.fn(() => 'blob:x')
     URL.revokeObjectURL = vi.fn()
@@ -51,12 +35,10 @@ describe('files service — download / open', () => {
     expect(click).toHaveBeenCalledOnce()
   })
 
-  it('openFile opens a blob URL in a new tab', () => {
-    URL.createObjectURL = vi.fn(() => 'blob:y')
-    URL.revokeObjectURL = vi.fn()
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-    openFile('data', 'text/csv')
-    expect(open).toHaveBeenCalledWith('blob:y', '_blank', 'noopener')
+  it('downloadUrl clicks an anchor for an already-materialized URL', () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    downloadUrl('anh.png', 'blob:ready')
+    expect(click).toHaveBeenCalledOnce()
   })
 
   it('no-ops safely when object URLs are unavailable', () => {

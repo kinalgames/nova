@@ -9,11 +9,8 @@ vi.mock('../services/auth', async (importOriginal) => ({
   updateMe: vi.fn(async () => true),
 }))
 
-// organization / account / projects VM plus the demo fake-chat engine (send,
-// share-copy, instruction-steered replies). Runs in the demo world; Phase C
-// re-homes the world-agnostic checks and drops the fake-engine ones.
 function setup() {
-  return renderStore({ world: 'demo' })
+  return renderStore()
 }
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.useRealTimers())
@@ -50,7 +47,7 @@ describe('store — organization (Track B)', () => {
 
   it('message activity moves the conversation into today', async () => {
     vi.useFakeTimers()
-    const { result } = await renderStore({ world: 'demo', path: '/chat/c3' })
+    const { result } = await renderStore({ path: '/chat/c3' })
     await act(async () => result.current.set({ draft: 'chạm nhóm hôm nay' }))
     await act(async () => result.current.v.send())
     expect(
@@ -58,17 +55,13 @@ describe('store — organization (Track B)', () => {
     ).toBe(true)
   })
 
-  it('share copies a link and raises the auto-clearing toast', async () => {
+  it('a failed share raises a toast that auto-clears', async () => {
+    // the hermetic 503 backend refuses the snapshot — the user hears WHY
+    // and the toast dissolves on its own (success paths: store.live BE4)
     vi.useFakeTimers()
     const { result } = await setup()
-    const write = vi.fn()
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: write },
-      configurable: true,
-    })
     await act(async () => result.current.v.sideConvs[0].share())
-    expect(write).toHaveBeenCalledWith(expect.stringContaining('/share/'))
-    expect(result.current.s.toast).toBe('Đã chép liên kết chia sẻ')
+    expect(result.current.s.toast).toBe('Tạo liên kết thất bại — thử lại sau')
     await act(async () => vi.advanceTimersByTime(3000))
     expect(result.current.s.toast).toBeNull()
   })
@@ -93,16 +86,15 @@ describe('store — account & settings (Track D)', () => {
     expect(result.current.v.userName).toBe('Lan Phương')
     await act(async () => result.current.set({ draft: 'xin chào' }))
     await act(async () => result.current.v.send())
-    expect(result.current.v.sent.at(-1)?.who).toBe('LAN')
+    // the reply lands instantly (hermetic stream) — the USER turn carries it
+    expect(result.current.v.sent.at(-2)?.who).toBe('LAN')
   })
 
   it('the assistant name labels new replies', async () => {
-    vi.useFakeTimers()
     const { result } = await setup()
     await act(async () => result.current.v.setAssistantName('Trợ lý'))
     await act(async () => result.current.set({ draft: 'chào bạn nhé' }))
     await act(async () => result.current.v.send())
-    await act(async () => vi.advanceTimersByTime(9000))
     expect(result.current.v.sent.at(-1)?.who).toBe('TRỢ LÝ')
   })
 
@@ -143,20 +135,6 @@ describe('store — account & settings (Track D)', () => {
 })
 
 describe('store — projects completion (Track C)', () => {
-  it('project instructions steer the reply; the default project stays neutral', async () => {
-    vi.useFakeTimers()
-    // c2 belongs to aurora, whose description acts as instructions
-    const aurora = await renderStore({ world: 'demo', path: '/chat/c2' })
-    await act(async () => aurora.result.current.set({ draft: 'viết mở đầu giúp mình' }))
-    await act(async () => aurora.result.current.v.send())
-    await act(async () => vi.advanceTimersByTime(9000))
-    const reply = aurora.result.current.v.sent.at(-1)!
-    expect(reply.role).toBe('assistant')
-    expect(
-      reply.blocks.find((b) => b.type === 'text' && b.text.includes('Bám theo chỉ dẫn của dự án Aurora')),
-    ).toBeTruthy()
-  })
-
   it('uploads and removes a real project file', async () => {
     const { result } = await renderStore({ path: '/projects/aurora/config' })
     const before = result.current.v.viewProjectFiles.length
@@ -256,17 +234,17 @@ describe('store — model slots (cross-provider routing)', () => {
 })
 
 describe('store — file/media preview', () => {
-  it('opens and closes the pdf preview', async () => {
+  it('opens and closes a pdf preview', async () => {
     const { result } = await setup()
-    await act(async () => result.current.v.openPdf())
+    await act(async () => result.current.v.previewFile({ kind: 'pdf', name: 'brief.pdf', open: 'pdf' }))
     expect(result.current.v.hasPreview).toBe(true)
     expect(result.current.v.isPrevPdf).toBe(true)
     await act(async () => result.current.v.closePreview())
     expect(result.current.v.hasPreview).toBe(false)
   })
-  it('opens the code preview', async () => {
+  it('opens a code preview', async () => {
     const { result } = await setup()
-    await act(async () => result.current.v.openCode())
+    await act(async () => result.current.v.previewFile({ kind: 'code', name: 'analyze.py', open: 'code' }))
     expect(result.current.v.isPrevCode).toBe(true)
   })
 })

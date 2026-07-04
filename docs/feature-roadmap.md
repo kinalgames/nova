@@ -17,8 +17,8 @@ consumption — defs carry ids only), language picker in Settings → General
 (NGÔN NGỮ), e2e pinned to `locale: 'vi-VN'`, unit tests pinned to vi.
 **Rule: every new user-facing string goes through `t()` — no hardcoded copy
 in components or the VM.**
-Remaining (phase 2): locale-aware demo seed content (seedThreads, project
-seeds, preview documents, QuietMode sample conversation).
+Phase 2 is CLOSED: the demo seed layer was removed with demo mode (2026-07-04)
+— user data is user-authored, so there is nothing left to localize there.
 
 ## A — Conversation core (DONE — all four shipped)
 
@@ -118,11 +118,10 @@ below.
 
 Deliberate debts — ALL CLEARED (post-roadmap cleanup pass):
 
-- **i18n phase 2 ✓** — demo seed content is locale-aware: structured bundles
-  `src/data/seed.vi.ts` / `seed.en.ts` behind `getSeed()` (threads, projects,
-  conv titles, auth-profile names, preview documents, preview metas, quiet
-  sample). First-boot language decides what seeds the persisted store (seeds
-  behave like user content afterwards); live-rendered pieces (quiet sample,
+- **i18n phase 2 ✓ (superseded)** — the locale-aware seed bundles shipped,
+  then demo mode (and the seed layer with it) was removed entirely on
+  2026-07-04; tests keep a vi showcase in `src/test/showcase.ts`. Historical
+  detail (quiet sample,
   preview bodies/metas) follow the current language. A structural-alignment
   test keeps both bundles in lockstep.
 - **shiki slimming ✓** — `services/highlight.ts` uses `shiki/core` + the

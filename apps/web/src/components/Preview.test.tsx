@@ -4,36 +4,36 @@ import { renderApp } from '../test/util'
 
 beforeEach(() => localStorage.clear())
 
-describe('<Preview> — formats', () => {
-  it('code preview renders the file with syntax', async () => {
-    await renderApp((s) => s.v.openCode())
+describe('<Preview> — sources', () => {
+  it('a reference without server bytes says so — never invented content', async () => {
+    await renderApp((s) => s.v.previewFile({ kind: 'md', name: 'plan.md', open: 'md' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getAllByText('analyze.py').length).toBeGreaterThan(0)
+    expect(screen.getByText(/không có bản xem trước/)).toBeInTheDocument()
+    // nothing to ship → no download / open actions
+    expect(screen.queryByText('Tải')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mở')).not.toBeInTheDocument()
   })
 
-  it('csv preview renders a table header', async () => {
-    await renderApp((s) => s.v.openCsv())
-    expect(await screen.findByText('người dùng')).toBeInTheDocument()
+  it('an image with a local object URL renders it and offers download', async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    await renderApp((s) =>
+      s.v.previewFile({ kind: 'image', name: 'anh.png', open: 'image', url: 'blob:local-9' }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog.querySelector('img[src="blob:local-9"]')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Tải'))
+    expect(click).toHaveBeenCalled()
+    click.mockRestore()
   })
 
-  it('markdown preview renders the document title', async () => {
-    await renderApp((s) => s.v.openMd())
-    expect(await screen.findByText('Kế hoạch ra mắt Aurora')).toBeInTheDocument()
-  })
-
-  it('image lightbox opens as a dialog', async () => {
-    await renderApp((s) => s.v.openLightbox())
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-  })
-
-  it('closes via the close button', async () => {
-    const { rerender } = await renderApp((s) => s.v.openPdf())
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    void rerender
+  it('an image reference without bytes keeps a soft placeholder', async () => {
+    await renderApp((s) => s.v.previewFile({ kind: 'image', name: 'cu.png', open: 'image' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog.querySelector('[class*="linear-gradient"]')).toBeInTheDocument()
   })
 
   it('clicking the dark backdrop (not the media) closes the preview', async () => {
-    await renderApp((s) => s.v.openMd())
+    await renderApp((s) => s.v.previewFile({ kind: 'md', name: 'plan.md', open: 'md' }))
     const dialog = await screen.findByRole('dialog')
     const media = dialog.querySelector('.paper-doc') as HTMLElement
     const backdrop = media.parentElement as HTMLElement

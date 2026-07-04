@@ -1,8 +1,28 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
+import { addCredential } from '../services/credentials'
 
-beforeEach(() => localStorage.clear())
+// the real product seals credentials server-side (BE3) — mock the transport
+// so the form flow runs against a deterministic server row
+vi.mock('../services/credentials', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/credentials')>()),
+  addCredential: vi.fn(async (_p: string, kind: string, name: string) => ({
+    id: 'srv-c1',
+    providerId: 'gemini',
+    kind,
+    name,
+    hint: '…0-000',
+    status: 'untested' as const,
+  })),
+  // boot hydration behaves like the hermetic 503 — keep the fixture profiles
+  listCredentials: vi.fn(async () => null),
+}))
+
+beforeEach(() => {
+  localStorage.clear()
+  vi.mocked(addCredential).mockClear()
+})
 
 const openProviders = () => renderApp(undefined, { path: '/chat/c1?settings=providers' })
 
@@ -20,23 +40,18 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
     expect(within(dialog).getAllByText('Miễn phí').length).toBeGreaterThan(0)
   })
 
-  // generous timeout: per-keystroke typing + the 900ms fake connection test
-  // run slower under coverage instrumentation
-  it('adds a profile via the form and a test marks it active', { timeout: 15_000 }, async () => {
+  // generous timeout: per-keystroke typing runs slower under coverage
+  it('adds a profile via the form — the credential is sealed server-side', { timeout: 15_000 }, async () => {
     const user = makeUser()
-    // optimistic local addProfile + fake connection test live in the demo world
-    // (the real product seals the credential server-side — store.credentials)
-    await renderApp(undefined, { world: 'demo', path: '/chat/c1?settings=providers' })
+    await openProviders()
     const dialog = await screen.findByRole('dialog')
     await user.type(within(dialog).getByLabelText('API KEY — Gemini'), 'AIza-new-key-000')
     await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
-    expect(within(dialog).getAllByText('Chưa kiểm tra').length).toBeGreaterThan(0)
-
-    await user.click(within(dialog).getByRole('button', { name: /Kiểm tra — Tài khoản/ }))
-    await waitFor(
-      () => expect(within(dialog).queryAllByText('Chưa kiểm tra')).toHaveLength(0),
-      { timeout: 2500 },
-    )
+    // the secret went to the server once (the form's default kind for gemini
+    // is the account segment); the row returns with a hint
+    expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'Tài khoản', 'AIza-new-key-000')
+    expect((await within(dialog).findAllByText('Chưa kiểm tra')).length).toBeGreaterThan(0)
+    expect(within(dialog).getByText('…0-000')).toBeInTheDocument()
   })
 
   it('reorders priority with the arrows and removes a profile', async () => {
