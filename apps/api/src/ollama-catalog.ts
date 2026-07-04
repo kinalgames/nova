@@ -4,7 +4,7 @@
 // credential — same trust model as the chat proxy.
 
 import type { ModelDef } from '@nova/shared'
-import { ollamaEndpoint } from './providers/ollama'
+import { ollamaEndpoint } from '@nova/ai'
 
 /** a catalog row: the shared ModelDef plus the human size badge */
 export interface OllamaModelRow extends ModelDef {

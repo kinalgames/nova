@@ -10,7 +10,7 @@ import {
   providerAdapters,
   providerKinds,
   type ProviderEnv,
-} from './providers'
+} from '@nova/ai'
 import { createAuth } from './auth'
 import { limitAuth, limitV1, type RateLimitEnv } from './ratelimit'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'

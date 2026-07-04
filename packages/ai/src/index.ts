@@ -1,4 +1,5 @@
-// Provider registry — the chat proxy dispatches on ChatProxyRequest.providerId.
+// @nova/ai — provider-agnostic AI transport for Nova.
+// Provider registry: the chat proxy dispatches on ChatProxyRequest.providerId.
 // Every adapter exposes the same two capabilities: `call` the upstream with
 // streaming enabled, and `stream` its wire format into Nova's event contract.
 
@@ -10,8 +11,15 @@ import { callOpenAI, toNovaStream as openaiStream } from './openai'
 import { callOllama, toNovaStream as ollamaStream } from './ollama'
 import type { ProviderEnv, ResolvedChatRequest } from './shared'
 
-export { ProviderConfigError } from './shared'
-export type { NovaStreamEvent, ProviderEnv, ResolvedChatRequest } from './shared'
+export { ProviderConfigError, toBase64 } from './shared'
+export type {
+  NovaStreamEvent,
+  ProviderEnv,
+  ResolvedChatRequest,
+  ResolvedPart,
+  ResolvedTurn,
+} from './shared'
+export { ollamaEndpoint } from './ollama'
 
 export interface ProviderAdapter {
   call(req: ResolvedChatRequest, signal?: AbortSignal, env?: ProviderEnv): Promise<Response>

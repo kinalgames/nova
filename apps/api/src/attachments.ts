@@ -5,7 +5,7 @@
 
 import type { ChatProxyRequest } from '@nova/shared'
 import { loadAttachment, type FilesEnv } from './files'
-import { toBase64, type ResolvedPart, type ResolvedTurn } from './providers/shared'
+import { toBase64, type ResolvedPart, type ResolvedTurn } from '@nova/ai'
 
 /** per-request ceiling for resolved binary bytes — stays under every
  *  provider's request cap once base64 inflates them by ~4/3 */
