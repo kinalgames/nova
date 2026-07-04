@@ -4,6 +4,7 @@ import { renderStore } from '../test/util'
 import {
   deleteAccount,
   fetchMe,
+  resendVerification,
   signIn,
   signInSocial,
   signInSocialPopup,
@@ -39,6 +40,7 @@ vi.mock('../services/auth', () => ({
   updateMe: vi.fn(async () => true),
   changePassword: vi.fn(async () => null),
   deleteAccount: vi.fn(async () => true),
+  resendVerification: vi.fn(async () => null),
   getToken: () => localStorage.getItem('nova.auth.token'),
 }))
 
@@ -185,6 +187,35 @@ describe('store — real auth wiring (BE1)', () => {
     const { result } = await renderStore({ path: '/onboarding' })
     await waitFor(() => expect(result.current.s.accountId).toBe('u1'))
     expect(result.current.s.userName).toBe('Thành Thật')
+  })
+
+  it('D5: an unverified signed-in account shows the verify nudge; resend fires + toasts', async () => {
+    // default fetchMe has no emailVerified → adopts as false
+    const { result } = await renderStore({ path: '/login' })
+    await act(async () => {
+      await result.current.v.submitAuth('test@kinal.co', 'password1')
+    })
+    expect(result.current.v.needsVerify).toBe(true)
+    await act(async () => {
+      await result.current.v.resendVerify()
+    })
+    expect(resendVerification).toHaveBeenCalledWith('test@kinal.co')
+    expect(result.current.s.toast).toBeTruthy()
+  })
+
+  it('D5: a verified account shows no verify nudge', async () => {
+    vi.mocked(fetchMe).mockResolvedValueOnce({
+      id: 'u1',
+      name: 'Verified',
+      email: 'v@kinal.co',
+      assistantName: 'Trợ lý',
+      emailVerified: true,
+    })
+    const { result } = await renderStore({ path: '/login' })
+    await act(async () => {
+      await result.current.v.submitAuth('v@kinal.co', 'password1')
+    })
+    expect(result.current.v.needsVerify).toBe(false)
   })
 
   it('signup derives the name from the email and lands on onboarding', async () => {

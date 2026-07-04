@@ -7,8 +7,10 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { bearer } from 'better-auth/plugins'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from './db/schema'
+import { mailConfigured, sendMail, type MailEnv } from './mail'
+import { verificationEmail } from './email-templates'
 
-export interface AuthEnv {
+export interface AuthEnv extends MailEnv {
   DB: D1Database
   BETTER_AUTH_SECRET: string
   /** canonical URL of this API (defaults to local wrangler dev) */
@@ -30,6 +32,21 @@ export function createAuth(env: AuthEnv) {
     baseURL: env.BETTER_AUTH_URL ?? 'http://localhost:8787',
     trustedOrigins: [env.WEB_ORIGIN ?? 'http://localhost:5173'],
     emailAndPassword: { enabled: true },
+    // D5 — send a verification link on signup. NOT required for sign-in: it
+    // must never lock out accounts created before this shipped; the web app
+    // shows a soft “verify” nudge instead. The callback is guarded so a
+    // missing mail config (local dev) leaves signup working, just silent.
+    emailVerification: {
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+        if (!mailConfigured(env)) return
+        // land the user back on the WEB app after the API verifies the token
+        const link = new URL(url)
+        link.searchParams.set('callbackURL', env.WEB_ORIGIN ?? 'http://localhost:5173')
+        await sendMail(env, verificationEmail(user.email, link.toString()))
+      },
+    },
     socialProviders: {
       ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
         ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }

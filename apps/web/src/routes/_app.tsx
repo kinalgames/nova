@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { getToken } from '../services/auth'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
+import { VerifyBanner } from '../components/VerifyBanner'
 
 export const Route = createFileRoute('/_app')({
   // the real product requires a session — token-only so the app still opens
@@ -25,6 +26,7 @@ export function AppLayout() {
       {/* MAIN COLUMN */}
       <div className="relative flex min-w-0 flex-1 flex-col">
         <TopBar />
+        <VerifyBanner />
 
         {/* VIEW AREA — the matched route renders here */}
         <main className="relative min-h-0 flex-1" aria-label={t('nav.content')}>

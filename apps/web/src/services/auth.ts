@@ -15,6 +15,8 @@ export interface SessionUser {
   assistantName: string | null
   /** D4 — false for social-only accounts (no password credential) */
   hasPassword?: boolean
+  /** D5 — whether the email address has been confirmed */
+  emailVerified?: boolean
 }
 
 async function call(path: string, body?: unknown, method?: string): Promise<Response> {
@@ -200,4 +202,18 @@ export async function signOut(): Promise<void> {
     /* local sign-out is enough offline */
   }
   localStorage.removeItem(TOKEN_KEY)
+}
+
+/** D5 — ask Better Auth to (re)send the verification email to this address.
+ *  Returns null on success, an error message otherwise. */
+export async function resendVerification(email: string): Promise<string | null> {
+  try {
+    const res = await call('/api/auth/send-verification-email', {
+      email,
+      callbackURL: `${window.location.origin}/`,
+    })
+    return res.ok ? null : await errorOf(res)
+  } catch {
+    return i18n.t('errors.network')
+  }
 }

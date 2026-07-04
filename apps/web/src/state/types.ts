@@ -259,6 +259,8 @@ export interface NovaState {
   /** D4 — session-derived: the account has a password credential (email
    *  sign-up). Social-only accounts hide the change-password form. */
   hasPassword?: boolean
+  /** D5 — session-derived: the email address has been confirmed */
+  emailVerified?: boolean
   /** what the assistant is called — drives the NOVA label */
   assistantName: string
   /** the user's own system instructions — prepended to every live chat */

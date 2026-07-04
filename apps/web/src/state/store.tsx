@@ -58,6 +58,7 @@ import {
   signInSocialPopup,
   signOut,
   signUp,
+  resendVerification,
   updateMe,
   type SessionUser,
 } from '../services/auth'
@@ -684,7 +685,7 @@ export function StoreProvider({
         userName: me.name,
         userEmail: me.email,
         ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-        hasPassword: me.hasPassword ?? false,
+        hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
       }))
     } else {
       set({
@@ -692,7 +693,7 @@ export function StoreProvider({
         userName: me.name,
         userEmail: me.email,
         ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-        hasPassword: me.hasPassword ?? false,
+        hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
       })
     }
   }, [demo, set])
@@ -715,7 +716,7 @@ export function StoreProvider({
           userName: me.name,
           userEmail: me.email,
           ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-          hasPassword: me.hasPassword ?? false,
+          hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
         }))
       } else {
         set({
@@ -723,7 +724,7 @@ export function StoreProvider({
           userName: me.name,
           userEmail: me.email,
           ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-          hasPassword: me.hasPassword ?? false,
+          hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
         })
       }
     },
@@ -2476,6 +2477,12 @@ function deriveValues(
     // D4 — account security & deletion
     hasPassword: s.hasPassword ?? false,
     accountDeletable: HAS_API && !demo && !!s.userEmail,
+    // D5 — soft email-verification nudge: shown while signed in and unverified
+    needsVerify: !demo && nav.authView === null && !!s.accountId && s.emailVerified === false,
+    resendVerify: async (): Promise<void> => {
+      const err = await resendVerification(s.userEmail ?? '')
+      showToast(err ?? t('chat.verifySent'))
+    },
     changePassword: async (current: string, next: string): Promise<string | null> => {
       const err = await changePasswordApi(current, next)
       if (!err) showToast(t('account.pwChanged'))

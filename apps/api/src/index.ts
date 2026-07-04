@@ -18,11 +18,12 @@ import { files } from './files'
 import { shares } from './shares'
 import { resolveAttachments } from './attachments'
 import { tapNovaUsage, usage, type UsageEnv } from './usage'
+import type { MailEnv } from './mail'
 import type { SyncOp } from '@nova/shared'
 
 export { UserStore } from './do/userStore'
 
-export interface Env extends CredentialsEnv, ProviderEnv, UsageEnv, RateLimitEnv {
+export interface Env extends CredentialsEnv, ProviderEnv, UsageEnv, RateLimitEnv, MailEnv {
   USER_STORE: DurableObjectNamespace
   /** B1 — attachment bytes (metadata in D1 `attachment`) */
   ATTACH: R2Bucket
@@ -101,11 +102,13 @@ async function sessionOf(c: { env: Env; req: { raw: Request } }) {
 }
 
 /** the public shape of an account — secrets and auth internals never leave */
-const meShape = (u: { id: string; name: string; email: string }) => ({
+const meShape = (u: { id: string; name: string; email: string; emailVerified?: boolean }) => ({
   id: u.id,
   name: u.name,
   email: u.email,
   assistantName: (u as { assistantName?: string | null }).assistantName ?? null,
+  // D5 — the web app shows a soft verify nudge when this is false
+  emailVerified: u.emailVerified ?? false,
 })
 
 // session probe — works with the web session cookie OR a bearer token

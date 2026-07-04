@@ -249,6 +249,27 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
   Home hiện strip compact trên composer. CTA: chưa accountId → /login,
   có rồi → settings=providers. VM: needsProvider/nudgeLogin/nudgeGo.
 
+### D5 email verification (2026-07-04)
+
+- **Transport = Microsoft Graph** (`apps/api/src/mail.ts`), KHÔNG SMTP:
+  Office365 SMTP basic-auth bị Microsoft chặn (535 5.7.139 — đã test
+  thật qua worker-mailer, xác nhận chặn). Graph = OAuth2
+  client-credentials → POST /users/{sender}/sendMail, HTTP thuần, hoạt
+  động hoàn hảo từ Workers (proven: signup + resend trả 202/200 live).
+- Secrets (dev + prod): MS_GRAPH_TENANT_ID / _CLIENT_ID / _CLIENT_SECRET /
+  _MAIL_SENDER (sender@kinalgames.com) / _SAVE_TO_SENT_ITEMS. Local dev
+  KHÔNG cấu hình → mailConfigured() false → sendVerificationEmail bỏ qua
+  (signup vẫn chạy, chỉ không gửi mail).
+- Better Auth `emailVerification: { sendOnSignUp, autoSignInAfterVerification,
+  sendVerificationEmail }` — callback rewrite callbackURL sang WEB_ORIGIN
+  để sau khi verify user quay về web app. KHÔNG bật requireEmailVerification
+  (không khóa tài khoản cũ chưa verify như tester@nova.dev).
+- UI: `emailVerified` qua meShape + SessionUser → `VerifyBanner` (strip warn
+  dưới TopBar, chỉ hiện khi loggedIn + emailVerified===false) + nút "Gửi
+  lại email" gọi POST /api/auth/send-verification-email. VM: needsVerify,
+  resendVerify. i18n: chat.verifyBody/verifyCta/verifySent.
+- Email template `email-templates.ts`: paper-look inline-style HTML + text.
+
 ## QUYẾT ĐỊNH ĐÓNG (user chốt 2026-07-03)
 
 - **CI auto-deploy: WON'T DO** — CI testing trên GitHub Actions giữ
