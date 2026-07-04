@@ -9,12 +9,13 @@ import type { ChatProxyRequest } from '@nova/shared'
 import {
   novaLineStream,
   sseData,
+  type ProviderEnv,
   type ResolvedChatRequest,
   type RoundCapture,
   type ToolCallResult,
 } from './shared'
 
-const API_URL = 'https://api.openai.com/v1/responses'
+const API_ORIGIN = 'https://api.openai.com'
 
 export function openaiHeaders(
   profile: NonNullable<ChatProxyRequest['profile']>,
@@ -119,9 +120,16 @@ export function openaiBody(req: ResolvedChatRequest): string {
   })
 }
 
-/** call the upstream with streaming enabled; the caller owns the response body */
-export function callOpenAI(req: ResolvedChatRequest, signal?: AbortSignal): Promise<Response> {
-  return fetch(API_URL, {
+/** call the upstream with streaming enabled; the caller owns the response body.
+ *  OPENAI_BASE_URL (an AI Gateway prefix) replaces the origin when Workers
+ *  egress is rejected — headers and body are identical either way. */
+export function callOpenAI(
+  req: ResolvedChatRequest,
+  signal?: AbortSignal,
+  env: ProviderEnv = {},
+): Promise<Response> {
+  const origin = (env.OPENAI_BASE_URL ?? API_ORIGIN).replace(/\/+$/, '')
+  return fetch(`${origin}/v1/responses`, {
     method: 'POST',
     headers: openaiHeaders(req.profile),
     body: openaiBody(req),

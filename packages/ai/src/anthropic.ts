@@ -12,6 +12,7 @@ import type { ChatProxyRequest } from '@nova/shared'
 import {
   novaLineStream,
   sseData,
+  type ProviderEnv,
   type ResolvedChatRequest,
   type RoundCapture,
   type ToolCallResult,
@@ -19,7 +20,7 @@ import {
 
 export type { NovaStreamEvent, ResolvedChatRequest } from './shared'
 
-const API_URL = 'https://api.anthropic.com/v1/messages'
+const API_ORIGIN = 'https://api.anthropic.com'
 const VERSION = '2023-06-01'
 /** identity line Claude Code prepends; required for setup-token acceptance */
 const CLAUDE_CODE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
@@ -158,9 +159,16 @@ export function anthropicBody(req: ResolvedChatRequest): string {
   })
 }
 
-/** call the upstream with streaming enabled; the caller owns the response body */
-export function callAnthropic(req: ResolvedChatRequest, signal?: AbortSignal): Promise<Response> {
-  return fetch(API_URL, {
+/** call the upstream with streaming enabled; the caller owns the response body.
+ *  ANTHROPIC_BASE_URL (an AI Gateway prefix) replaces the origin when Workers
+ *  egress is rejected — headers and body are identical either way. */
+export function callAnthropic(
+  req: ResolvedChatRequest,
+  signal?: AbortSignal,
+  env: ProviderEnv = {},
+): Promise<Response> {
+  const origin = (env.ANTHROPIC_BASE_URL ?? API_ORIGIN).replace(/\/+$/, '')
+  return fetch(`${origin}/v1/messages`, {
     method: 'POST',
     headers: anthropicHeaders(req.profile, { fetchTool: !!req.fetch }),
     body: anthropicBody(req),

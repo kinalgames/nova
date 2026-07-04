@@ -53,7 +53,11 @@
       "observability": { "enabled": true },
       "vars": {
         "BETTER_AUTH_URL": "https://nova-dev.kinalgames.workers.dev",
-        "WEB_ORIGIN": "https://nova-dev.kinalgames.workers.dev"
+        "WEB_ORIGIN": "https://nova-dev.kinalgames.workers.dev",
+        // Anthropic rejects some Workers-egress colos (403 “Request not
+        // allowed”, intermittent by placement) — route via AI Gateway “nova”,
+        // Cloudflare's first-party proxy; BYOK headers pass through unchanged
+        "ANTHROPIC_BASE_URL": "https://gateway.ai.cloudflare.com/v1/346d7d74298e7e60d4071adc7b3c6c7c/nova/anthropic"
       },
       "assets": {
         "directory": "../web/dist",
@@ -90,7 +94,9 @@
       "vars": {
         "BETTER_AUTH_URL": "https://nova.kinal.co",
         "WEB_ORIGIN": "https://nova.kinal.co",
-        "TRUSTED_ORIGINS_EXTRA": "https://nova.kinalgames.workers.dev"
+        "TRUSTED_ORIGINS_EXTRA": "https://nova.kinalgames.workers.dev",
+        // see the dev block — stable path around Anthropic's Workers-egress 403
+        "ANTHROPIC_BASE_URL": "https://gateway.ai.cloudflare.com/v1/346d7d74298e7e60d4071adc7b3c6c7c/nova/anthropic"
       },
       "assets": {
         "directory": "../web/dist",

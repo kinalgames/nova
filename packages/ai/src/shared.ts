@@ -124,6 +124,11 @@ export class ProviderConfigError extends Error {}
 export interface ProviderEnv {
   GEMINI_OAUTH_CLIENT_ID?: string
   GEMINI_OAUTH_CLIENT_SECRET?: string
+  /** alternate API origins — set to a Cloudflare AI Gateway prefix when the
+   *  provider rejects Workers egress IPs (Anthropic 403 “Request not
+   *  allowed”). Absent = the provider's own origin. */
+  ANTHROPIC_BASE_URL?: string
+  OPENAI_BASE_URL?: string
 }
 
 export type EmitEvent = (event: NovaStreamEvent) => void

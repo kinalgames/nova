@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   anthropicBody,
   anthropicHeaders,
@@ -143,6 +143,29 @@ describe('D1 — native server tools ride the request', () => {
     // account credentials keep their oauth betas and append the fetch flag
     const acc = anthropicHeaders(profileAcc, { fetchTool: true })['anthropic-beta']
     expect(acc).toBe('oauth-2025-04-20,claude-code-20250219,web-fetch-2025-09-10')
+  })
+})
+
+describe('anthropic adapter — alternate origin (AI Gateway)', () => {
+  it('ANTHROPIC_BASE_URL replaces the origin; default stays api.anthropic.com', async () => {
+    const { callAnthropic } = await import('./anthropic')
+    const fetchMock = vi.fn(async () => new Response('', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const req = {
+      providerId: 'claude' as const,
+      model: 'claude-haiku-4-5',
+      messages: [{ role: 'user' as const, content: 'ping' }],
+      profile: profileKey,
+    }
+    await callAnthropic(req)
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.anthropic.com/v1/messages')
+    await callAnthropic(req, undefined, {
+      ANTHROPIC_BASE_URL: 'https://gateway.ai.cloudflare.com/v1/acc/nova/anthropic/',
+    })
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://gateway.ai.cloudflare.com/v1/acc/nova/anthropic/v1/messages',
+    )
+    vi.unstubAllGlobals()
   })
 })
 

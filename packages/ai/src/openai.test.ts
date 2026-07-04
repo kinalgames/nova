@@ -107,11 +107,13 @@ describe('openai adapter — auth transport', () => {
     expect(h['content-type']).toBe('application/json')
   })
 
-  it('POSTs to the Responses endpoint', async () => {
+  it('POSTs to the Responses endpoint; OPENAI_BASE_URL overrides the origin', async () => {
     const fetchMock = vi.fn(async (_url: string) => new Response('', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     await callOpenAI(baseReq)
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.openai.com/v1/responses')
+    await callOpenAI(baseReq, undefined, { OPENAI_BASE_URL: 'https://gw.example/openai' })
+    expect(fetchMock.mock.calls[1][0]).toBe('https://gw.example/openai/v1/responses')
   })
 })
 
