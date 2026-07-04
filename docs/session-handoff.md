@@ -32,10 +32,10 @@ TODO theo thứ tự, và bẫy đã cắn.
 ## Trạng thái repo
 
 - **CI XANH** (gates + e2e). Push thẳng main, mỗi commit kèm "Verified:".
-- 597 unit tổng (`npm run test` root; web 478/51 file) + 25 e2e · coverage
-  floors web **95/90/94/96** (branches 90.18, jitter ±1 point đã quan sát —
-  giữ buffer ≥3 khi thêm/xóa test). Demo mode ĐÃ XÓA — unit suite chạy
-  fixture thật + hermetic SSE; xem mục "Gỡ demo mode".
+- 624 unit tổng (`npm run test` root; web 497/53 file, api 118) + 25 e2e ·
+  coverage floors web **95/90/94/96** (branches 90.04 — sát floor, nới
+  buffer khi chạm code; jitter ±1 từng quan sát). Demo mode ĐÃ XÓA —
+  suite chạy fixture thật + hermetic SSE; model system v2 xem mục riêng.
 - Dev local: web `npm run dev` (:5173); api `cd apps/api && npx wrangler
   dev --port 8787` (**restart wrangler sau khi đổi `.dev.vars`**). D1 local
   đã apply đủ migrations (mới nhất = share 0003).
@@ -105,9 +105,36 @@ TODO theo thứ tự, và bẫy đã cắn.
 
 ## BACKLOG ĐẦY ĐỦ (RE-AUDIT 2026-07-04)
 
-Còn mở: **D1 tools-thật · B6b/B6c ollama · D6 (chờ điều kiện) · a11y
-contrast baseline 6 · desktop app (tương lai)**. Mọi thứ khác dưới đây
-đã gạch = DONE (giữ làm sử liệu quyết định).
+Còn mở: **D1 tools-thật · D6 (chờ điều kiện) · a11y contrast baseline 6
+· desktop app (tương lai)**. ~~B6b/B6c ollama~~ ĐÃ XONG 2026-07-04
+(eba0ab0). Mọi thứ khác dưới đây đã gạch = DONE (giữ làm sử liệu).
+
+### Model & Provider system v2 (2026-07-04 — 3 releases P1/P2/P3)
+
+- **P1 `28f4110` — catalog capability-driven**: ModelDef v2 (shared) =
+  mode smart|fast + caps {reasoning,vision,audio,imageGen,toolUse} +
+  ctx + legacy flag, BỎ `pace`. Curated: Claude Opus 4.8/Sonnet 5
+  (smart) + Haiku 4.5 (fast) · Gemini 2.5 Pro/Flash · GPT-5/mini; BỎ
+  o4 + 3 ollama placeholders. Chip “Suy nghĩ” CHỈ hiện khi
+  caps.reasoning; `thinking` chỉ ride request khi model reason được.
+  findModel synthesize def cho ollama id bất kỳ (dynamicModel);
+  sanitizeSlots không heal slot ollama. **Usage audit all-provider**:
+  OpenAI include_usage ✓ · Gemini thoughts ✓ · Ollama eval ✓ · FIX
+  Anthropic cache_creation/cache_read tokens (nằm NGOÀI input_tokens).
+- **P2 `542d8d0` — Settings redesign**: Nhà cung cấp = accordion (row
+  gọn → click mở 1 config; hết slot-buttons, hết stub “add custom”).
+  Trợ lý = section MÔ HÌNH: 2 picker Thông minh/Nhanh theo mode,
+  mỗi row: logo + caps glyphs (tooltip) + ctx + giá + LEGACY badge
+  (xếp cuối); provider chưa kết nối → mờ + CTA “Kết nối” nhảy đúng
+  config đó (openProvider state).
+- **P3 `eba0ab0` — ollama dynamic (B6b+B6c)**: POST /v1/ollama/models
+  (tags+show → caps THẬT) + /v1/ollama/pull (NDJSON→SSE progress);
+  adapter map think:false khi off (PROVEN docker: 389→9 output
+  tokens); client auto-hydrate ollamaModels, section MODEL ĐÃ CÀI
+  (size+caps) + form Tải model progress %; pulled models vào CẢ 2
+  picker. Pull llama3.2 2GB proven live (979 frames).
+- **LƯU Ý coverage**: branches 90.04 (+1 trên floor, deterministic 2
+  runs) — MỌNG; nới buffer khi chạm code kế tiếp.
 
 Backend:
 - ~~BE4 share /share/:id~~ ĐÃ XONG 2026-07-03 (user duyệt: unlisted + snapshot tĩnh + revoke + ẢNH THẬT): bảng D1 share (id random unguessable = credential, snapshot JSON, file_ids whitelist ownership-verified lúc tạo; migration 0003 applied 3 DB) · POST/DELETE /v1/shares (session) · GET /v1/shares/:id + /:id/files/:fileId (PUBLIC, chỉ serve file trong whitelist, nosniff) · client: menu Share tạo/copy link thật + Huỷ chia sẻ, share chết theo delConv + account-delete cascade · trang /share/:id trần (Markdown + ảnh public + CTA, noindex meta).
