@@ -988,14 +988,25 @@ export function StoreProvider({
             ...liveTools.map((tl) => ({
               kind: 'tool' as const,
               node: tl.done && tl.ok === false ? ('danger' as const) : ('accent' as const),
-              title: i18n.t(tl.name === 'web_fetch' ? 'chat.toolFetch' : 'chat.toolSearch'),
+              title: i18n.t(
+                tl.name === 'web_fetch'
+                  ? 'chat.toolFetch'
+                  : tl.name === 'files'
+                    ? 'chat.toolFiles'
+                    : 'chat.toolSearch',
+              ),
               detail: !tl.done
                 ? '…'
                 : tl.ok === false
                   ? (tl.summary ?? i18n.t('chat.toolFailed'))
-                  : i18n.t('chat.toolSources', { count: tl.count }),
+                  : (tl.summary ??
+                    (tl.count ? i18n.t('chat.toolSources', { count: tl.count }) : '✓')),
               tool: tl.name,
-              toolIcon: (tl.name === 'web_fetch' ? 'globe' : 'search') as 'globe' | 'search',
+              toolIcon: (tl.name === 'web_fetch'
+                ? 'globe'
+                : tl.name === 'files'
+                  ? 'file'
+                  : 'search') as 'globe' | 'search' | 'file',
               ...(tl.query ? { query: tl.query } : {}),
             })),
           ]
@@ -1078,6 +1089,8 @@ export function StoreProvider({
             // flag, so no provider 4xx and no silent no-op
             ...(modelDef.caps.webSearch && prev.tools.web ? { search: true } : {}),
             ...(modelDef.caps.webSearch && prev.tools.fetch ? { fetch: true } : {}),
+            // T5 — the files tool needs function calling; gated on toolUse
+            ...(modelDef.caps.toolUse && prev.tools.files ? { files: true } : {}),
             messages: turns,
             // server-backed profiles chat by id — the secret stays sealed
             // server-side; transitional local profiles still send inline
@@ -1973,13 +1986,13 @@ function deriveValues(
   const chk = (k: keyof NovaState['tools']) => (s.tools[k] ? '✓' : '')
   // D1 — web tools follow the active model's capability: on an unsupported
   // model the rows render faint and inert instead of silently no-oping
-  const webCapable = !!findModel(s.slots[s.activeSlot]).caps.webSearch
+  const activeModelCaps = findModel(s.slots[s.activeSlot]).caps
+  const webCapable = !!activeModelCaps.webSearch
+  const filesCapable = !!activeModelCaps.toolUse
+  const rowCapable = (k: keyof NovaState['tools']) =>
+    k === 'web' || k === 'fetch' ? webCapable : k === 'files' ? filesCapable : false
   const rowFg = (k: keyof NovaState['tools']) =>
-    (k === 'web' || k === 'fetch') && !webCapable
-      ? 'var(--faint)'
-      : s.tools[k]
-        ? accentText
-        : 'var(--text-2)'
+    !rowCapable(k) ? 'var(--faint)' : s.tools[k] ? accentText : 'var(--text-2)'
   const activeCount = tk.filter((k) => s.tools[k]).length
 
   const mkPreset = (
@@ -2282,7 +2295,7 @@ function deriveValues(
     bashRowFg: rowFg('bash'),
     toggle_web: webCapable ? toolToggle('web') : () => {},
     toggle_fetch: webCapable ? toolToggle('fetch') : () => {},
-    toggle_files: toolToggle('files'),
+    toggle_files: filesCapable ? toolToggle('files') : () => {},
     toggle_bash: toolToggle('bash'),
     accent,
     advanced: adv,

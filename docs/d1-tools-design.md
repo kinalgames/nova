@@ -1,8 +1,13 @@
 # D1 — Real tools: web search · fetch · files (· bash deferred)
 
-Status: APPROVED 2026-07-04 — P1→P2→P3, OpenAI Responses migration + search
-confirmed in-scope; adapters + loop live in a new `packages/ai` lib; search
-chip defaults OFF per conversation. Owner: Nova.
+Status: SHIPPED 2026-07-04 — all phases live in prod (T1 @nova/ai extract ·
+T2 SSE v2 + live thinking · T3 native search/fetch · T4 OpenAI Responses ·
+T4.5 signed-URL attachments + per-provider body budgets · T5 agentic loop +
+files tool). Deviations from the draft: the files tool is advertised via the
+composer's files toggle (`files: true` on the request, gated on
+caps.toolUse) rather than auto-advertised; OpenAI's `fetch` maps onto its
+single hosted web_search tool; T4.5 (body-size ceilings + URL-form media)
+was added mid-flight on user flag. Owner: Nova.
 
 Design doctrine: clean-room. Patterns were studied from prior art
 (granular stream events, streaming-JSON tool args), but every type,

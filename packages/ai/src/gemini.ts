@@ -16,6 +16,8 @@ import {
   sseData,
   type ProviderEnv,
   type ResolvedChatRequest,
+  type RoundCapture,
+  type ToolCallResult,
 } from './shared'
 
 const GENLANG_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -60,11 +62,23 @@ export function geminiRequest(req: ResolvedChatRequest): Record<string, unknown>
   const tools = [
     ...(req.search ? [{ google_search: {} }] : []),
     ...(req.fetch ? [{ url_context: {} }] : []),
+    // T5 — Nova-side function tools; gen-3 combines them with built-ins
+    ...(req.novaTools?.length
+      ? [
+          {
+            functionDeclarations: req.novaTools.map((t) => ({
+              name: t.name,
+              description: t.description,
+              parameters: t.parameters,
+            })),
+          },
+        ]
+      : []),
   ]
   return {
     ...(tools.length ? { tools } : {}),
     // B1 — binary parts ride as inline_data ahead of the text part
-    contents: req.messages.map((m) => {
+    contents: [...req.messages.map((m) => {
       const parts = [
         ...(m.parts ?? []).map((p) => ({
           inline_data: {
@@ -78,7 +92,7 @@ export function geminiRequest(req: ResolvedChatRequest): Record<string, unknown>
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: parts.length ? parts : [{ text: m.content }],
       }
-    }),
+    }), ...((req.rawTail ?? []) as Record<string, unknown>[])],
     ...(req.system?.trim() ? { systemInstruction: { parts: [{ text: req.system }] } } : {}),
     generationConfig: {
       maxOutputTokens: req.maxTokens ?? 8192,
@@ -213,9 +227,33 @@ export async function callGemini(
   })
 }
 
+/** T5 — continuation tail: the model turn (functionCall parts keep their
+ *  gen-3 thoughtSignature) + one user turn of functionResponse parts */
+export function geminiToolTail(round: RoundCapture, results: ToolCallResult[]): unknown[] {
+  return [
+    round.assistantTurn,
+    {
+      role: 'user',
+      parts: round.calls.map((c, i) => ({
+        functionResponse: {
+          name: c.name,
+          response: { result: results[i]?.content ?? '' },
+        },
+      })),
+    },
+  ]
+}
+
 interface GeminiChunk {
   candidates?: {
-    content?: { parts?: { text?: string; thought?: boolean }[] }
+    content?: {
+      parts?: {
+        text?: string
+        thought?: boolean
+        thoughtSignature?: string
+        functionCall?: { name?: string; args?: unknown }
+      }[]
+    }
     groundingMetadata?: {
       webSearchQueries?: string[]
       groundingChunks?: { web?: { uri?: string; title?: string } }[]
@@ -240,7 +278,10 @@ interface GeminiChunk {
  * (thought tokens bill as output, so they count toward outputTokens).
  * Parts flagged `thought: true` are reasoning summaries → thinking_delta.
  */
-export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+export function toNovaStream(
+  upstream: ReadableStream<Uint8Array>,
+  round?: RoundCapture,
+): ReadableStream<Uint8Array> {
   let started = false
   let errored = false
   let inputTokens = 0
@@ -248,6 +289,9 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
   let groundedEmitted = false
   let fetchedEmitted = false
   let sourceN = 0
+  let text = ''
+  // model parts replayed verbatim next round (keeps thoughtSignature)
+  const modelParts: Record<string, unknown>[] = []
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -281,9 +325,24 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
       }
       const parts = chunk.candidates?.[0]?.content?.parts
       if (Array.isArray(parts))
-        for (const part of parts)
-          if (typeof part.text === 'string' && part.text)
+        for (const part of parts) {
+          if (typeof part.text === 'string' && part.text) {
+            if (part.thought !== true) text += part.text
             emit({ type: part.thought === true ? 'thinking_delta' : 'block_delta', text: part.text })
+          }
+          // T5 — a function call: queue for execution + surface on the trace
+          if (round && part.functionCall?.name) {
+            const id = `gm-${round.calls.length + 1}`
+            const args = JSON.stringify(part.functionCall.args ?? {})
+            modelParts.push({
+              functionCall: { name: part.functionCall.name, args: part.functionCall.args ?? {} },
+              ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
+            })
+            round.calls.push({ id, name: part.functionCall.name, args })
+            emit({ type: 'tool_start', id, name: part.functionCall.name })
+            emit({ type: 'tool_delta', id, text: args })
+          }
+        }
       // D1 — grounding: Gemini runs the search itself and attaches metadata
       // (usually on the final chunk); surface it once as a finished tool call
       const grounding = chunk.candidates?.[0]?.groundingMetadata
@@ -314,6 +373,11 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
       }
     },
     flush(emit) {
+      if (round)
+        round.assistantTurn = {
+          role: 'model',
+          parts: [...(text ? [{ text }] : []), ...modelParts],
+        }
       if (!errored) emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
     },
   })

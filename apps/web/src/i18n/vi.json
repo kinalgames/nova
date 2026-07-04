@@ -121,6 +121,7 @@
     "searchingLabel": "Đang tra cứu web…",
     "toolSearch": "Tìm kiếm web",
     "toolFetch": "Đọc trang web",
+    "toolFiles": "Đọc tệp của bạn",
     "toolFailed": "không lấy được",
     "toolSources": "{{count}} nguồn",
     "traceSummaryStream": "Nova đang tra cứu và tính toán…",

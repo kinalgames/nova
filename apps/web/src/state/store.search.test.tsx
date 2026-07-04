@@ -51,10 +51,13 @@ describe('T3 — capability-gated search/fetch request flags', () => {
     // toggled on → the capable default model (claude opus) carries them
     await act(async () => result.current.v.toggle_web())
     await act(async () => result.current.v.toggle_fetch())
+    await act(async () => result.current.v.toggle_files())
     await act(async () => result.current.set({ draft: 'câu hai' }))
     await act(async () => result.current.v.send())
     expect(calls[1].search).toBe(true)
     expect(calls[1].fetch).toBe(true)
+    // T5 — files rides on toolUse capability
+    expect(calls[1].files).toBe(true)
   })
 
   it('an ollama model without webSearch never sees the flags — rows go inert', async () => {
@@ -123,6 +126,76 @@ describe('T3 — tool events build the live trace + sources block', () => {
       { n: 1, label: 'sjc.vn', url: 'https://www.sjc.vn/gia' },
       { n: 2, label: 'pnj.vn', url: 'https://pnj.vn' },
     ])
+  })
+
+  it('T5 — a files call renders its own title/icon and the executor summary', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onToolStart?.('c1', 'files')
+      h.onToolResult?.('c1', true, '2 files')
+      h.onToolStart?.('c2', 'files')
+      h.onToolResult?.('c2', true) // no summary, no sources → plain check
+      h.onDelta('Bạn có 2 tệp.')
+      h.onDone({ inputTokens: 5, outputTokens: 4 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'tệp của tôi?' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    const trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.steps[0]).toMatchObject({
+      kind: 'tool',
+      title: 'Đọc tệp của bạn',
+      detail: '2 files',
+      toolIcon: 'file',
+    })
+    expect(trace.steps[1]).toMatchObject({ detail: '✓' })
+  })
+
+  it('T5 — a failure without an error code falls back to the generic label; ugly source urls keep their raw label', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onToolStart?.('t1', 'web_search')
+      h.onToolResult?.('t1', false)
+      h.onToolStart?.('t2', 'web_search')
+      h.onToolResult?.('t2', true, undefined, [{ n: 1, url: 'không-phải-url', title: 'X' }])
+      h.onDelta('xong')
+      h.onDone({ inputTokens: 1, outputTokens: 1 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'lỗi?' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    const trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.steps[0]).toMatchObject({ detail: 'không lấy được', node: 'danger' })
+    const src = nova.blocks.find((b) => b.type === 'sources')
+    if (src?.type !== 'sources') throw new Error('expected sources')
+    expect(src.items[0].label).toBe('không-phải-url')
+  })
+
+  it('T5 — mid-flight the step shows … and the searching summary; stop() settles it', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onToolStart?.('t1', 'web_search')
+      await new Promise<never>(() => {})
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'đang tìm' }))
+    await act(async () => result.current.v.send())
+
+    let nova = result.current.v.sent.at(-1)!
+    let trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.summary).toBe('Đang tra cứu web…')
+    expect(trace.steps[0]).toMatchObject({ detail: '…', node: 'accent' })
+
+    await act(async () => result.current.v.stop())
+    nova = result.current.v.sent.at(-1)!
+    trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.summary).toBe('Đã tra cứu web')
+    expect(trace.steps[0]).toMatchObject({ detail: '✓' })
   })
 
   it('a failed fetch renders a danger step with its error code, no sources block', async () => {

@@ -249,6 +249,37 @@ describe('openai adapter — Responses SSE transform to the Nova contract', () =
     })
   })
 
+  it('T5 — captures function_call items + responseId; continuation via previous_response_id', async () => {
+    const { openaiToolTail } = await import('./openai')
+    const round = { calls: [] as { id: string; name: string; args: string }[] } as import('./shared').RoundCapture
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"response.created","response":{"id":"resp_9"}}',
+          'data: {"type":"response.output_item.added","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"files"}}',
+          'data: {"type":"response.function_call_arguments.delta","item_id":"fc_1","delta":"{\\"op\\":"}',
+          'data: {"type":"response.output_item.done","item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"files","arguments":"{\\"op\\":\\"list\\"}"}}',
+          'data: {"type":"response.completed","response":{"usage":{"input_tokens":5,"output_tokens":2}}}',
+        ]),
+        round,
+      ),
+    )
+    expect(round.responseId).toBe('resp_9')
+    expect(round.calls).toEqual([{ id: 'call_1', name: 'files', args: '{"op":"list"}' }])
+    // deltas correlate by call_id, not the internal item id
+    expect(events.find((e) => e.type === 'tool_delta')).toMatchObject({ id: 'call_1' })
+
+    const tail = openaiToolTail(round, [{ ok: true, content: '2 files' }])
+    expect(tail).toEqual([{ type: 'function_call_output', call_id: 'call_1', output: '2 files' }])
+
+    const body = JSON.parse(
+      openaiBody({ ...baseReq, previousResponseId: 'resp_9', rawTail: tail }),
+    ) as Record<string, unknown>
+    expect(body.previous_response_id).toBe('resp_9')
+    expect(body.input).toEqual(tail)
+    expect(body.instructions).toBe('Chỉ dẫn dự án')
+  })
+
   it('surfaces response.failed and terminal error events, suppressing the stop', async () => {
     const failed = await collect(
       toNovaStream(

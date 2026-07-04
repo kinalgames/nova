@@ -100,6 +100,10 @@ export interface ChatProxyRequest {
   /** D1 — enable the provider-native URL fetch tool (Anthropic web_fetch,
    *  Gemini url_context). Same capability gate as `search`. */
   fetch?: boolean
+  /** D1/T5 — advertise the Nova `files` function tool (read the user's
+   *  uploads); requires a model with toolUse. The worker runs the agentic
+   *  loop when set. */
+  files?: boolean
   /** id of a stored server-side credential owned by the session user */
   credentialId?: string
   /** transitional client-held credential — retired once BYOK v2 ships */

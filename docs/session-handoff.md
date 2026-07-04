@@ -1,7 +1,39 @@
-# Session handoff — 2026-07-03 (kết phiên T6 multi-provider)
+# Session handoff — 2026-07-04 (kết phiên D1: tools thật)
 
 Đọc file này ĐẦU TIÊN ở session kế. Trạng thái repo, quyết định đã chốt,
 TODO theo thứ tự, và bẫy đã cắn.
+
+## D1 — TOOLS THẬT: SHIPPED TOÀN BỘ (2026-07-04, prod + dev)
+
+Xem `docs/d1-tools-design.md` (status SHIPPED). Tóm tắt nhanh:
+
+- **packages/ai (@nova/ai)**: adapter 4 provider + stream contract tách ra
+  lib độc lập; apps/api chỉ wire. SSE v2: `thinking_delta` (live thinking
+  — trước đây bị drop!), `tool_start/tool_delta/tool_result{sources}`.
+- **Native search/fetch** (`search`/`fetch` flags, gate `caps.webSearch`,
+  menu composer OFF mặc định): Anthropic web_search/web_fetch (max_uses 5,
+  beta header fetch), Gemini google_search/url_context (grounding→sources),
+  OpenAI web_search (Responses). Trace live + sources block `[n] hostname`
+  mở trang thật.
+- **OpenAI đã sang Responses API** (`/v1/responses`, instructions/input,
+  assistant history `phase:'final_answer'`, reasoning summaries → thinking).
+- **T4.5**: Gemini inline budget riêng 14MB (trần request 20MB — trước đây
+  18MB raw → 24MB base64 = 400!); Anthropic/OpenAI dùng signed URL 15'
+  (`GET /v1/files/signed/:id`, HMAC CREDENTIALS_KEY, sessionless) — body
+  nhỏ, bytes không vào RAM Worker. Local dev (origin http) fallback base64.
+- **Agentic loop** (`loop.ts`, LOOP_MAX 6): tool `files` read-only (list ≤50
+  · read ≤3/req · 16KB cap, owner-checked) — flag `files:true` gate
+  `caps.toolUse`. Continuation per provider: Anthropic replay blocks + THINKING
+  SIGNATURES; Gemini functionCall + thoughtSignature (gen-3); OpenAI
+  previous_response_id; Ollama tool_calls + role:'tool'. Usage cộng dồn vào
+  message_stop cuối duy nhất.
+- **CHƯA smoke live** tools trên dev/prod (cần key thật trong profile user) —
+  user tự test được ngay trên nova.kinal.co: bật “Tra cứu web” trong menu
+  “Thêm vào chat” với model Claude/Gemini/GPT.
+- **KẾ TIẾP (mandate user, đã hứa)**: UI/UX RESPONSIVE OVERHAUL — audit
+  Playwright PC/tablet/mobile, sửa đồng nhất. Sau đó: Nova-side search cho
+  ollama/local, PDF qua Responses input_file, coverage buffer nới khi thêm
+  test UI (branches hiện 90.29 — sát floor 90).
 
 ## ĐÃ DEPLOY — Cloudflare Workers (2 env, mỗi env 1 Worker serve web + API)
 

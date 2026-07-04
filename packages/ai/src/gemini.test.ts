@@ -376,6 +376,51 @@ describe('gemini adapter — SSE transform to the Nova contract', () => {
     })
   })
 
+  it('T5 — captures functionCall parts (thoughtSignature kept) + continuation tail', async () => {
+    const { geminiToolTail } = await import('./gemini')
+    const round = { calls: [] as { id: string; name: string; args: string }[] } as import('./shared').RoundCapture
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"candidates":[{"content":{"parts":[{"functionCall":{"name":"files","args":{"op":"list"}},"thoughtSignature":"dHM="}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2}}',
+        ]),
+        round,
+      ),
+    )
+    expect(round.calls).toEqual([{ id: 'gm-1', name: 'files', args: '{"op":"list"}' }])
+    expect(events.find((e) => e.type === 'tool_start')).toMatchObject({ id: 'gm-1', name: 'files' })
+    const turn = round.assistantTurn as { role: string; parts: Record<string, unknown>[] }
+    expect(turn.role).toBe('model')
+    expect(turn.parts[0]).toMatchObject({
+      functionCall: { name: 'files', args: { op: 'list' } },
+      thoughtSignature: 'dHM=',
+    })
+    const tail = geminiToolTail(round, [{ ok: true, content: '2 tệp' }])
+    expect(tail[1]).toEqual({
+      role: 'user',
+      parts: [{ functionResponse: { name: 'files', response: { result: '2 tệp' } } }],
+    })
+  })
+
+  it('T5 — novaTools declare as functionDeclarations alongside built-ins', () => {
+    const body = geminiRequest({
+      providerId: 'gemini',
+      model: 'gemini-3.1-pro',
+      messages: [{ role: 'user', content: 'hi' }],
+      profile: { kind: 'api_key', credential: 'AIza-x' },
+      search: true,
+      novaTools: [{ name: 'files', description: 'read files', parameters: { type: 'object' } }],
+    }) as { tools: unknown[] }
+    expect(body.tools).toEqual([
+      { google_search: {} },
+      {
+        functionDeclarations: [
+          { name: 'files', description: 'read files', parameters: { type: 'object' } },
+        ],
+      },
+    ])
+  })
+
   it('streams thought-flagged parts as thinking_delta, plain parts as block_delta', async () => {
     const events = await collect(
       toNovaStream(

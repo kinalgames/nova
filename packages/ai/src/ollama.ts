@@ -2,7 +2,13 @@
 // header). Streams NDJSON from {endpoint}/api/chat; the final `done:true`
 // line carries prompt_eval_count/eval_count as real token usage.
 
-import { ProviderConfigError, novaLineStream, type ResolvedChatRequest } from './shared'
+import {
+  ProviderConfigError,
+  novaLineStream,
+  type ResolvedChatRequest,
+  type RoundCapture,
+  type ToolCallResult,
+} from './shared'
 
 /** validate + normalize the endpoint credential; throws ProviderConfigError */
 export function ollamaEndpoint(credential: string): string {
@@ -20,6 +26,19 @@ export function ollamaEndpoint(credential: string): string {
   return trimmed.replace(/\/+$/, '')
 }
 
+/** T5 — continuation tail: assistant turn with its tool_calls + one tool
+ *  message per result (ollama has no call ids — order is the correlation) */
+export function ollamaToolTail(round: RoundCapture, results: ToolCallResult[]): unknown[] {
+  return [
+    round.assistantTurn,
+    ...round.calls.map((c, i) => ({
+      role: 'tool',
+      tool_name: c.name,
+      content: results[i]?.content ?? '',
+    })),
+  ]
+}
+
 export function ollamaBody(req: ResolvedChatRequest): string {
   return JSON.stringify({
     model: req.model,
@@ -35,7 +54,18 @@ export function ollamaBody(req: ResolvedChatRequest): string {
           .filter(Boolean)
           .join('\n\n'),
       })),
+      // T5 — loop continuation turns, already in ollama's own shape
+      ...((req.rawTail ?? []) as Record<string, unknown>[]),
     ],
+    // T5 — Nova-side function tools (OpenAI-compatible declaration shape)
+    ...(req.novaTools?.length
+      ? {
+          tools: req.novaTools.map((t) => ({
+            type: 'function',
+            function: { name: t.name, description: t.description, parameters: t.parameters },
+          })),
+        }
+      : {}),
     stream: true,
     // B6b — the thinking knob arrives ONLY for models the client knows can
     // reason (capability-gated); off must actually switch thinking off, or a
@@ -57,7 +87,11 @@ export function callOllama(req: ResolvedChatRequest, signal?: AbortSignal): Prom
 }
 
 interface OllamaChunk {
-  message?: { content?: string; thinking?: string }
+  message?: {
+    content?: string
+    thinking?: string
+    tool_calls?: { function?: { name?: string; arguments?: unknown } }[]
+  }
   done?: boolean
   prompt_eval_count?: number
   eval_count?: number
@@ -67,12 +101,17 @@ interface OllamaChunk {
 /** Transform the Ollama NDJSON stream into Nova's event contract.
  *  `message.thinking` chunks stream as thinking_delta — without this a
  *  reasoning model appears frozen for its whole hidden-thought phase. */
-export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+export function toNovaStream(
+  upstream: ReadableStream<Uint8Array>,
+  round?: RoundCapture,
+): ReadableStream<Uint8Array> {
   let started = false
   let errored = false
   let stopped = false
   let inputTokens = 0
   let outputTokens = 0
+  let text = ''
+  const toolCalls: { function: { name: string; arguments: unknown } }[] = []
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -96,10 +135,29 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
       if (typeof chunk.eval_count === 'number') outputTokens = chunk.eval_count
       const think = chunk.message?.thinking
       if (typeof think === 'string' && think) emit({ type: 'thinking_delta', text: think })
-      const text = chunk.message?.content
-      if (typeof text === 'string' && text) emit({ type: 'block_delta', text })
+      const delta = chunk.message?.content
+      if (typeof delta === 'string' && delta) {
+        text += delta
+        emit({ type: 'block_delta', text: delta })
+      }
+      // T5 — the model asked for tools: queue them + surface on the trace
+      for (const tc of chunk.message?.tool_calls ?? []) {
+        if (!tc.function?.name) continue
+        const id = `oll-${(round?.calls.length ?? toolCalls.length) + 1}`
+        const args = JSON.stringify(tc.function.arguments ?? {})
+        toolCalls.push({ function: { name: tc.function.name, arguments: tc.function.arguments ?? {} } })
+        round?.calls.push({ id, name: tc.function.name, args })
+        emit({ type: 'tool_start', id, name: tc.function.name })
+        emit({ type: 'tool_delta', id, text: args })
+      }
       if (chunk.done === true && !stopped) {
         stopped = true
+        if (round)
+          round.assistantTurn = {
+            role: 'assistant',
+            content: text,
+            ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
+          }
         emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
       }
     },

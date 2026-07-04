@@ -121,6 +121,7 @@
     "searchingLabel": "Searching the web…",
     "toolSearch": "Web search",
     "toolFetch": "Read page",
+    "toolFiles": "Read your files",
     "toolFailed": "failed",
     "toolSources": "{{count}} sources",
     "traceSummaryStream": "Nova is researching and computing…",

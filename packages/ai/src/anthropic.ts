@@ -9,7 +9,13 @@
 //    ever run against the user's OWN subscription.
 
 import type { ChatProxyRequest } from '@nova/shared'
-import { novaLineStream, sseData, type ResolvedChatRequest } from './shared'
+import {
+  novaLineStream,
+  sseData,
+  type ResolvedChatRequest,
+  type RoundCapture,
+  type ToolCallResult,
+} from './shared'
 
 export type { NovaStreamEvent, ResolvedChatRequest } from './shared'
 
@@ -52,8 +58,8 @@ const SEARCH_MAX_USES = 5
 const FETCH_MAX_USES = 5
 
 export function anthropicTools(
-  req: Pick<ResolvedChatRequest, 'search' | 'fetch'>,
-): { type: string; name: string; max_uses: number }[] {
+  req: Pick<ResolvedChatRequest, 'search' | 'fetch' | 'novaTools'>,
+): Record<string, unknown>[] {
   return [
     ...(req.search
       ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: SEARCH_MAX_USES }]
@@ -61,6 +67,33 @@ export function anthropicTools(
     ...(req.fetch
       ? [{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: FETCH_MAX_USES }]
       : []),
+    // T5 — Nova-side function tools the worker executes between rounds
+    ...(req.novaTools ?? []).map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    })),
+  ]
+}
+
+/** T5 — the continuation tail for the next round: the captured assistant
+ *  turn (thinking blocks keep their signatures) + one user turn carrying
+ *  every tool_result */
+export function anthropicToolTail(
+  round: RoundCapture,
+  results: ToolCallResult[],
+): unknown[] {
+  return [
+    { role: 'assistant', content: round.assistantTurn },
+    {
+      role: 'user',
+      content: round.calls.map((c, i) => ({
+        type: 'tool_result',
+        tool_use_id: c.id,
+        content: results[i]?.content ?? '',
+        ...(results[i]?.ok === false ? { is_error: true } : {}),
+      })),
+    },
   ]
 }
 
@@ -121,7 +154,7 @@ export function anthropicBody(req: ResolvedChatRequest): string {
             ...(m.content ? [{ type: 'text', text: m.content }] : []),
           ]
         : m.content,
-    })),
+    })).concat((req.rawTail ?? []) as never[]),
   })
 }
 
@@ -148,7 +181,13 @@ interface AnthropicEvent {
   type?: string
   message?: { usage?: AnthropicUsage }
   usage?: AnthropicUsage
-  delta?: { type?: string; text?: string; thinking?: string; partial_json?: string }
+  delta?: {
+    type?: string
+    text?: string
+    thinking?: string
+    partial_json?: string
+    signature?: string
+  }
   content_block?: {
     type?: string
     id?: string
@@ -191,13 +230,21 @@ function inputSideTokens(u: AnthropicUsage | undefined): number {
  * thinking_delta so the client can render live reasoning; signature
  * deltas are integrity plumbing and never reach the client.
  */
-export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+export function toNovaStream(
+  upstream: ReadableStream<Uint8Array>,
+  round?: RoundCapture,
+): ReadableStream<Uint8Array> {
   let inputTokens = 0
   let outputTokens = 0
   // the OPEN server_tool_use block — input_json_delta belongs to a tool only
   // while one is open, so stray deltas of other block kinds never leak out
   let openToolId: string | null = null
   let sourceN = 0
+  // T5 capture — assistant blocks rebuilt verbatim for the continuation
+  // (thinking keeps its signature; tool_use keeps its full input)
+  const blocks: Record<string, unknown>[] = []
+  let cur: Record<string, unknown> | null = null
+  let curArgs = ''
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -216,7 +263,15 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
           break
         case 'content_block_start': {
           const block = evt.content_block
-          if (block?.type === 'server_tool_use' && typeof block.id === 'string') {
+          if (round && block) {
+            cur = { ...(block as Record<string, unknown>) }
+            curArgs = ''
+            blocks.push(cur)
+          }
+          if (
+            (block?.type === 'server_tool_use' || block?.type === 'tool_use') &&
+            typeof block.id === 'string'
+          ) {
             openToolId = block.id
             emit({ type: 'tool_start', id: block.id, name: block.name ?? 'tool' })
           } else if (
@@ -237,16 +292,38 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
           break
         }
         case 'content_block_stop':
+          if (round && cur) {
+            // streamed JSON becomes the block's final input (both tool kinds
+            // replay with it); only the model's OWN calls queue for execution
+            if (cur.type === 'tool_use' || cur.type === 'server_tool_use') {
+              try {
+                cur.input = curArgs ? (JSON.parse(curArgs) as unknown) : {}
+              } catch {
+                cur.input = {}
+              }
+              if (cur.type === 'tool_use')
+                round.calls.push({ id: String(cur.id), name: String(cur.name), args: curArgs || '{}' })
+            }
+            cur = null
+          }
           openToolId = null
           break
-        case 'content_block_delta':
-          if (evt.delta?.type === 'text_delta' && evt.delta.text)
-            emit({ type: 'block_delta', text: evt.delta.text })
-          else if (evt.delta?.type === 'thinking_delta' && evt.delta.thinking)
-            emit({ type: 'thinking_delta', text: evt.delta.thinking })
-          else if (evt.delta?.type === 'input_json_delta' && evt.delta.partial_json && openToolId)
-            emit({ type: 'tool_delta', id: openToolId, text: evt.delta.partial_json })
+        case 'content_block_delta': {
+          const d = evt.delta
+          if (d?.type === 'text_delta' && d.text) {
+            if (cur) cur.text = String(cur.text ?? '') + d.text
+            emit({ type: 'block_delta', text: d.text })
+          } else if (d?.type === 'thinking_delta' && d.thinking) {
+            if (cur) cur.thinking = String(cur.thinking ?? '') + d.thinking
+            emit({ type: 'thinking_delta', text: d.thinking })
+          } else if (d?.type === 'signature_delta' && d.signature) {
+            if (cur) cur.signature = String(cur.signature ?? '') + d.signature
+          } else if (d?.type === 'input_json_delta' && d.partial_json && openToolId) {
+            curArgs += d.partial_json
+            emit({ type: 'tool_delta', id: openToolId, text: d.partial_json })
+          }
           break
+        }
         case 'message_delta':
           outputTokens = evt.usage?.output_tokens ?? outputTokens
           // final message_delta can restate input-side usage (cache fields)
@@ -254,6 +331,7 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
             inputTokens = inputSideTokens(evt.usage)
           break
         case 'message_stop':
+          if (round) round.assistantTurn = blocks
           emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
           break
         case 'error':

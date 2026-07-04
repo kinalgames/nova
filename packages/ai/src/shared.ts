@@ -18,11 +18,56 @@ export type ResolvedPart =
 /** a chat turn after attachment resolution */
 export type ResolvedTurn = Pick<ChatTurn, 'role' | 'content'> & { parts?: ResolvedPart[] }
 
+/** D1/T5 — a Nova-side function tool the worker executes between rounds */
+export interface NovaTool {
+  name: string
+  description: string
+  /** JSON Schema of the arguments object */
+  parameters: Record<string, unknown>
+}
+
+/** one function call the model requested in a round */
+export interface ToolCallReq {
+  id: string
+  name: string
+  /** raw JSON argument string as the provider streamed it */
+  args: string
+}
+
+/** what the executor hands back for one call */
+export interface ToolCallResult {
+  ok: boolean
+  /** text the model reads as the tool result */
+  content: string
+  /** one-line outcome for the client trace (i18n-neutral) */
+  summary?: string
+}
+
+/** per-round capture the agentic loop hands to an adapter's stream():
+ *  the adapter fills it while frames flow to the client */
+export interface RoundCapture {
+  /** provider-NATIVE assistant turn to replay in the next round (shape is
+   *  the adapter's own wire format — opaque to the loop) */
+  assistantTurn?: unknown
+  /** function calls awaiting execution; empty = the round was final */
+  calls: ToolCallReq[]
+  /** stateful-continuation handle (OpenAI previous_response_id) */
+  responseId?: string
+}
+
 /** the proxy resolves credential AND attachments BEFORE calling — profile is
  *  guaranteed, messages carry provider-ready parts instead of refs */
 export type ResolvedChatRequest = Omit<ChatProxyRequest, 'messages'> & {
   profile: NonNullable<ChatProxyRequest['profile']>
   messages: ResolvedTurn[]
+  /** D1/T5 — Nova-side function tools to advertise (loop executes them) */
+  novaTools?: NovaTool[]
+  /** provider-NATIVE continuation messages the loop appends per round
+   *  (assistant turn + tool results, in the adapter's own wire shape) */
+  rawTail?: unknown[]
+  /** OpenAI stateful continuation — rounds after the first reference the
+   *  stored response instead of replaying history */
+  previousResponseId?: string
 }
 
 /** chunked base64 — a spread over megabytes of bytes would blow the stack */

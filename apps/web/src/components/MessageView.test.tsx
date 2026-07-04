@@ -189,6 +189,35 @@ describe('T2 — live thinking trace', () => {
   })
 })
 
+describe('T3 — sources block: real citations open the page', () => {
+  it('a url chip opens a new tab; a legacy chip opens the in-app preview', async () => {
+    const user = makeUser()
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const msgSrc: Message = {
+      id: 'a9',
+      role: 'assistant',
+      who: 'NOVA',
+      blocks: [
+        { type: 'text', text: 'Theo [1]…' },
+        {
+          type: 'sources',
+          items: [
+            { n: 1, label: 'sjc.vn', url: 'https://www.sjc.vn/gia' },
+            { n: 2, label: 'báo cáo.md', open: 'md' },
+          ],
+        },
+      ],
+    }
+    await renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: fromLinear([msgSrc]) } }))
+    await user.click(await screen.findByRole('button', { name: /sjc\.vn/ }))
+    expect(openSpy).toHaveBeenCalledWith('https://www.sjc.vn/gia', '_blank', 'noopener')
+    await user.click(screen.getByRole('button', { name: /báo cáo\.md/ }))
+    // legacy chip → in-app preview (no extra window.open)
+    expect(openSpy).toHaveBeenCalledTimes(1)
+    openSpy.mockRestore()
+  })
+})
+
 describe('real error card', () => {
   const seedError = (
     errorAction: 'providers' | 'retry',

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { anthropicBody, anthropicHeaders, anthropicTools, toNovaStream } from './anthropic'
+import {
+  anthropicBody,
+  anthropicHeaders,
+  anthropicToolTail,
+  anthropicTools,
+  toNovaStream,
+} from './anthropic'
+import type { RoundCapture } from './shared'
 
 const profileKey = { kind: 'api_key' as const, credential: 'sk-ant-test' }
 const profileAcc = { kind: 'account' as const, credential: 'sk-ant-oat01-token' }
@@ -297,6 +304,47 @@ describe('anthropic adapter — SSE transform to the Nova contract', () => {
       ok: false,
       summary: 'url_not_accessible',
     })
+  })
+
+  it('T5 — captures the round: signed thinking + tool_use call + continuation tail', async () => {
+    const round: RoundCapture = { calls: [] }
+    await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"message_start","message":{"usage":{"input_tokens":4}}}',
+          'data: {"type":"content_block_start","content_block":{"type":"thinking","thinking":""}}',
+          'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"Xem file nào có…"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"signature_delta","signature":"c2ln"}}',
+          'data: {"type":"content_block_stop"}',
+          'data: {"type":"content_block_start","content_block":{"type":"tool_use","id":"toolu_1","name":"files","input":{}}}',
+          'data: {"type":"content_block_delta","delta":{"type":"input_json_delta","partial_json":"{\\"op\\":\\"list\\"}"}}',
+          'data: {"type":"content_block_stop"}',
+          'data: {"type":"message_delta","usage":{"output_tokens":9}}',
+          'data: {"type":"message_stop"}',
+        ]),
+        round,
+      ),
+    )
+    expect(round.calls).toEqual([{ id: 'toolu_1', name: 'files', args: '{"op":"list"}' }])
+    const blocks = round.assistantTurn as Record<string, unknown>[]
+    expect(blocks[0]).toMatchObject({ type: 'thinking', thinking: 'Xem file nào có…', signature: 'c2ln' })
+    expect(blocks[1]).toMatchObject({ type: 'tool_use', id: 'toolu_1', input: { op: 'list' } })
+
+    const tail = anthropicToolTail(round, [{ ok: true, content: 'f1 · a.md' }])
+    expect(tail[0]).toEqual({ role: 'assistant', content: blocks })
+    expect(tail[1]).toEqual({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'f1 · a.md' }],
+    })
+  })
+
+  it('T5 — novaTools declare as name/input_schema entries and ride the body', () => {
+    const tools = anthropicTools({
+      novaTools: [{ name: 'files', description: 'read files', parameters: { type: 'object' } }],
+    })
+    expect(tools).toEqual([
+      { name: 'files', description: 'read files', input_schema: { type: 'object' } },
+    ])
   })
 
   it('streams extended-thinking deltas as thinking_delta and drops signatures', async () => {

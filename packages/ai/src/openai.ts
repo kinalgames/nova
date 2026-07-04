@@ -6,7 +6,13 @@
 // is verified for them — absent otherwise, which degrades gracefully).
 
 import type { ChatProxyRequest } from '@nova/shared'
-import { novaLineStream, sseData, type ResolvedChatRequest } from './shared'
+import {
+  novaLineStream,
+  sseData,
+  type ResolvedChatRequest,
+  type RoundCapture,
+  type ToolCallResult,
+} from './shared'
 
 const API_URL = 'https://api.openai.com/v1/responses'
 
@@ -33,11 +39,44 @@ export function openaiReasoningEffort(
   return REASONING_EFFORT[req.thinking]
 }
 
+/** T5 — continuation input: with previous_response_id carrying the state,
+ *  the next round only sends the tool outputs */
+export function openaiToolTail(round: RoundCapture, results: ToolCallResult[]): unknown[] {
+  return round.calls.map((c, i) => ({
+    type: 'function_call_output',
+    call_id: c.id,
+    output: results[i]?.content ?? '',
+  }))
+}
+
 export function openaiBody(req: ResolvedChatRequest): string {
   const effort = openaiReasoningEffort(req)
   // OpenAI exposes ONE hosted research tool — web_search (page opening is an
   // action inside it), so either flag declares it
   const webSearch = !!(req.search || req.fetch)
+  const tools = [
+    ...(webSearch ? [{ type: 'web_search' }] : []),
+    ...(req.novaTools ?? []).map((t) => ({
+      type: 'function',
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    })),
+  ]
+  // T5 — a loop round: the stored response carries the whole history, the
+  // request only brings the tool outputs (+ re-declared tools/instructions)
+  if (req.previousResponseId)
+    return JSON.stringify({
+      model: req.model,
+      previous_response_id: req.previousResponseId,
+      input: req.rawTail ?? [],
+      stream: true,
+      max_output_tokens: req.maxTokens ?? 8192,
+      ...(req.system?.trim() ? { instructions: req.system } : {}),
+      ...(effort ? { reasoning: { effort, summary: 'auto' } } : {}),
+      ...(tools.length ? { tools } : {}),
+      ...(webSearch ? { include: ['web_search_call.action.sources'] } : {}),
+    })
   return JSON.stringify({
     model: req.model,
     ...(req.system?.trim() ? { instructions: req.system } : {}),
@@ -75,7 +114,7 @@ export function openaiBody(req: ResolvedChatRequest): string {
     max_output_tokens: req.maxTokens ?? 8192,
     // summary:'auto' asks for reasoning summaries — they stream as thinking
     ...(effort ? { reasoning: { effort, summary: 'auto' } } : {}),
-    ...(webSearch ? { tools: [{ type: 'web_search' }] } : {}),
+    ...(tools.length ? { tools } : {}),
     ...(webSearch ? { include: ['web_search_call.action.sources'] } : {}),
   })
 }
@@ -93,10 +132,14 @@ export function callOpenAI(req: ResolvedChatRequest, signal?: AbortSignal): Prom
 interface OpenAIEvent {
   type?: string
   delta?: string
+  item_id?: string
   item?: {
     type?: string
     id?: string
     status?: string
+    call_id?: string
+    name?: string
+    arguments?: string
     action?: {
       type?: string
       query?: string
@@ -106,6 +149,7 @@ interface OpenAIEvent {
   }
   annotation?: { type?: string; url?: string; title?: string }
   response?: {
+    id?: string
     usage?: { input_tokens?: number; output_tokens?: number }
     error?: { code?: string; message?: string }
   }
@@ -121,7 +165,10 @@ interface OpenAIEvent {
  * action.sources, falling back to url_citation annotations) ·
  * response.completed → message_stop with real usage.
  */
-export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+export function toNovaStream(
+  upstream: ReadableStream<Uint8Array>,
+  round?: RoundCapture,
+): ReadableStream<Uint8Array> {
   let started = false
   let errored = false
   let stopped = false
@@ -133,6 +180,8 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
   // search call carries no action.sources
   const citations: { n: number; url: string; title: string }[] = []
   const seenUrls = new Set<string>()
+  // function_call events carry the item id; the loop correlates by call_id
+  const callIdOf = new Map<string, string>()
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -155,12 +204,28 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
         case 'response.reasoning_summary_text.delta':
           if (evt.delta) emit({ type: 'thinking_delta', text: evt.delta })
           break
+        case 'response.created':
+          if (round && evt.response?.id) round.responseId = evt.response.id
+          break
         case 'response.output_item.added':
           if (evt.item?.type === 'web_search_call' && evt.item.id)
             emit({ type: 'tool_start', id: evt.item.id, name: 'web_search' })
+          else if (evt.item?.type === 'function_call' && evt.item.call_id) {
+            if (evt.item.id) callIdOf.set(evt.item.id, evt.item.call_id)
+            emit({ type: 'tool_start', id: evt.item.call_id, name: evt.item.name ?? 'tool' })
+          }
+          break
+        case 'response.function_call_arguments.delta':
+          if (evt.delta && evt.item_id)
+            emit({ type: 'tool_delta', id: callIdOf.get(evt.item_id) ?? evt.item_id, text: evt.delta })
           break
         case 'response.output_item.done': {
           const item = evt.item
+          // T5 — a finished function call queues for the loop's executor
+          if (item?.type === 'function_call' && item.call_id && item.name) {
+            round?.calls.push({ id: item.call_id, name: item.name, args: item.arguments ?? '{}' })
+            break
+          }
           if (item?.type !== 'web_search_call' || !item.id) break
           const query = item.action?.query ?? item.action?.queries?.join(' · ')
           if (query) emit({ type: 'tool_delta', id: item.id, text: query })

@@ -10,7 +10,9 @@ import {
   providerAdapters,
   providerKinds,
   type ProviderEnv,
+  agenticStream,
 } from '@nova/ai'
+import { filesTool, makeFilesExecutor } from './toolbox'
 import { createAuth } from './auth'
 import { limitAuth, limitV1, type RateLimitEnv } from './ratelimit'
 import { credentials, openCredential, type CredentialsEnv } from './credentials'
@@ -224,7 +226,8 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
     (b.thinking !== undefined &&
       !['off', 'low', 'normal', 'high'].includes(b.thinking as string)) ||
     (b.search !== undefined && typeof b.search !== 'boolean') ||
-    (b.fetch !== undefined && typeof b.fetch !== 'boolean')
+    (b.fetch !== undefined && typeof b.fetch !== 'boolean') ||
+    (b.files !== undefined && typeof b.files !== 'boolean')
   )
     return null
   for (const m of messages) {
@@ -413,6 +416,45 @@ app.post('/v1/chat', async (c) => {
   })
 
   const adapter = providerAdapters[req.providerId]
+
+  // T5 — the files tool flips the request into the bounded agentic loop:
+  // several provider rounds stream through ONE client response
+  if (req.files) {
+    let novaStream = agenticStream(
+      adapter,
+      { ...req, profile, messages, novaTools: [filesTool] },
+      makeFilesExecutor(c.env, uid),
+      c.req.raw.signal,
+      c.env,
+    )
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        msg: 'chat',
+        id: c.get('requestId'),
+        providerId: req.providerId,
+        model: req.model,
+        agentic: true,
+        uid,
+      }),
+    )
+    const ds = (c.env as Env | undefined)?.USAGE
+    if (ds)
+      novaStream = tapNovaUsage(novaStream, (u) =>
+        ds.writeDataPoint({
+          blobs: [req.providerId, req.model, profile.kind],
+          doubles: [u.inputTokens, u.outputTokens],
+          indexes: [uid],
+        }),
+      )
+    return new Response(novaStream, {
+      headers: {
+        'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    })
+  }
+
   let upstream: Response
   try {
     upstream = await adapter.call({ ...req, profile, messages }, c.req.raw.signal, c.env)

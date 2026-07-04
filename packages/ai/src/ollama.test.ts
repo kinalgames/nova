@@ -107,6 +107,28 @@ describe('ollama adapter — NDJSON transform to the Nova contract', () => {
     expect(events.map((e) => e.type)).toEqual(['message_start', 'block_delta', 'message_stop'])
   })
 
+  it('T5 — captures tool_calls, synthesizes ids, and builds the tool tail', async () => {
+    const { ollamaToolTail } = await import('./ollama')
+    const round = { calls: [] as { id: string; name: string; args: string }[] } as import('./shared').RoundCapture
+    const events = await collect(
+      toNovaStream(
+        ndjson([
+          '{"message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"files","arguments":{"op":"list"}}}]},"done":false}',
+          '{"message":{"content":""},"done":true,"prompt_eval_count":4,"eval_count":2}',
+        ]),
+        round,
+      ),
+    )
+    expect(round.calls).toEqual([{ id: 'oll-1', name: 'files', args: '{"op":"list"}' }])
+    expect(events.find((e) => e.type === 'tool_start')).toMatchObject({ id: 'oll-1', name: 'files' })
+    expect(round.assistantTurn).toMatchObject({
+      role: 'assistant',
+      tool_calls: [{ function: { name: 'files', arguments: { op: 'list' } } }],
+    })
+    const tail = ollamaToolTail(round, [{ ok: true, content: '2 tệp' }])
+    expect(tail[1]).toEqual({ role: 'tool', tool_name: 'files', content: '2 tệp' })
+  })
+
   it('streams message.thinking chunks as thinking_delta ahead of the reply', async () => {
     const events = await collect(
       toNovaStream(
