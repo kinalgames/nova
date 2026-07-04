@@ -88,7 +88,7 @@ export function TopBar() {
             <button
               type="button"
               aria-label={t('model.modeAria', { label: v.modelLabel })}
-              className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-small text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="tap-sm flex cursor-pointer items-center justify-center gap-1.5 rounded-sm border border-border bg-panel px-3 py-1.5 text-small text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <span className="size-1.5 rounded-full bg-accent" />
               {/* on mobile the conversation title owns the bar — the chip keeps
