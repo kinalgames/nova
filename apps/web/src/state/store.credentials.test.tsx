@@ -129,7 +129,12 @@ describe('store — server-side BYOK wiring (BE3)', () => {
 
   it('testing a server credential runs a REAL probe, stores the verdict AND the reason', async () => {
     vi.mocked(listCredentials).mockResolvedValue([row({ status: 'untested' })])
-    vi.mocked(pingCredential).mockResolvedValueOnce({ status: 'limited', detail: 'rate_limited: quota' })
+    vi.mocked(pingCredential).mockResolvedValueOnce({
+      status: 'limited',
+      detail: 'quota exceeded, retry later',
+      code: 'rate_limited',
+      httpStatus: 429,
+    })
     const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(result.current.s.profiles.claude).toHaveLength(1))
     const claude = result.current.v.providers.find((p) => p.id === 'claude')!
@@ -138,8 +143,9 @@ describe('store — server-side BYOK wiring (BE3)', () => {
       expect(result.current.s.profiles.claude[0].status).toBe('limited'),
     )
     expect(pingCredential).toHaveBeenCalledWith('srv-1', 'claude', 'claude-haiku-4-5')
-    // the WHY surfaces under the row — never a mute failure
+    // the WHY surfaces under the row IN PLAIN WORDS — never a mute failure
     const refreshed = result.current.v.providers.find((p) => p.id === 'claude')!
-    expect(refreshed.profiles[0].error).toBe('rate_limited: quota')
+    expect(refreshed.profiles[0].error).toContain('Chạm giới hạn tốc độ')
+    expect(refreshed.profiles[0].error).toContain('quota exceeded')
   })
 })

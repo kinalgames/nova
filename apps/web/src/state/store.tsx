@@ -2106,13 +2106,16 @@ function deriveValues(
     if (row?.server && HAS_API) {
       set({ testingProfile: profileId })
       const model = findProvider(providerId).models.at(-1)?.id ?? ''
-      void pingCredential(profileId, providerId, model).then(({ status, detail }) => {
+      void pingCredential(profileId, providerId, model).then(({ status, detail, code, httpStatus }) => {
         void patchCredential(profileId, { status })
         set((x) => ({
           testingProfile: null,
-          // the failure REASON stays visible under the row — “Thất bại”
-          // without a why is a dead end
-          testDetail: status === 'active' || !detail ? null : { id: profileId, msg: detail },
+          // the failure REASON stays visible under the row, in plain words
+          // (technical tail kept small) — “Thất bại” without a why is a dead end
+          testDetail:
+            status === 'active' || !detail
+              ? null
+              : { id: profileId, msg: humanErrorDetail(code ?? 'error', detail, httpStatus) },
           profiles: {
             ...x.profiles,
             [providerId]: (x.profiles[providerId] ?? []).map((f) =>

@@ -39,22 +39,23 @@ describe('humanErrorDetail — provider bodies become one human sentence', () =>
 
   it('falls back to code + innermost message for unknown errors', () => {
     const out = humanErrorDetail('stream_closed', '{"error":{"message":"boom"}}', 500)
-    expect(out).toBe('stream_closed: boom')
+    // unknown classes lead with plain words; the technical tail stays for devs
+    expect(out).toBe('Có lỗi xảy ra khi kết nối · stream_closed: boom')
   })
 
   it('plain-text messages pass through untouched', () => {
-    expect(humanErrorDetail('x', 'kaboom', 500)).toBe('x: kaboom')
+    expect(humanErrorDetail('x', 'kaboom', 500)).toBe('Có lỗi xảy ra khi kết nối · x: kaboom')
   })
 })
 
 describe('humanErrorDetail — dig edge shapes', () => {
   it('non-object JSON (array) falls back to the raw string', () => {
-    expect(humanErrorDetail('x', '[1,2]', 500)).toBe('x: [1,2]')
+    expect(humanErrorDetail('x', '[1,2]', 500)).toBe('Có lỗi xảy ra khi kết nối · x: [1,2]')
   })
   it('object with only a detail wrapper unwraps it', () => {
-    expect(humanErrorDetail('x', '{"detail":"plain text inside"}', 500)).toBe('x: plain text inside')
+    expect(humanErrorDetail('x', '{"detail":"plain text inside"}', 500)).toBe('Có lỗi xảy ra khi kết nối · x: plain text inside')
   })
   it('empty object falls back to the original message', () => {
-    expect(humanErrorDetail('x', '{}', 500)).toBe('x: {}')
+    expect(humanErrorDetail('x', '{}', 500)).toBe('Có lỗi xảy ra khi kết nối · x: {}')
   })
 })

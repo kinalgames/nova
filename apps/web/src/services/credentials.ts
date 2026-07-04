@@ -92,6 +92,9 @@ export interface PingResult {
   status: 'active' | 'error' | 'limited'
   /** WHY it failed — the server's RFC7807 detail, so “Thất bại” is never mute */
   detail?: string
+  /** machine error class + HTTP status — the client maps them to plain words */
+  code?: string
+  httpStatus?: number
 }
 
 /** REAL credential probe — a 1-token chat through the stored id */
@@ -119,8 +122,13 @@ export async function pingCredential(
     }
     const body = (await res.json().catch(() => ({}))) as { code?: string; detail?: string }
     const detail = (body.detail ?? body.code ?? `HTTP ${res.status}`).slice(0, 280)
-    return { status: res.status === 429 ? 'limited' : 'error', detail }
+    return {
+      status: res.status === 429 ? 'limited' : 'error',
+      detail,
+      code: body.code,
+      httpStatus: res.status,
+    }
   } catch {
-    return { status: 'error', detail: 'network' }
+    return { status: 'error', detail: 'network', code: 'network' }
   }
 }

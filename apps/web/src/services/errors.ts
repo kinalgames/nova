@@ -35,9 +35,20 @@ export function humanErrorDetail(code: string, message: string, status?: number)
   const low = msg.toLowerCase()
   if (status === 403 || low.includes('not allowed') || low.includes('unsupported_country'))
     return `${i18n.t('chat.errRegion')} · ${msg}`
-  if (status === 401 || low.includes('invalid x-api-key') || low.includes('incorrect api key'))
+  if (
+    status === 401 ||
+    code === 'invalid_credential' ||
+    low.includes('invalid x-api-key') ||
+    low.includes('incorrect api key') ||
+    low.includes('invalid token') ||
+    low.includes('token expired')
+  )
     return `${i18n.t('chat.errAuth')} · ${msg}`
   if (status === 429 || code === 'rate_limited') return `${i18n.t('chat.errRate')} · ${msg}`
   if (status === 529 || low.includes('overloaded')) return `${i18n.t('chat.errOverloaded')} · ${msg}`
-  return `${code}: ${msg}`
+  if (code === 'credential_not_found') return i18n.t('chat.errCredGone')
+  if (code === 'unauthenticated') return i18n.t('chat.errSession')
+  if (code === 'network' || msg === 'network') return i18n.t('chat.errNetwork')
+  // unknown class: a plain-words lead, the technical tail kept small for devs
+  return `${i18n.t('chat.errGeneric')} · ${code}: ${msg}`
 }

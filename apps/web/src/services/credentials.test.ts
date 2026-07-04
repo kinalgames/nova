@@ -65,7 +65,12 @@ describe('credentials service — masked BYOK transport', () => {
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ code: 'rate_limited', detail: 'slow down' }), { status: 429 })),
     )
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'limited', detail: 'slow down' })
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({
+      status: 'limited',
+      detail: 'slow down',
+      code: 'rate_limited',
+      httpStatus: 429,
+    })
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(JSON.stringify({ code: 'invalid_credential', detail: 'x-api-key is not valid' }), { status: 400 })),
@@ -73,11 +78,22 @@ describe('credentials service — masked BYOK transport', () => {
     expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({
       status: 'error',
       detail: 'x-api-key is not valid',
+      code: 'invalid_credential',
+      httpStatus: 400,
     })
     // a body without detail falls back to the code, then the bare status
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>', { status: 502 })))
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'error', detail: 'HTTP 502' })
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({
+      status: 'error',
+      detail: 'HTTP 502',
+      code: undefined,
+      httpStatus: 502,
+    })
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'error', detail: 'network' })
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({
+      status: 'error',
+      detail: 'network',
+      code: 'network',
+    })
   })
 })
