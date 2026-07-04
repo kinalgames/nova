@@ -208,3 +208,47 @@ describe('inline edit-and-rerun', () => {
     await user.click(screen.getByRole('button', { name: /Dừng/ }))
   })
 })
+
+describe('coverage — file pills open by kind + error retry', () => {
+  const fileMsg = (open: 'md' | 'csv'): Message => ({
+    id: 'u7',
+    role: 'user',
+    who: 'THÀNH',
+    blocks: [
+      { type: 'text', text: 'tệp đây' },
+      { type: 'files', items: [{ kind: open, name: `plan.${open}`, open }] },
+    ],
+  })
+
+  it('a markdown pill opens the md preview; a csv pill opens the csv preview', async () => {
+    const user = makeUser()
+    const { store } = await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([fileMsg('md')]) } }),
+    )
+    await user.click(await screen.findByRole('button', { name: /plan\.md/ }))
+    expect(store().s.preview?.kind).toBe('md')
+
+    const { store: store2 } = await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([fileMsg('csv')]) } }),
+    )
+    await user.click(await screen.findByRole('button', { name: /plan\.csv/ }))
+    expect(store2().s.preview?.kind).toBe('csv')
+  })
+
+  it('the error card retry button regenerates the reply', async () => {
+    const user = makeUser()
+    const { store } = await renderApp((s) =>
+      s.set({
+        activeConv: 'c1',
+        threads: { c1: fromLinear([msg('u1', 'user', 'hỏi'), msg('a1', 'assistant', '')]) },
+        respState: 'error',
+        errorAction: 'retry',
+        errorConv: 'c1',
+        errorDetail: 'boom',
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Thử lại/ }))
+    // retry drives regenerate → respState leaves the error state
+    await waitFor(() => expect(store().s.respState).not.toBe('error'))
+  })
+})
