@@ -7,10 +7,13 @@ import type { ChatProxyRequest, ChatTurn } from '@nova/shared'
 
 /** B1 — an attachment resolved into a provider-ready part. Text files are
  *  already folded into the turn's text by the resolver, so adapters only
- *  ever see binary parts here. */
+ *  ever see binary parts here. Exactly one carrier is set: `url` (a short-
+ *  lived signed GET the provider fetches itself — keeps request bodies far
+ *  below provider caps) or `base64` (inline, for providers that cannot
+ *  fetch external URLs, e.g. Gemini). */
 export type ResolvedPart =
-  | { type: 'image'; name: string; mime: string; base64: string }
-  | { type: 'pdf'; name: string; base64: string }
+  | { type: 'image'; name: string; mime: string; base64?: string; url?: string }
+  | { type: 'pdf'; name: string; base64?: string; url?: string }
 
 /** a chat turn after attachment resolution */
 export type ResolvedTurn = Pick<ChatTurn, 'role' | 'content'> & { parts?: ResolvedPart[] }

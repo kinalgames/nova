@@ -212,7 +212,7 @@ describe('T6 — multi-provider dispatch', () => {
     expect(text).toContain('"inputTokens":2')
   })
 
-  it('routes an openai chat with the Bearer key to chat completions', async () => {
+  it('routes an openai chat with the Bearer key to the Responses API', async () => {
     asUser()
     const fetchMock = vi.fn(
       async () => new Response(new ReadableStream({ start: (c) => c.close() }), { status: 200 }),
@@ -230,7 +230,7 @@ describe('T6 — multi-provider dispatch', () => {
     })
     expect(res.status).toBe(200)
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.openai.com/v1/chat/completions')
+    expect(url).toBe('https://api.openai.com/v1/responses')
     expect((init.headers as Record<string, string>).authorization).toBe('Bearer sk-o')
   })
 

@@ -11,6 +11,9 @@ import { createAuth, type AuthEnv } from './auth'
 
 export interface FilesEnv extends AuthEnv {
   ATTACH: R2Bucket
+  /** HMAC key material for short-lived signed attachment URLs (same secret
+   *  the credential vault uses — base64, 32 bytes) */
+  CREDENTIALS_KEY: string
 }
 
 /** product decision (B1): images ≤5MB (Anthropic's per-image hard cap),
@@ -46,6 +49,44 @@ export function kindOf(name: string, mime: string): 'image' | 'pdf' | 'code' | '
 
 const problem = (status: number, code: string, detail: string) =>
   Response.json({ type: 'about:blank', status, code, detail }, { status })
+
+// — D1/T4.5: short-lived signed GET — providers fetch attachment bytes by URL
+// instead of Nova inflating them into base64 request bodies. HMAC-SHA256 over
+// `id|exp` with CREDENTIALS_KEY; sessionless by design (providers cannot
+// carry one) — possession of a valid, unexpired signature IS the authz, and
+// the signature only ever covers ids the owner-checked resolver issued. —
+
+const SIGNED_TTL_S = 15 * 60
+
+async function signingKey(env: FilesEnv): Promise<CryptoKey> {
+  const raw = Uint8Array.from(atob(env.CREDENTIALS_KEY), (ch) => ch.charCodeAt(0))
+  return crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+}
+
+async function hmacHex(env: FilesEnv, payload: string): Promise<string> {
+  const mac = await crypto.subtle.sign('HMAC', await signingKey(env), new TextEncoder().encode(payload))
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** constant-time hex comparison — a mismatch must not leak WHERE it differs */
+function sameHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
+/** absolute signed URL for an attachment the resolver already owner-checked */
+export async function signAttachmentUrl(
+  env: FilesEnv,
+  id: string,
+  origin: string,
+  now = Date.now(),
+): Promise<string> {
+  const exp = Math.floor(now / 1000) + SIGNED_TTL_S
+  const sig = await hmacHex(env, `${id}|${exp}`)
+  return `${origin}/v1/files/signed/${encodeURIComponent(id)}?exp=${exp}&sig=${sig}`
+}
 
 async function userIdOf(env: AuthEnv, req: Request): Promise<string | null> {
   try {
@@ -94,6 +135,34 @@ files.post('/', async (c) => {
     createdAt: new Date(),
   })
   return c.json({ id, name, kind, size: bytes.byteLength, mime })
+})
+
+// sessionless signed fetch — registered BEFORE '/:id' so the static segment
+// wins; every failure is a uniform 404 (no oracle for probing)
+files.get('/signed/:id', async (c) => {
+  const id = c.req.param('id')
+  const exp = Number(c.req.query('exp') ?? '')
+  const sig = c.req.query('sig') ?? ''
+  if (!Number.isFinite(exp) || exp * 1000 < Date.now())
+    return problem(404, 'not_found', 'No such attachment')
+  if (!sameHex(sig, await hmacHex(c.env, `${id}|${exp}`)))
+    return problem(404, 'not_found', 'No such attachment')
+  const rows = await drizzle(c.env.DB)
+    .select()
+    .from(attachment)
+    .where(eq(attachment.id, id))
+    .limit(1)
+  const row = rows[0]
+  if (!row) return problem(404, 'not_found', 'No such attachment')
+  const obj = await c.env.ATTACH.get(row.r2Key)
+  if (!obj) return problem(404, 'not_found', 'No such attachment')
+  return new Response(obj.body, {
+    headers: {
+      'content-type': row.mime,
+      'cache-control': 'private, no-store',
+      'x-content-type-options': 'nosniff',
+    },
+  })
 })
 
 files.get('/:id', async (c) => {

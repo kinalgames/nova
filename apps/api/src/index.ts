@@ -404,8 +404,13 @@ app.post('/v1/chat', async (c) => {
   if (!profile) return problem(400, 'invalid_request', 'Missing credential source')
 
   // B1 — resolve attachment refs (owner-checked) into provider-ready parts;
-  // text files fold into the turn text, binaries become adapter parts
-  const messages = await resolveAttachments(c.env, uid, req.messages)
+  // text files fold into the turn text, binaries become adapter parts — by
+  // signed URL where the provider can fetch (T4.5), inline base64 otherwise
+  const messages = await resolveAttachments(c.env, uid, req.messages, {
+    providerId: req.providerId,
+    // optional chain: hono's c.env is undefined under app.request without env
+    publicOrigin: (c.env as Env | undefined)?.BETTER_AUTH_URL,
+  })
 
   const adapter = providerAdapters[req.providerId]
   let upstream: Response

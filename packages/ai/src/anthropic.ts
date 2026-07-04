@@ -97,17 +97,25 @@ export function anthropicBody(req: ResolvedChatRequest): string {
       : {}),
     ...(budget ? { thinking: { type: 'enabled', budget_tokens: budget } } : {}),
     ...(system.length ? { system } : {}),
-    // B1 — binary parts render as native image/document blocks before the text
+    // B1 — binary parts render as native image/document blocks before the
+    // text; URL parts let Anthropic fetch the bytes itself (body stays small)
     messages: req.messages.map((m) => ({
       role: m.role,
       content: m.parts?.length
         ? [
             ...m.parts.map((p) =>
               p.type === 'image'
-                ? { type: 'image', source: { type: 'base64', media_type: p.mime, data: p.base64 } }
+                ? {
+                    type: 'image',
+                    source: p.url
+                      ? { type: 'url', url: p.url }
+                      : { type: 'base64', media_type: p.mime, data: p.base64 ?? '' },
+                  }
                 : {
                     type: 'document',
-                    source: { type: 'base64', media_type: 'application/pdf', data: p.base64 },
+                    source: p.url
+                      ? { type: 'url', url: p.url }
+                      : { type: 'base64', media_type: 'application/pdf', data: p.base64 ?? '' },
                   },
             ),
             ...(m.content ? [{ type: 'text', text: m.content }] : []),

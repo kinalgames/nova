@@ -1,12 +1,14 @@
 // OpenAI (ChatGPT) adapter — api_key only: `Authorization: Bearer` against
-// the Chat Completions API. Uses `max_completion_tokens` (the gpt-5/o-series
-// reasoning models reject `max_tokens` and sampling params) and
-// `stream_options.include_usage` so the final chunk carries real token usage.
+// the RESPONSES API (OpenAI's recommended surface; Chat Completions has no
+// hosted web_search). Streams typed `response.*` events; `instructions`
+// carries the system prompt, `input` the turns, `max_output_tokens` the
+// ceiling. Reasoning summaries stream back as thinking (when the user's org
+// is verified for them — absent otherwise, which degrades gracefully).
 
 import type { ChatProxyRequest } from '@nova/shared'
 import { novaLineStream, sseData, type ResolvedChatRequest } from './shared'
 
-const API_URL = 'https://api.openai.com/v1/chat/completions'
+const API_URL = 'https://api.openai.com/v1/responses'
 
 export function openaiHeaders(
   profile: NonNullable<ChatProxyRequest['profile']>,
@@ -17,7 +19,7 @@ export function openaiHeaders(
   }
 }
 
-/** B5 — reasoning models take reasoning_effort; anything else rejects the
+/** B5 — reasoning models take reasoning.effort; anything else rejects the
  *  param, so it is only sent to gpt-5 and o-series ids. 'off' maps to
  *  gpt-5's 'minimal'; o-series has no minimal, so 'off' omits the param. */
 const REASONING_MODEL = /^(gpt-5|o\d)/
@@ -33,40 +35,48 @@ export function openaiReasoningEffort(
 
 export function openaiBody(req: ResolvedChatRequest): string {
   const effort = openaiReasoningEffort(req)
+  // OpenAI exposes ONE hosted research tool — web_search (page opening is an
+  // action inside it), so either flag declares it
+  const webSearch = !!(req.search || req.fetch)
   return JSON.stringify({
     model: req.model,
-    // B1 — images ride as data-URL image_url parts; PDFs are not readable
-    // through Chat Completions, so they degrade into a bracketed note the
+    ...(req.system?.trim() ? { instructions: req.system } : {}),
+    // B1 — images ride as input_image data URLs; PDFs are not wired through
+    // Responses file inputs yet, so they degrade into a bracketed note the
     // model can acknowledge honestly
-    messages: [
-      ...(req.system?.trim() ? [{ role: 'system', content: req.system }] : []),
-      ...req.messages.map((m) => {
-        const images = (m.parts ?? []).filter((p) => p.type === 'image')
-        const unread = (m.parts ?? []).filter((p) => p.type === 'pdf')
-        const text = [
-          ...unread.map((p) => `[attached: ${p.name} — not readable by this model]`),
-          m.content,
-        ]
-          .filter(Boolean)
-          .join('\n\n')
-        return images.length
-          ? {
-              role: m.role,
-              content: [
-                ...images.map((p) => ({
-                  type: 'image_url',
-                  image_url: { url: `data:${p.mime};base64,${p.base64}` },
-                })),
-                { type: 'text', text },
-              ],
-            }
-          : { role: m.role, content: text }
-      }),
-    ],
+    input: req.messages.map((m) => {
+      if (m.role === 'assistant')
+        // phase marks replayed turns as complete answers — the gpt-5.5 line
+        // misreads unmarked assistant history in tool-heavy conversations
+        return { role: 'assistant', content: m.content, phase: 'final_answer' }
+      const images = (m.parts ?? []).filter((p) => p.type === 'image')
+      const unread = (m.parts ?? []).filter((p) => p.type === 'pdf')
+      const text = [
+        ...unread.map((p) => `[attached: ${p.name} — not readable by this model]`),
+        m.content,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+      return images.length
+        ? {
+            role: 'user',
+            content: [
+              ...images.map((p) => ({
+                type: 'input_image',
+                // signed URL when available — OpenAI fetches it; data URL fallback
+                image_url: p.url ?? `data:${p.mime};base64,${p.base64 ?? ''}`,
+              })),
+              { type: 'input_text', text },
+            ],
+          }
+        : { role: 'user', content: text }
+    }),
     stream: true,
-    stream_options: { include_usage: true },
-    max_completion_tokens: req.maxTokens ?? 8192,
-    ...(effort ? { reasoning_effort: effort } : {}),
+    max_output_tokens: req.maxTokens ?? 8192,
+    // summary:'auto' asks for reasoning summaries — they stream as thinking
+    ...(effort ? { reasoning: { effort, summary: 'auto' } } : {}),
+    ...(webSearch ? { tools: [{ type: 'web_search' }] } : {}),
+    ...(webSearch ? { include: ['web_search_call.action.sources'] } : {}),
   })
 }
 
@@ -80,55 +90,133 @@ export function callOpenAI(req: ResolvedChatRequest, signal?: AbortSignal): Prom
   })
 }
 
-interface OpenAIChunk {
-  choices?: { delta?: { content?: string } }[]
-  usage?: { prompt_tokens?: number; completion_tokens?: number }
-  error?: { message?: string; type?: string; code?: string | null }
+interface OpenAIEvent {
+  type?: string
+  delta?: string
+  item?: {
+    type?: string
+    id?: string
+    status?: string
+    action?: {
+      type?: string
+      query?: string
+      queries?: string[]
+      sources?: { url?: string; title?: string }[]
+    }
+  }
+  annotation?: { type?: string; url?: string; title?: string }
+  response?: {
+    usage?: { input_tokens?: number; output_tokens?: number }
+    error?: { code?: string; message?: string }
+  }
+  error?: { code?: string; message?: string }
+  code?: string
+  message?: string
 }
 
 /**
- * Transform the Chat Completions SSE stream into Nova's event contract.
- * The usage chunk arrives last (choices empty) before `[DONE]`; message_stop
- * is emitted at close so that usage is always captured.
+ * Transform the Responses SSE stream into Nova's event contract:
+ * output_text deltas → block_delta · reasoning summary deltas →
+ * thinking_delta · web_search_call items → tool events (sources from
+ * action.sources, falling back to url_citation annotations) ·
+ * response.completed → message_stop with real usage.
  */
 export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   let started = false
   let errored = false
+  let stopped = false
   let inputTokens = 0
   let outputTokens = 0
+  let sourceN = 0
+  let sourcesEmitted = false
+  // url_citation annotations — the fallback citation channel when the
+  // search call carries no action.sources
+  const citations: { n: number; url: string; title: string }[] = []
+  const seenUrls = new Set<string>()
 
   return novaLineStream(upstream, {
     line(line, emit) {
       const raw = sseData(line)
       if (!raw) return
-      let chunk: OpenAIChunk
+      let evt: OpenAIEvent
       try {
-        chunk = JSON.parse(raw) as OpenAIChunk
+        evt = JSON.parse(raw) as OpenAIEvent
       } catch {
         return
       }
-      if (chunk.error) {
-        errored = true
-        emit({
-          type: 'error',
-          code: chunk.error.code ?? chunk.error.type ?? 'upstream_error',
-          message: chunk.error.message ?? 'Provider stream error',
-        })
-        return
-      }
-      if (!started) {
+      if (!started && evt.type?.startsWith('response.')) {
         started = true
         emit({ type: 'message_start' })
       }
-      if (chunk.usage) {
-        inputTokens = chunk.usage.prompt_tokens ?? inputTokens
-        outputTokens = chunk.usage.completion_tokens ?? outputTokens
+      switch (evt.type) {
+        case 'response.output_text.delta':
+          if (evt.delta) emit({ type: 'block_delta', text: evt.delta })
+          break
+        case 'response.reasoning_summary_text.delta':
+          if (evt.delta) emit({ type: 'thinking_delta', text: evt.delta })
+          break
+        case 'response.output_item.added':
+          if (evt.item?.type === 'web_search_call' && evt.item.id)
+            emit({ type: 'tool_start', id: evt.item.id, name: 'web_search' })
+          break
+        case 'response.output_item.done': {
+          const item = evt.item
+          if (item?.type !== 'web_search_call' || !item.id) break
+          const query = item.action?.query ?? item.action?.queries?.join(' · ')
+          if (query) emit({ type: 'tool_delta', id: item.id, text: query })
+          const sources = (item.action?.sources ?? [])
+            .filter((s) => typeof s.url === 'string')
+            .map((s) => ({ n: ++sourceN, url: s.url!, title: s.title ?? s.url! }))
+          if (sources.length) sourcesEmitted = true
+          emit({
+            type: 'tool_result',
+            id: item.id,
+            ok: item.status !== 'failed',
+            ...(sources.length ? { sources } : {}),
+          })
+          break
+        }
+        case 'response.output_text.annotation.added': {
+          const a = evt.annotation
+          if (a?.type === 'url_citation' && a.url && !seenUrls.has(a.url)) {
+            seenUrls.add(a.url)
+            citations.push({ n: ++sourceN, url: a.url, title: a.title ?? a.url })
+          }
+          break
+        }
+        case 'response.completed':
+        case 'response.incomplete': {
+          inputTokens = evt.response?.usage?.input_tokens ?? inputTokens
+          outputTokens = evt.response?.usage?.output_tokens ?? outputTokens
+          // citations arrived only as annotations — surface them once so the
+          // client still gets a sources block
+          if (citations.length && !sourcesEmitted)
+            emit({ type: 'tool_result', id: 'cite-1', ok: true, sources: citations })
+          stopped = true
+          emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
+          break
+        }
+        case 'response.failed':
+          errored = true
+          emit({
+            type: 'error',
+            code: evt.response?.error?.code ?? 'upstream_error',
+            message: evt.response?.error?.message ?? 'Provider stream error',
+          })
+          break
+        case 'error':
+          errored = true
+          emit({
+            type: 'error',
+            code: evt.code ?? 'upstream_error',
+            message: evt.message ?? 'Provider stream error',
+          })
+          break
       }
-      const delta = chunk.choices?.[0]?.delta?.content
-      if (typeof delta === 'string' && delta) emit({ type: 'block_delta', text: delta })
     },
     flush(emit) {
-      if (!errored) emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
+      if (!errored && !stopped)
+        emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })
     },
   })
 }

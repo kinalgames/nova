@@ -34,6 +34,34 @@ describe('B1 — binary parts render as native blocks', () => {
     expect(withParts.content[2]).toEqual({ type: 'text', text: 'phân tích ảnh' })
     expect(plain.content).toBe('đây là kết quả')
   })
+
+  it('T4.5 — URL parts render as url sources (Anthropic fetches the bytes)', () => {
+    const body = JSON.parse(
+      anthropicBody({
+        providerId: 'claude',
+        model: 'claude-sonnet-5',
+        messages: [
+          {
+            role: 'user',
+            content: 'xem giúp',
+            parts: [
+              { type: 'image', name: 'a.png', mime: 'image/png', url: 'https://n.vn/s/1?sig=x' },
+              { type: 'pdf', name: 'p.pdf', url: 'https://n.vn/s/2?sig=y' },
+            ],
+          },
+        ],
+        profile: profileKey,
+      }),
+    )
+    expect(body.messages[0].content[0]).toEqual({
+      type: 'image',
+      source: { type: 'url', url: 'https://n.vn/s/1?sig=x' },
+    })
+    expect(body.messages[0].content[1]).toEqual({
+      type: 'document',
+      source: { type: 'url', url: 'https://n.vn/s/2?sig=y' },
+    })
+  })
 })
 
 describe('B5 — thinking mapping per model generation', () => {
