@@ -224,6 +224,28 @@ describe('llm service — SSE client', () => {
     expect(s.errors).toEqual(['stream_read'])
   })
 
+  it('routes thinking_delta to onThinking — and stays silent when the handler is absent', async () => {
+    const frames = [
+      'data: {"type":"thinking_delta","text":"Cân nhắc…"}\n\n',
+      'data: {"type":"block_delta","text":"Kết luận"}\n\n',
+      'data: {"type":"message_stop","usage":{"inputTokens":2,"outputTokens":3}}\n\n',
+    ]
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(frames)))
+    const s = make()
+    const thoughts: string[] = []
+    s.h.onThinking = (t) => thoughts.push(t)
+    await streamChat(req, s.h)
+    expect(thoughts).toEqual(['Cân nhắc…'])
+    expect(s.deltas).toEqual(['Kết luận'])
+
+    // no onThinking handler → thinking frames drop silently, reply unaffected
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(frames)))
+    const bare = make()
+    await streamChat(req, bare.h)
+    expect(bare.deltas).toEqual(['Kết luận'])
+    expect(bare.errors).toHaveLength(0)
+  })
+
   it('a stream that ends without message_stop still resolves as done', async () => {
     vi.stubGlobal(
       'fetch',

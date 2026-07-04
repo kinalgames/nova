@@ -111,7 +111,7 @@ interface AnthropicEvent {
   type?: string
   message?: { usage?: AnthropicUsage }
   usage?: AnthropicUsage
-  delta?: { type?: string; text?: string }
+  delta?: { type?: string; text?: string; thinking?: string }
   error?: { type?: string; message?: string }
 }
 
@@ -122,7 +122,10 @@ function inputSideTokens(u: AnthropicUsage | undefined): number {
 
 /**
  * Transform the Anthropic SSE stream into Nova's event contract:
- * message_start · block_delta{text} · message_stop{usage} · error.
+ * message_start · block_delta{text} · thinking_delta{text} ·
+ * message_stop{usage} · error. Extended-thinking deltas stream as
+ * thinking_delta so the client can render live reasoning; signature
+ * deltas are integrity plumbing and never reach the client.
  */
 export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   let inputTokens = 0
@@ -146,6 +149,8 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
         case 'content_block_delta':
           if (evt.delta?.type === 'text_delta' && evt.delta.text)
             emit({ type: 'block_delta', text: evt.delta.text })
+          else if (evt.delta?.type === 'thinking_delta' && evt.delta.thinking)
+            emit({ type: 'thinking_delta', text: evt.delta.thinking })
           break
         case 'message_delta':
           outputTokens = evt.usage?.output_tokens ?? outputTokens

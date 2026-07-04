@@ -1,6 +1,7 @@
 // Shared provider-adapter contract: every adapter turns its upstream wire
 // format (SSE or NDJSON) into Nova's event stream —
-// message_start · block_delta{text} · message_stop{usage} · error.
+// message_start · block_delta{text} · thinking_delta{text} ·
+// tool_start/tool_delta/tool_result · message_stop{usage} · error.
 
 import type { ChatProxyRequest, ChatTurn } from '@nova/shared'
 
@@ -31,12 +32,37 @@ export function toBase64(buf: ArrayBuffer): string {
   return btoa(bin)
 }
 
+/** one linked source a tool result carries (web hits, fetched pages) */
+export interface NovaSource {
+  n: number
+  url: string
+  title: string
+}
+
 export interface NovaStreamEvent {
-  type: 'message_start' | 'block_delta' | 'message_stop' | 'error'
+  type:
+    | 'message_start'
+    | 'block_delta' // reply text
+    | 'thinking_delta' // live reasoning text — the client renders it as a trace
+    | 'tool_start' // a tool invocation began (provider-native or Nova-side)
+    | 'tool_delta' // the invocation's arguments/query streaming in
+    | 'tool_result' // invocation finished — summary + optional sources
+    | 'message_stop'
+    | 'error'
   text?: string
   usage?: { inputTokens: number; outputTokens: number }
   code?: string
   message?: string
+  /** tool_* — invocation id correlating start/delta/result */
+  id?: string
+  /** tool_start — tool name ('web_search' · 'web_fetch' · 'files' …) */
+  name?: string
+  /** tool_result — whether the invocation succeeded */
+  ok?: boolean
+  /** tool_result — one-line outcome for the trace row */
+  summary?: string
+  /** tool_result — citations the reply can reference */
+  sources?: NovaSource[]
 }
 
 /** a credential that cannot possibly reach the provider — a 400, never a 502 */

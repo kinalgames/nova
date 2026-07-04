@@ -53,15 +53,40 @@ describe('B5 — thinkingConfig per level and model', () => {
     expect(geminiThinkingConfig({ model: 'gemini-3-pro', thinking: 'high' })).toBeNull()
   })
 
-  it('the budget rides inside generationConfig on the shared request', () => {
+  it('the budget rides inside generationConfig, with includeThoughts when thinking is on', () => {
     const req = geminiRequest({
       providerId: 'gemini',
       model: 'gemini-2.5-flash',
       messages: [{ role: 'user', content: 'hi' }],
       profile: { kind: 'api_key', credential: 'AIza-x' },
       thinking: 'high',
-    }) as { generationConfig: { thinkingConfig?: { thinkingBudget: number } } }
-    expect(req.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 24576 })
+    }) as { generationConfig: { thinkingConfig?: Record<string, unknown> } }
+    expect(req.generationConfig.thinkingConfig).toEqual({
+      thinkingBudget: 24576,
+      includeThoughts: true,
+    })
+  })
+
+  it('gen-3 with thinking on sends includeThoughts ONLY — never a budget', () => {
+    const req = geminiRequest({
+      providerId: 'gemini',
+      model: 'gemini-3.1-pro',
+      messages: [{ role: 'user', content: 'hi' }],
+      profile: { kind: 'api_key', credential: 'AIza-x' },
+      thinking: 'normal',
+    }) as { generationConfig: { thinkingConfig?: Record<string, unknown> } }
+    expect(req.generationConfig.thinkingConfig).toEqual({ includeThoughts: true })
+  })
+
+  it("'off' keeps the budget floor but never asks for thoughts", () => {
+    const req = geminiRequest({
+      providerId: 'gemini',
+      model: 'gemini-2.5-flash',
+      messages: [{ role: 'user', content: 'hi' }],
+      profile: { kind: 'api_key', credential: 'AIza-x' },
+      thinking: 'off',
+    }) as { generationConfig: { thinkingConfig?: Record<string, unknown> } }
+    expect(req.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 })
   })
 })
 import { ProviderConfigError } from './shared'
@@ -297,5 +322,24 @@ describe('gemini adapter — SSE transform to the Nova contract', () => {
   it('ignores malformed lines and still closes the contract', async () => {
     const events = await collect(toNovaStream(sse(['data: {broken', ': keepalive', ''])))
     expect(events.map((e) => e.type)).toEqual(['message_stop'])
+  })
+
+  it('streams thought-flagged parts as thinking_delta, plain parts as block_delta', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"candidates":[{"content":{"parts":[{"text":"Cân nhắc các hướng…","thought":true}]}}]}',
+          'data: {"candidates":[{"content":{"parts":[{"text":"Đây là câu trả lời"}]}}],"usageMetadata":{"promptTokenCount":4,"candidatesTokenCount":3,"thoughtsTokenCount":8}}',
+        ]),
+      ),
+    )
+    expect(events.map((e) => e.type)).toEqual([
+      'message_start',
+      'thinking_delta',
+      'block_delta',
+      'message_stop',
+    ])
+    expect(events[1].text).toBe('Cân nhắc các hướng…')
+    expect(events.at(-1)?.usage).toEqual({ inputTokens: 4, outputTokens: 11 })
   })
 })

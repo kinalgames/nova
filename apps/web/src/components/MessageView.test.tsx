@@ -166,6 +166,29 @@ describe('per-message actions', () => {
   })
 })
 
+describe('T2 — live thinking trace', () => {
+  it('streams the trace OPEN while typing; stop settles it collapsed', async () => {
+    const user = makeUser()
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onThinking?.('Suy luận bước một…')
+      await new Promise<never>(() => {})
+    })
+    await seed(linear())()
+
+    await user.click(await screen.findByRole('button', { name: 'Tạo lại' }))
+    // while streaming the trace is FORCED open — traceOpen defaults to false,
+    // yet the live thought text must be visible
+    expect(await screen.findByText('Suy luận bước một…')).toBeInTheDocument()
+    expect(screen.getByText('Đang suy nghĩ…')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Dừng/ }))
+    // stop() settles the aborted phase — the summary flips to “done” and the
+    // body collapses back behind the toggle (never a stale “Đang suy nghĩ…”)
+    expect(await screen.findByText('Quá trình suy nghĩ')).toBeInTheDocument()
+    expect(screen.queryByText('Suy luận bước một…')).not.toBeInTheDocument()
+  })
+})
+
 describe('real error card', () => {
   const seedError = (
     errorAction: 'providers' | 'retry',

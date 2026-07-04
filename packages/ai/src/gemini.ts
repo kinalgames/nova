@@ -47,7 +47,14 @@ export function geminiThinkingConfig(
 
 /** the GenerateContentRequest both Gemini transports share */
 export function geminiRequest(req: ResolvedChatRequest): Record<string, unknown> {
-  const thinkingConfig = geminiThinkingConfig(req)
+  const budget = geminiThinkingConfig(req)
+  // thought summaries stream back only when asked — includeThoughts rides
+  // whenever the user left thinking ON (all generations accept the flag;
+  // gen-3 rejects only thinkingBudget, which geminiThinkingConfig already
+  // withholds there)
+  const wantThoughts = !!req.thinking && req.thinking !== 'off'
+  const thinkingConfig =
+    budget || wantThoughts ? { ...(budget ?? {}), ...(wantThoughts ? { includeThoughts: true } : {}) } : null
   return {
     // B1 — binary parts ride as inline_data ahead of the text part
     contents: req.messages.map((m) => {
@@ -200,7 +207,7 @@ export async function callGemini(
 }
 
 interface GeminiChunk {
-  candidates?: { content?: { parts?: { text?: string }[] } }[]
+  candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[]
   usageMetadata?: {
     promptTokenCount?: number
     candidatesTokenCount?: number
@@ -215,6 +222,7 @@ interface GeminiChunk {
  * envelope `{response: …}` (account path). Gemini has no explicit stop event —
  * message_stop is emitted when the upstream closes, carrying the final usage
  * (thought tokens bill as output, so they count toward outputTokens).
+ * Parts flagged `thought: true` are reasoning summaries → thinking_delta.
  */
 export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   let started = false
@@ -256,7 +264,7 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
       if (Array.isArray(parts))
         for (const part of parts)
           if (typeof part.text === 'string' && part.text)
-            emit({ type: 'block_delta', text: part.text })
+            emit({ type: part.thought === true ? 'thinking_delta' : 'block_delta', text: part.text })
     },
     flush(emit) {
       if (!errored) emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })

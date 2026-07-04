@@ -276,7 +276,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
               <Icon n="caret" size={12} className={v.traceOpen ? 'rotate-180' : undefined} />
             </span>
           </button>
-          <TraceView steps={block.steps} open={v.traceOpen} />
+          <TraceView steps={block.steps} open={v.traceOpen || !!streaming} />
         </div>
       )
     case 'table':
@@ -545,7 +545,8 @@ export function MessageView({
         )}
       </div>
 
-      {trace && <BlockView block={trace} />}
+      {/* live thinking streams the trace OPEN; it collapses once the reply lands */}
+      {trace && <BlockView block={trace} streaming={typing} />}
 
       {state === 'streaming' ? (
         <div className="mt-4">

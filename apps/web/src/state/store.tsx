@@ -382,6 +382,9 @@ export function StoreProvider({
   const tc = useRef<ReturnType<typeof setTimeout>>(undefined)
   /** in-flight REAL provider stream (nova-api) — aborted by stop() */
   const llmAbort = useRef<AbortController | null>(null)
+  /** settles the in-flight reply's trace on stop() — an aborted stream fires
+   *  no callback, and a trace left “Đang suy nghĩ…” forever is stale data */
+  const llmSettle = useRef<(() => void) | null>(null)
   const delTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const set = useCallback((u: Updater) => {
@@ -954,16 +957,45 @@ export function StoreProvider({
         const abort = new AbortController()
         llmAbort.current = abort
         let acc = ''
-        const writeText = (text: string, extra: Partial<Message> = {}) =>
+        // live reasoning — thinking deltas build a trace block ABOVE the reply
+        // text; the block stays on the message afterwards (collapsed) with the
+        // measured thinking duration as its meta line
+        let think = ''
+        let thinkStart = 0
+        let thinkMs = 0
+        const blocksNow = (): Block[] => [
+          ...(think
+            ? [
+                {
+                  type: 'trace' as const,
+                  summary: i18n.t(thinkMs ? 'chat.thoughtDone' : 'chat.thoughtStream'),
+                  ...(thinkMs
+                    ? { meta: i18n.t('chat.thoughtMeta', { s: Math.max(1, Math.round(thinkMs / 1000)) }) }
+                    : {}),
+                  steps: [{ kind: 'think' as const, text: think }],
+                },
+              ]
+            : []),
+          { type: 'text' as const, size: 'lead' as const, text: acc },
+        ]
+        const writeBlocks = (extra: Partial<Message> = {}) =>
           set((x) => ({
             threads: {
               ...x.threads,
-              [conv]: updateMessage(x.threads[conv], replyId, {
-                blocks: [{ type: 'text', size: 'lead', text }],
-                ...extra,
-              }),
+              [conv]: updateMessage(x.threads[conv], replyId, { blocks: blocksNow(), ...extra }),
             },
           }))
+        // the thinking phase ends at the first reply token (or at stop, for a
+        // reply that never leaves the thinking phase)
+        const settleThink = () => {
+          // floor 1ms — a same-millisecond phase must still settle to “done”
+          if (thinkStart && !thinkMs) thinkMs = Math.max(1, Date.now() - thinkStart)
+        }
+        llmSettle.current = () => {
+          if (!think) return
+          settleThink()
+          writeBlocks()
+        }
         set((x) => ({
           typing: true,
           typingLabel: i18n.t('chat.thinkingLabel'),
@@ -1005,14 +1037,22 @@ export function StoreProvider({
               : { profile: { kind: liveProfile.kind, credential: liveProfile.credential } }),
           },
           {
+            onThinking: (text) => {
+              if (!thinkStart) thinkStart = Date.now()
+              think += text
+              writeBlocks()
+            },
             onDelta: (text) => {
+              settleThink()
               acc += text
               set({ typingLabel: i18n.t('chat.writingLabel') })
-              writeText(acc)
+              writeBlocks()
             },
             onDone: (u) => {
+              llmSettle.current = null
+              settleThink()
               set({ typing: false })
-              writeText(acc, {
+              writeBlocks({
                 usage: {
                   inputTokens: u.inputTokens,
                   outputTokens: u.outputTokens,
@@ -1049,6 +1089,7 @@ export function StoreProvider({
               }
             },
             onError: (code, message, status, retryAfterSec, requestId) => {
+              llmSettle.current = null
               // a rate-limited profile enters its cool-down window — the
               // rotation engine will route the NEXT send to the next profile
               if (status === 429)
@@ -1076,7 +1117,8 @@ export function StoreProvider({
                 errorAction: 'retry',
                 errorConv: conv,
               })
-              if (acc) writeText(acc) // keep any partial answer above the card
+              settleThink()
+              if (acc || think) writeBlocks() // keep any partial answer above the card
             },
           },
           abort.signal,
@@ -1323,6 +1365,10 @@ export function StoreProvider({
     clearInterval(tc.current)
     llmAbort.current?.abort()
     llmAbort.current = null
+    // an aborted stream fires no callback — settle the trace so it never
+    // stays “Đang suy nghĩ…” on a reply that already stopped
+    llmSettle.current?.()
+    llmSettle.current = null
     set({ typing: false })
   }, [set])
 

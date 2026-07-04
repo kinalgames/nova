@@ -17,6 +17,8 @@ export const HAS_API: boolean = import.meta.env.PROD || API_BASE !== ''
 
 export interface StreamHandlers {
   onDelta: (text: string) => void
+  /** live reasoning text — thinking models stream it ahead of the reply */
+  onThinking?: (text: string) => void
   onDone: (usage: { inputTokens: number; outputTokens: number }) => void
   onError: (
     code: string,
@@ -90,6 +92,7 @@ export async function streamChat(
           continue
         }
         if (evt.type === 'block_delta' && evt.text) h.onDelta(evt.text)
+        else if (evt.type === 'thinking_delta' && evt.text) h.onThinking?.(evt.text)
         else if (evt.type === 'message_stop') {
           h.onDone(evt.usage ?? { inputTokens: 0, outputTokens: 0 })
           return

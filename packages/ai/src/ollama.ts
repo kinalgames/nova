@@ -57,14 +57,16 @@ export function callOllama(req: ResolvedChatRequest, signal?: AbortSignal): Prom
 }
 
 interface OllamaChunk {
-  message?: { content?: string }
+  message?: { content?: string; thinking?: string }
   done?: boolean
   prompt_eval_count?: number
   eval_count?: number
   error?: string
 }
 
-/** Transform the Ollama NDJSON stream into Nova's event contract. */
+/** Transform the Ollama NDJSON stream into Nova's event contract.
+ *  `message.thinking` chunks stream as thinking_delta — without this a
+ *  reasoning model appears frozen for its whole hidden-thought phase. */
 export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   let started = false
   let errored = false
@@ -92,6 +94,8 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
       }
       if (typeof chunk.prompt_eval_count === 'number') inputTokens = chunk.prompt_eval_count
       if (typeof chunk.eval_count === 'number') outputTokens = chunk.eval_count
+      const think = chunk.message?.thinking
+      if (typeof think === 'string' && think) emit({ type: 'thinking_delta', text: think })
       const text = chunk.message?.content
       if (typeof text === 'string' && text) emit({ type: 'block_delta', text })
       if (chunk.done === true && !stopped) {

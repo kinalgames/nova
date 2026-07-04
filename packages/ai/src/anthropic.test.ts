@@ -184,4 +184,29 @@ describe('anthropic adapter — SSE transform to the Nova contract', () => {
     )
     expect(events[0]).toMatchObject({ type: 'error', code: 'overloaded_error', message: 'busy' })
   })
+
+  it('streams extended-thinking deltas as thinking_delta and drops signatures', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"message_start","message":{"usage":{"input_tokens":5}}}',
+          'data: {"type":"content_block_start","content_block":{"type":"thinking"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"So sánh hai phương án…"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"signature_delta","signature":"c2ln"}}',
+          'data: {"type":"content_block_stop"}',
+          'data: {"type":"content_block_start","content_block":{"type":"text"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Kết luận"}}',
+          'data: {"type":"message_delta","usage":{"output_tokens":9}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    expect(events.map((e) => e.type)).toEqual([
+      'message_start',
+      'thinking_delta',
+      'block_delta',
+      'message_stop',
+    ])
+    expect(events[1].text).toBe('So sánh hai phương án…')
+  })
 })

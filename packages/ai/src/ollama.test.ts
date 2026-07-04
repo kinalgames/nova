@@ -106,4 +106,23 @@ describe('ollama adapter — NDJSON transform to the Nova contract', () => {
     )
     expect(events.map((e) => e.type)).toEqual(['message_start', 'block_delta', 'message_stop'])
   })
+
+  it('streams message.thinking chunks as thinking_delta ahead of the reply', async () => {
+    const events = await collect(
+      toNovaStream(
+        ndjson([
+          '{"message":{"role":"assistant","thinking":"Phân tích yêu cầu…","content":""},"done":false}',
+          '{"message":{"role":"assistant","content":"Xong rồi"},"done":false}',
+          '{"message":{"content":""},"done":true,"prompt_eval_count":6,"eval_count":9}',
+        ]),
+      ),
+    )
+    expect(events.map((e) => e.type)).toEqual([
+      'message_start',
+      'thinking_delta',
+      'block_delta',
+      'message_stop',
+    ])
+    expect(events[1].text).toBe('Phân tích yêu cầu…')
+  })
 })
