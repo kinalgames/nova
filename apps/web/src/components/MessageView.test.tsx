@@ -252,3 +252,64 @@ describe('coverage — file pills open by kind + error retry', () => {
     await waitFor(() => expect(store().s.respState).not.toBe('error'))
   })
 })
+
+describe('coverage — error card variants + file kinds', () => {
+  const errThread = () =>
+    fromLinear([msg('u1', 'user', 'hỏi'), msg('a1', 'assistant', '')])
+
+  it('the no-provider error card offers "add provider" and routes to settings', async () => {
+    const user = makeUser()
+    const { store } = await renderApp((s) =>
+      s.set({
+        activeConv: 'c1',
+        threads: { c1: errThread() },
+        respState: 'error',
+        errorAction: 'providers',
+        errorConv: 'c1',
+        errorDetail: 'no provider',
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Thêm nhà cung cấp/ }))
+    expect(store().v.settingsTab).toBe('providers')
+  })
+
+  it('a generic error card (no action) just clears back to done', async () => {
+    const user = makeUser()
+    const { store } = await renderApp((s) =>
+      s.set({
+        activeConv: 'c1',
+        threads: { c1: errThread() },
+        respState: 'error',
+        errorAction: null,
+        errorConv: 'c1',
+        errorDetail: 'lỗi lạ',
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Thử lại/ }))
+    await waitFor(() => expect(store().s.respState).toBe('done'))
+  })
+
+  it('pdf and code file pills open their previews', async () => {
+    const user = makeUser()
+    const pill = (open: 'pdf' | 'code'): Message => ({
+      id: 'u6',
+      role: 'user',
+      who: 'THÀNH',
+      blocks: [
+        { type: 'text', text: 'tệp' },
+        { type: 'files', items: [{ kind: open, name: `x.${open}`, open }] },
+      ],
+    })
+    const { store } = await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([pill('pdf')]) } }),
+    )
+    await user.click(await screen.findByRole('button', { name: /x\.pdf/ }))
+    expect(store().s.preview?.kind).toBe('pdf')
+
+    const { store: s2 } = await renderApp((s) =>
+      s.set({ activeConv: 'c1', threads: { c1: fromLinear([pill('code')]) } }),
+    )
+    await user.click(await screen.findByRole('button', { name: /x\.code/ }))
+    expect(s2().s.preview?.kind).toBe('code')
+  })
+})

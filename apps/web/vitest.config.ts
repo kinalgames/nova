@@ -37,10 +37,14 @@ export default defineConfig({
       // tests). The remaining uncovered branches are dead-defensive lines
       // (post-filter ternaries) and render-only cosmetic forks.
       thresholds: {
-        statements: 94,
+        // floors sit BELOW actual with deliberate headroom so routine changes
+        // don't fail on noise. Raised to lock in earned coverage where real
+        // buffer exists (statements/lines); branches stays 90 (a defensive-
+        // heavy store caps it ~90 and forcing higher would need filler tests).
+        statements: 95,
         branches: 90,
         functions: 94,
-        lines: 95,
+        lines: 96,
       },
     },
   },

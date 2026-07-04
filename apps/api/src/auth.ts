@@ -41,10 +41,23 @@ export function createAuth(env: AuthEnv) {
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
         if (!mailConfigured(env)) return
-        // land the user back on the WEB app after the API verifies the token
-        const link = new URL(url)
-        link.searchParams.set('callbackURL', env.WEB_ORIGIN ?? 'http://localhost:5173')
-        await sendMail(env, verificationEmail(user.email, link.toString()))
+        // a mail-provider hiccup (Graph outage/throttle) must NEVER break signup
+        // or the resend flow, and must not bubble up as a retryable error that
+        // burns another send attempt — swallow and log, the banner offers retry
+        try {
+          // land the user back on the WEB app after the API verifies the token
+          const link = new URL(url)
+          link.searchParams.set('callbackURL', env.WEB_ORIGIN ?? 'http://localhost:5173')
+          await sendMail(env, verificationEmail(user.email, link.toString()))
+        } catch (e) {
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              msg: 'verification email send failed',
+              error: String(e).slice(0, 200),
+            }),
+          )
+        }
       },
     },
     socialProviders: {
