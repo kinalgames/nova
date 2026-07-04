@@ -2479,6 +2479,7 @@ function deriveValues(
     accountDeletable: HAS_API && !demo && !!s.userEmail,
     // D5 — soft email-verification nudge: shown while signed in and unverified
     needsVerify: !demo && nav.authView === null && !!s.accountId && s.emailVerified === false,
+    emailVerified: s.emailVerified === true,
     resendVerify: async (): Promise<void> => {
       const err = await resendVerification(s.userEmail ?? '')
       showToast(err ?? t('chat.verifySent'))

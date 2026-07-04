@@ -6,8 +6,13 @@ export interface MailEnv {
   MS_GRAPH_TENANT_ID?: string
   MS_GRAPH_CLIENT_ID?: string
   MS_GRAPH_CLIENT_SECRET?: string
-  /** the mailbox the app sends AS (needs Mail.Send application permission) */
+  /** the licensed mailbox used for the sendMail endpoint (needs Mail.Send) */
   MS_GRAPH_MAIL_SENDER?: string
+  /** optional visible From address — differs from the mailbox only with a
+   *  verified domain + SendAs; falls back to the mailbox when unset */
+  MS_GRAPH_FROM_ADDRESS?: string
+  /** optional From display name (e.g. "Nova") */
+  MS_GRAPH_FROM_NAME?: string
   /** 'true' keeps a copy in the sender's Sent Items */
   MS_GRAPH_SAVE_TO_SENT_ITEMS?: string
 }
@@ -65,6 +70,12 @@ export async function sendMail(env: MailEnv, msg: OutMail): Promise<void> {
         message: {
           subject: msg.subject,
           body: { contentType: 'HTML', content: msg.html },
+          from: {
+            emailAddress: {
+              name: env.MS_GRAPH_FROM_NAME ?? 'Nova',
+              address: env.MS_GRAPH_FROM_ADDRESS ?? (env.MS_GRAPH_MAIL_SENDER as string),
+            },
+          },
           toRecipients: [{ emailAddress: { address: msg.to } }],
         },
         saveToSentItems: env.MS_GRAPH_SAVE_TO_SENT_ITEMS === 'true',

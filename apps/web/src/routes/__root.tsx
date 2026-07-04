@@ -12,7 +12,7 @@ import { MobileDrawer } from '../components/MobileDrawer'
 import { NoticeToast, UpdateToast } from '../components/UpdateToast'
 import { CheatsheetDialog } from '../components/CheatsheetDialog'
 
-const SETTINGS_TABS = ['general', 'providers', 'assistant'] as const
+const SETTINGS_TABS = ['general', 'providers', 'assistant', 'account'] as const
 
 export interface RootSearch {
   /** which Settings tab is open; absent = Settings closed (it is an overlay) */

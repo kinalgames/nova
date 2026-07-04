@@ -249,6 +249,25 @@ Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
   Home hiện strip compact trên composer. CTA: chưa accountId → /login,
   có rồi → settings=providers. VM: needsProvider/nudgeLogin/nudgeGo.
 
+### Settings dialog redesign + Account tab + email sender (2026-07-04)
+
+- Dialog layout fix: header (title + close) truoc nam trong vung scroll ->
+  cuon xuong mat nut close. Gio rail trai co dinh (desktop: search kieu
+  Claude tren dinh + tab list; mobile: top bar close+tabs), cot phai =
+  header CO DINH (title + close) + chi content scroll.
+- Tab 'account' moi: tach account (identity + email-verify status +
+  password + delete) khoi General. SettingsTab += 'account'; SETTINGS_TABS
+  whitelist (__root.tsx) += 'account'; icon user (UserRound lucide).
+- Active state settings tab: bo gach trai (inset shadow), chi con
+  bg-accent-soft + text-accent-text. Icon inherit mau.
+- Settings search (desktop rail): filter tab theo label + empty state.
+- Email sender: MS_GRAPH_FROM_ADDRESS=noreply@kinal.co + FROM_NAME=Nova
+  (SendAs proven 202, kinal.co verified trong tenant). Mailbox xac thuc
+  van sender@kinalgames.com.
+- Email template logo: flexbox -> table (Gmail/Outlook strip flexbox).
+- Icon system: 1 he duy nhat = lucide (Icon.tsx, stroke 1.75). Logo
+  provider/social la brand mark rieng (simple-icons) -- dung, khong ve lai.
+
 ### D5 email verification (2026-07-04)
 
 - **Transport = Microsoft Graph** (`apps/api/src/mail.ts`), KHÔNG SMTP:

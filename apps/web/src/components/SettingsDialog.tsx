@@ -14,14 +14,55 @@ const TABS = [
   { id: 'general', labelKey: 'settings.tabGeneral', icon: 'settings' },
   { id: 'providers', labelKey: 'settings.tabProviders', icon: 'command' },
   { id: 'assistant', labelKey: 'settings.tabAssistant', icon: 'nova' },
+  { id: 'account', labelKey: 'settings.tabAccount', icon: 'user' },
 ] as const
 
 const LABEL = 'font-mono text-eyebrow tracking-[0.14em] text-faint'
+
+function TabButton({
+  tab,
+  mobile,
+  active,
+  onClick,
+}: {
+  tab: (typeof TABS)[number]
+  mobile: boolean
+  active: boolean
+  onClick: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={
+        // paper-subtle active: background + text colour only, no left rail
+        // marker — the tint IS the state
+        'flex flex-shrink-0 items-center gap-2.5 cursor-pointer rounded-md border-none text-left text-ui outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
+        (mobile ? 'px-3 py-1.5 ' : 'px-3 py-2 ') +
+        (active
+          ? 'bg-accent-soft text-accent-text'
+          : 'bg-transparent text-text-2 hover:bg-hover-1 active:bg-hover-2')
+      }
+    >
+      <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? '' : 'opacity-50')} />
+      {t(tab.labelKey)}
+    </button>
+  )
+}
 
 export function SettingsDialog() {
   const { v } = useStore()
   const { t } = useTranslation()
   const mobile = v.isMobile
+  const [q, setQ] = useState('')
+  const query = q.trim().toLowerCase()
+  const shownTabs = query ? TABS.filter((tab) => t(tab.labelKey).toLowerCase().includes(query)) : TABS
+  const currentLabel = t(
+    TABS.find((tab) => tab.id === v.settingsTab)?.labelKey ?? 'settings.tabGeneral',
+  )
   return (
     <Dialog.Root open={v.settingsOpen} onOpenChange={(o) => !o && v.closeSettings()}>
       <Dialog.Portal>
@@ -37,61 +78,72 @@ export function SettingsDialog() {
         >
           <Dialog.Title className="sr-only">{t('settings.title')}</Dialog.Title>
 
-          {/* rail / tabs */}
-          <div
-            role="tablist"
-            aria-label={t('settings.tabsAria')}
-            className={
-              mobile
-                ? 'flex flex-shrink-0 items-center gap-1 border-b border-border px-3 py-2'
-                : 'flex w-[184px] flex-shrink-0 flex-col gap-0.5 border-r border-border bg-side p-3'
-            }
-          >
-            {!mobile && <div className={`${LABEL} px-2 pb-2 pt-1`}>{t('settings.railLabel')}</div>}
-            {TABS.map((tab) => {
-              const active = v.settingsTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => v.setSettingsTab(tab.id)}
-                  className={
-                    'flex items-center gap-2.5 cursor-pointer rounded-lg border-none text-left text-ui outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
-                    (mobile ? 'px-3 py-1.5 ' : 'px-3 py-2 ') +
-                    (active
-                      ? 'bg-accent-soft text-accent-text ' + (mobile ? '' : 'shadow-[inset_2px_0_0_var(--accent)]')
-                      : 'bg-transparent text-text-2 hover:bg-hover-1 active:bg-hover-2')
-                  }
-                >
-                  <Icon n={tab.icon} size={16} className={'flex-shrink-0 ' + (active ? 'text-accent' : 'opacity-50')} />
-                  {t(tab.labelKey)}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* panel */}
-          <div role="tabpanel" className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
-            <div className="flex items-center justify-between px-6 pb-2 pt-5">
-              <div className="font-display text-h3">
-                {t(TABS.find((tab) => tab.id === v.settingsTab)?.labelKey ?? 'settings.tabGeneral')}
-              </div>
+          {mobile ? (
+            // mobile rail: a FIXED top bar — close on the left, tabs scroll
+            <div className="flex flex-shrink-0 items-center gap-1 border-b border-border px-2 py-2">
               <Dialog.Close asChild>
                 <button
                   type="button"
                   aria-label={t('common.close')}
-                  className="flex cursor-pointer rounded-md border-none bg-transparent p-1 text-muted outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="tap flex flex-shrink-0 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-muted outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  <Icon n="close" size={18} />
+                  <Icon n="close" size={19} />
                 </button>
               </Dialog.Close>
+              <div role="tablist" aria-label={t('settings.tabsAria')} className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                {TABS.map((tab) => (
+                  <TabButton key={tab.id} tab={tab} mobile active={v.settingsTab === tab.id} onClick={() => v.setSettingsTab(tab.id)} />
+                ))}
+              </div>
             </div>
-            <div className="px-6 pb-8 pt-2">
+          ) : (
+            // desktop rail: FIXED column — search on top (Claude-style), then tabs
+            <div className="flex w-[200px] flex-shrink-0 flex-col border-r border-border bg-side">
+              <div className="p-3 pb-2">
+                <div className="field flex items-center gap-2 rounded-md border border-border bg-panel px-2.5 py-1.5">
+                  <Icon n="search" size={15} className="flex-shrink-0 text-faint" />
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={t('settings.search')}
+                    aria-label={t('settings.search')}
+                    className="min-w-0 flex-1 bg-transparent text-small outline-none"
+                  />
+                </div>
+              </div>
+              <div className={`${LABEL} px-5 pb-1.5`}>{t('settings.railLabel')}</div>
+              <div role="tablist" aria-label={t('settings.tabsAria')} className="flex flex-col gap-0.5 overflow-y-auto px-3 pb-3">
+                {shownTabs.map((tab) => (
+                  <TabButton key={tab.id} tab={tab} mobile={false} active={v.settingsTab === tab.id} onClick={() => v.setSettingsTab(tab.id)} />
+                ))}
+                {shownTabs.length === 0 && (
+                  <div className="px-3 py-2 text-small text-muted">{t('settings.searchEmpty')}</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* right column: FIXED header (title + close) + scrollable content */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-6 py-4">
+              <div className="font-display text-h3">{currentLabel}</div>
+              {!mobile && (
+                <Dialog.Close asChild>
+                  <button
+                    type="button"
+                    aria-label={t('common.close')}
+                    className="flex cursor-pointer rounded-md border-none bg-transparent p-1 text-muted outline-none hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <Icon n="close" size={18} />
+                  </button>
+                </Dialog.Close>
+              )}
+            </div>
+            <div role="tabpanel" className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-5">
               {v.settingsTab === 'general' && <General />}
               {v.settingsTab === 'providers' && <Providers />}
               {v.settingsTab === 'assistant' && <Assistant />}
+              {v.settingsTab === 'account' && <Account />}
             </div>
           </div>
         </Dialog.Content>
@@ -250,15 +302,46 @@ function General() {
         </div>
       </div>
 
-      <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.account')}</div>
+    </>
+  )
+}
+
+/** D5/D4 — the account tab: identity, email-verification status, password,
+ *  and the irreversible delete. Split out of General so account management
+ *  lives on its own, uncluttered surface. */
+function Account() {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  return (
+    <>
       <div className="flex items-center gap-3 px-0.5 py-3">
         <div className="size-[38px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-body">{v.userName}</div>
           <div className="truncate text-small text-muted">{v.userEmail} · {t('user.plan')}</div>
         </div>
-        <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint">{t('nav.logout')}</button>
+        <button type="button" onClick={v.logout} className="cursor-pointer border-none bg-transparent text-small text-faint hover:text-text-2">{t('nav.logout')}</button>
       </div>
+
+      <div className={`${LABEL} mb-1.5 mt-6`}>{t('settings.emailSection')}</div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border px-0.5 py-3">
+        <div className="min-w-0">
+          <div className="truncate text-body">{v.userEmail}</div>
+          {v.emailVerified ? (
+            <div className="mt-0.5 flex items-center gap-1 text-small text-accent-text">
+              <Icon n="check" size={13} /> {t('settings.emailVerified')}
+            </div>
+          ) : (
+            <div className="mt-0.5 text-small text-muted">{t('settings.emailUnverified')}</div>
+          )}
+        </div>
+        {!v.emailVerified && v.accountDeletable && (
+          <button type="button" onClick={() => void v.resendVerify()} className={`${BTN_SECONDARY} shrink-0`}>
+            {t('chat.verifyCta')}
+          </button>
+        )}
+      </div>
+
       <PasswordSection />
       <DangerZone />
     </>

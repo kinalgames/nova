@@ -9,7 +9,7 @@ export type { AuthProfile, ModelRef, MsgUsage, ProfileKind, ProfileStatus, SlotI
 
 export type ViewName = 'home' | 'conversation' | 'projects' | 'project' | 'projectcfg'
 
-export type SettingsTab = 'general' | 'providers' | 'assistant'
+export type SettingsTab = 'general' | 'providers' | 'assistant' | 'account'
 
 export type RespState = 'done' | 'stream' | 'error' | 'approval'
 export type ThinkLevel = 'off' | 'low' | 'normal' | 'high'

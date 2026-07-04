@@ -35,6 +35,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Timer,
+  UserRound,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -78,6 +79,7 @@ const REGISTRY = {
   back: ArrowLeft,
   login: LogIn,
   inbox: Inbox,
+  user: UserRound,
   command: Command,
   data: BarChart3,
   plan: ListTodo,

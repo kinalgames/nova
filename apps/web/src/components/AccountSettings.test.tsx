@@ -69,7 +69,7 @@ describe('D4 — account security & deletion', () => {
     localStorage.setItem('nova.auth.token', 'tok')
     // '/new' keeps its search params (the index route redirects and drops them)
     await renderApp(undefined, {
-      path: '/new?settings=general',
+      path: '/new?settings=account',
       world: 'real',
       storeInit: { hasPassword: true, userEmail: 'test@kinal.co' },
     })
@@ -101,7 +101,7 @@ describe('D4 — account security & deletion', () => {
 describe('D4 — password submit outcomes & deletion failure', () => {
   const openSettings = () =>
     renderApp(undefined, {
-      path: '/new?settings=general',
+      path: '/new?settings=account',
       world: 'real',
       storeInit: { hasPassword: true, userEmail: 'test@kinal.co' },
     })
@@ -147,7 +147,7 @@ describe('D4 — password submit outcomes & deletion failure', () => {
   it('social-only accounts see a note instead of the password form', async () => {
     localStorage.setItem('nova.auth.token', 'tok')
     await renderApp(undefined, {
-      path: '/new?settings=general',
+      path: '/new?settings=account',
       world: 'real',
       storeInit: { hasPassword: false, userEmail: 'test@kinal.co' },
     })

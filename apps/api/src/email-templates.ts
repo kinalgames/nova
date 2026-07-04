@@ -8,10 +8,10 @@ const wrap = (inner: string): string => `<!doctype html>
 <body style="margin:0;background:#faf9f6;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#23211c">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#fffdf8;border:1px solid #e5e0d5;border-radius:14px;overflow:hidden">
     <tr><td style="padding:28px 32px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
-        <span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:#23211c"></span>
-        <span style="font-size:20px;font-weight:600;letter-spacing:-.01em">Nova</span>
-      </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr>
+        <td style="vertical-align:middle;padding-right:9px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#23211c"></span></td>
+        <td style="vertical-align:middle;font-size:20px;font-weight:600;letter-spacing:-.01em;color:#23211c">Nova</td>
+      </tr></table>
       ${inner}
     </td></tr>
   </table>
