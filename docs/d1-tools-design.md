@@ -126,11 +126,11 @@ type NovaStreamEvent =
   responsive-tested).
 - **Sources block**: `tool_result.sources` accumulate into the
   message's `sources` block; citations link out.
-- **Composer chip “Tìm kiếm”**: capability-gated like the thinking
-  chip — visible only when the active slot's model has
-  `caps.webSearch` (or `caps.toolUse` for local models once a Nova
-  search engine exists). Off by default; per-conversation persistence
-  like thinkingLevel.
+- **Composer “Thêm vào chat” menu** (shipped): the existing web/fetch
+  rows are now real — OFF by default, persisted with settings, and
+  capability-gated: on a model without `caps.webSearch` the rows
+  render faint and inert, and the request never carries the flags.
+  (Local models join once a Nova-side search engine exists.)
 - **files**: no chip — advertised to the model automatically when the
   conversation's project has files; the model decides.
 

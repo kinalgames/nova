@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anthropicBody, anthropicHeaders, toNovaStream } from './anthropic'
+import { anthropicBody, anthropicHeaders, anthropicTools, toNovaStream } from './anthropic'
 
 const profileKey = { kind: 'api_key' as const, credential: 'sk-ant-test' }
 const profileAcc = { kind: 'account' as const, credential: 'sk-ant-oat01-token' }
@@ -79,6 +79,35 @@ describe('B5 — thinking mapping per model generation', () => {
     const absent = JSON.parse(anthropicBody({ ...base, model: 'claude-haiku-4-5' }))
     expect(absent.thinking).toBeUndefined()
     expect(absent.max_tokens).toBe(8192)
+  })
+})
+
+describe('D1 — native server tools ride the request', () => {
+  const base = {
+    providerId: 'claude' as const,
+    model: 'claude-sonnet-5',
+    messages: [{ role: 'user' as const, content: 'giá vàng hôm nay?' }],
+    profile: profileKey,
+  }
+
+  it('search/fetch flags declare capped tools; absent flags send none', () => {
+    expect(anthropicTools({})).toEqual([])
+    const body = JSON.parse(anthropicBody({ ...base, search: true, fetch: true }))
+    expect(body.tools).toEqual([
+      { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+      { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5 },
+    ])
+    expect(JSON.parse(anthropicBody(base)).tools).toBeUndefined()
+  })
+
+  it('the web_fetch beta header rides only when the fetch tool is on', () => {
+    expect(anthropicHeaders(profileKey, { fetchTool: true })['anthropic-beta']).toBe(
+      'web-fetch-2025-09-10',
+    )
+    expect(anthropicHeaders(profileKey)['anthropic-beta']).toBeUndefined()
+    // account credentials keep their oauth betas and append the fetch flag
+    const acc = anthropicHeaders(profileAcc, { fetchTool: true })['anthropic-beta']
+    expect(acc).toBe('oauth-2025-04-20,claude-code-20250219,web-fetch-2025-09-10')
   })
 })
 
@@ -183,6 +212,63 @@ describe('anthropic adapter — SSE transform to the Nova contract', () => {
       ),
     )
     expect(events[0]).toMatchObject({ type: 'error', code: 'overloaded_error', message: 'busy' })
+  })
+
+  it('maps server_tool_use blocks to tool events with numbered sources', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"message_start","message":{"usage":{"input_tokens":4}}}',
+          'data: {"type":"content_block_start","content_block":{"type":"server_tool_use","id":"srvtoolu_1","name":"web_search"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"input_json_delta","partial_json":"{\\"query\\":"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"input_json_delta","partial_json":"\\"giá vàng\\"}"}}',
+          'data: {"type":"content_block_stop"}',
+          'data: {"type":"content_block_start","content_block":{"type":"web_search_tool_result","tool_use_id":"srvtoolu_1","content":[{"type":"web_search_result","url":"https://a.vn/gia","title":"Giá vàng"},{"type":"web_search_result","url":"https://b.vn","title":"B"}]}}',
+          'data: {"type":"content_block_stop"}',
+          'data: {"type":"content_block_start","content_block":{"type":"text"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Theo [1]…"}}',
+          'data: {"type":"message_delta","usage":{"output_tokens":20}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    expect(events.map((e) => e.type)).toEqual([
+      'message_start',
+      'tool_start',
+      'tool_delta',
+      'tool_delta',
+      'tool_result',
+      'block_delta',
+      'message_stop',
+    ])
+    expect(events[1]).toMatchObject({ id: 'srvtoolu_1', name: 'web_search' })
+    expect(events[4]).toMatchObject({
+      id: 'srvtoolu_1',
+      ok: true,
+      sources: [
+        { n: 1, url: 'https://a.vn/gia', title: 'Giá vàng' },
+        { n: 2, url: 'https://b.vn', title: 'B' },
+      ],
+    })
+  })
+
+  it('a tool-result ERROR surfaces ok:false; stray json deltas outside a tool never leak', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"content_block_start","content_block":{"type":"web_fetch_tool_result","tool_use_id":"srvtoolu_9","content":{"type":"web_fetch_tool_result_error","error_code":"url_not_accessible"}}}',
+          'data: {"type":"content_block_delta","delta":{"type":"input_json_delta","partial_json":"{}"}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    const types = events.map((e) => e.type)
+    expect(types).not.toContain('tool_delta')
+    expect(events.find((e) => e.type === 'tool_result')).toMatchObject({
+      id: 'srvtoolu_9',
+      ok: false,
+      summary: 'url_not_accessible',
+    })
   })
 
   it('streams extended-thinking deltas as thinking_delta and drops signatures', async () => {

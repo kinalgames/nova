@@ -100,7 +100,7 @@ export type Block =
   | { type: 'files'; label?: string; items: MsgAttachment[] }
   | { type: 'trace'; summary: string; meta?: string; steps: TraceStep[] }
   | { type: 'table'; head: string[]; rows: { text: string; tone?: BlockTone }[][] }
-  | { type: 'sources'; items: { n: number; label: string; open: PreviewKind }[] }
+  | { type: 'sources'; items: { n: number; label: string; open?: PreviewKind; url?: string }[] }
   | { type: 'actions'; items: MsgAction[] }
 
 /** assistant in-flight states rendered on the last message */

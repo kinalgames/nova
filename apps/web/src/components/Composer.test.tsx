@@ -157,10 +157,11 @@ describe('<Composer> + store wiring', () => {
         <ToolProbe />
       </>,
     )
-    expect(screen.getByTestId('web')).toHaveTextContent('true')
+    // D1 — tools ship OFF; the menu row switches the real store flag on
+    expect(screen.getByTestId('web')).toHaveTextContent('false')
     await user.click(screen.getByRole('button', { name: 'Thêm vào chat' }))
     const menu = await screen.findByRole('menu')
     await user.click(within(menu).getByText('Tra cứu web'))
-    expect(screen.getByTestId('web')).toHaveTextContent('false')
+    expect(screen.getByTestId('web')).toHaveTextContent('true')
   })
 })

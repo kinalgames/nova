@@ -55,7 +55,14 @@ export function geminiRequest(req: ResolvedChatRequest): Record<string, unknown>
   const wantThoughts = !!req.thinking && req.thinking !== 'off'
   const thinkingConfig =
     budget || wantThoughts ? { ...(budget ?? {}), ...(wantThoughts ? { includeThoughts: true } : {}) } : null
+  // D1 — built-in tools: search grounding + URL context, each opt-in per
+  // request; the provider executes them and bills the user's own key
+  const tools = [
+    ...(req.search ? [{ google_search: {} }] : []),
+    ...(req.fetch ? [{ url_context: {} }] : []),
+  ]
   return {
+    ...(tools.length ? { tools } : {}),
     // B1 — binary parts ride as inline_data ahead of the text part
     contents: req.messages.map((m) => {
       const parts = [
@@ -207,7 +214,16 @@ export async function callGemini(
 }
 
 interface GeminiChunk {
-  candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[]
+  candidates?: {
+    content?: { parts?: { text?: string; thought?: boolean }[] }
+    groundingMetadata?: {
+      webSearchQueries?: string[]
+      groundingChunks?: { web?: { uri?: string; title?: string } }[]
+    }
+    urlContextMetadata?: {
+      urlMetadata?: { retrievedUrl?: string; urlRetrievalStatus?: string }[]
+    }
+  }[]
   usageMetadata?: {
     promptTokenCount?: number
     candidatesTokenCount?: number
@@ -229,6 +245,9 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
   let errored = false
   let inputTokens = 0
   let outputTokens = 0
+  let groundedEmitted = false
+  let fetchedEmitted = false
+  let sourceN = 0
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -265,6 +284,34 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
         for (const part of parts)
           if (typeof part.text === 'string' && part.text)
             emit({ type: part.thought === true ? 'thinking_delta' : 'block_delta', text: part.text })
+      // D1 — grounding: Gemini runs the search itself and attaches metadata
+      // (usually on the final chunk); surface it once as a finished tool call
+      const grounding = chunk.candidates?.[0]?.groundingMetadata
+      if (grounding?.groundingChunks?.length && !groundedEmitted) {
+        groundedEmitted = true
+        const sources = grounding.groundingChunks
+          .filter((g) => typeof g.web?.uri === 'string')
+          .map((g, i) => ({
+            n: sourceN + i + 1,
+            url: g.web!.uri!,
+            title: g.web?.title ?? g.web!.uri!,
+          }))
+        sourceN += sources.length
+        emit({ type: 'tool_start', id: 'gs-1', name: 'web_search' })
+        if (grounding.webSearchQueries?.length)
+          emit({ type: 'tool_delta', id: 'gs-1', text: grounding.webSearchQueries.join(' · ') })
+        emit({ type: 'tool_result', id: 'gs-1', ok: true, ...(sources.length ? { sources } : {}) })
+      }
+      const urlMeta = chunk.candidates?.[0]?.urlContextMetadata
+      if (urlMeta?.urlMetadata?.length && !fetchedEmitted) {
+        fetchedEmitted = true
+        const rows = urlMeta.urlMetadata.filter((u) => typeof u.retrievedUrl === 'string')
+        const ok = rows.some((u) => u.urlRetrievalStatus?.includes('SUCCESS'))
+        const sources = rows.map((u, i) => ({ n: sourceN + i + 1, url: u.retrievedUrl!, title: u.retrievedUrl! }))
+        sourceN += sources.length
+        emit({ type: 'tool_start', id: 'uc-1', name: 'web_fetch' })
+        emit({ type: 'tool_result', id: 'uc-1', ok, ...(sources.length ? { sources } : {}) })
+      }
     },
     flush(emit) {
       if (!errored) emit({ type: 'message_stop', usage: { inputTokens, outputTokens } })

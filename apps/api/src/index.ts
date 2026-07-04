@@ -222,7 +222,9 @@ function parseChatRequest(body: unknown): ChatProxyRequest | null {
     messages.length === 0 ||
     hasStored === hasInline || // exactly one source
     (b.thinking !== undefined &&
-      !['off', 'low', 'normal', 'high'].includes(b.thinking as string))
+      !['off', 'low', 'normal', 'high'].includes(b.thinking as string)) ||
+    (b.search !== undefined && typeof b.search !== 'boolean') ||
+    (b.fetch !== undefined && typeof b.fetch !== 'boolean')
   )
     return null
   for (const m of messages) {

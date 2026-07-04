@@ -61,14 +61,15 @@ describe('store — model & thinking', () => {
 })
 
 describe('store — tools', () => {
-  it('toggles a tool and updates the active count', async () => {
+  it('tools ship OFF by default; toggling updates state and the active count', async () => {
     const { result } = await setup()
+    expect(result.current.s.tools.web).toBe(false)
     const before = result.current.v.activeCount
     act(() => result.current.v.toggle_web())
-    expect(result.current.s.tools.web).toBe(false)
-    expect(result.current.v.activeCount).toBe(before - 1)
-    act(() => result.current.v.toggle_web())
     expect(result.current.s.tools.web).toBe(true)
+    expect(result.current.v.activeCount).toBe(before + 1)
+    act(() => result.current.v.toggle_web())
+    expect(result.current.s.tools.web).toBe(false)
   })
 })
 

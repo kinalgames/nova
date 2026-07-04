@@ -246,6 +246,33 @@ describe('llm service — SSE client', () => {
     expect(bare.errors).toHaveLength(0)
   })
 
+  it('routes tool_start/tool_delta/tool_result to their handlers with sources', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        sseResponse([
+          'data: {"type":"tool_start","id":"t1","name":"web_search"}\n\n',
+          'data: {"type":"tool_delta","id":"t1","text":"{\\"query\\":\\"tin\\"}"}\n\n',
+          'data: {"type":"tool_result","id":"t1","ok":true,"sources":[{"n":1,"url":"https://a.vn","title":"A"}]}\n\n',
+          'data: {"type":"tool_result","id":"t2","ok":false,"summary":"max_uses_exceeded"}\n\n',
+          'data: {"type":"message_stop"}\n\n',
+        ]),
+      ),
+    )
+    const s = make()
+    const seen: unknown[] = []
+    s.h.onToolStart = (...a) => seen.push(['start', ...a])
+    s.h.onToolDelta = (...a) => seen.push(['delta', ...a])
+    s.h.onToolResult = (...a) => seen.push(['result', ...a])
+    await streamChat(req, s.h)
+    expect(seen).toEqual([
+      ['start', 't1', 'web_search'],
+      ['delta', 't1', '{"query":"tin"}'],
+      ['result', 't1', true, undefined, [{ n: 1, url: 'https://a.vn', title: 'A' }]],
+      ['result', 't2', false, 'max_uses_exceeded', undefined],
+    ])
+  })
+
   it('a stream that ends without message_stop still resolves as done', async () => {
     vi.stubGlobal(
       'fetch',

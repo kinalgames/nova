@@ -324,6 +324,58 @@ describe('gemini adapter — SSE transform to the Nova contract', () => {
     expect(events.map((e) => e.type)).toEqual(['message_stop'])
   })
 
+  it('D1 — search/fetch flags declare built-in tools on the request', () => {
+    const on = geminiRequest({
+      providerId: 'gemini',
+      model: 'gemini-3.1-pro',
+      messages: [{ role: 'user', content: 'hi' }],
+      profile: { kind: 'api_key', credential: 'AIza-x' },
+      search: true,
+      fetch: true,
+    })
+    expect(on.tools).toEqual([{ google_search: {} }, { url_context: {} }])
+    expect(geminiRequest(baseReq).tools).toBeUndefined()
+  })
+
+  it('D1 — groundingMetadata surfaces ONCE as a finished web_search tool call', async () => {
+    const meta =
+      '"groundingMetadata":{"webSearchQueries":["giá vàng hôm nay"],"groundingChunks":[{"web":{"uri":"https://a.vn","title":"A"}},{"web":{"uri":"https://b.vn","title":"B"}}]}'
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"candidates":[{"content":{"parts":[{"text":"Theo nguồn…"}]},' + meta + '}]}',
+          'data: {"candidates":[{"content":{"parts":[{"text":" cập nhật."}]},' + meta + '}],"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":9}}',
+        ]),
+      ),
+    )
+    expect(events.filter((e) => e.type === 'tool_start')).toHaveLength(1)
+    expect(events.filter((e) => e.type === 'tool_result')).toHaveLength(1)
+    expect(events.find((e) => e.type === 'tool_delta')).toMatchObject({ text: 'giá vàng hôm nay' })
+    expect(events.find((e) => e.type === 'tool_result')).toMatchObject({
+      id: 'gs-1',
+      ok: true,
+      sources: [
+        { n: 1, url: 'https://a.vn', title: 'A' },
+        { n: 2, url: 'https://b.vn', title: 'B' },
+      ],
+    })
+  })
+
+  it('D1 — urlContextMetadata surfaces as a web_fetch tool call with retrieval status', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"candidates":[{"content":{"parts":[{"text":"Nội dung trang…"}]},"urlContextMetadata":{"urlMetadata":[{"retrievedUrl":"https://doc.vn/bai","urlRetrievalStatus":"URL_RETRIEVAL_STATUS_SUCCESS"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":4}}',
+        ]),
+      ),
+    )
+    expect(events.find((e) => e.type === 'tool_start')).toMatchObject({ id: 'uc-1', name: 'web_fetch' })
+    expect(events.find((e) => e.type === 'tool_result')).toMatchObject({
+      ok: true,
+      sources: [{ n: 1, url: 'https://doc.vn/bai', title: 'https://doc.vn/bai' }],
+    })
+  })
+
   it('streams thought-flagged parts as thinking_delta, plain parts as block_delta', async () => {
     const events = await collect(
       toNovaStream(

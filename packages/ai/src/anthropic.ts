@@ -18,23 +18,50 @@ const VERSION = '2023-06-01'
 /** identity line Claude Code prepends; required for setup-token acceptance */
 const CLAUDE_CODE_IDENTITY = "You are Claude Code, Anthropic's official CLI for Claude."
 
+/** beta flag the web_fetch server tool still requires */
+const WEB_FETCH_BETA = 'web-fetch-2025-09-10'
+
 export function anthropicHeaders(
   profile: NonNullable<ChatProxyRequest['profile']>,
+  opts: { fetchTool?: boolean } = {},
 ): Record<string, string> {
   const base: Record<string, string> = {
     'content-type': 'application/json',
     'anthropic-version': VERSION,
   }
+  const betas = [
+    ...(profile.kind === 'account' ? ['oauth-2025-04-20', 'claude-code-20250219'] : []),
+    ...(opts.fetchTool ? [WEB_FETCH_BETA] : []),
+  ]
+  const beta: Record<string, string> = betas.length ? { 'anthropic-beta': betas.join(',') } : {}
   if (profile.kind === 'account') {
     return {
       ...base,
+      ...beta,
       authorization: `Bearer ${profile.credential}`,
-      'anthropic-beta': 'oauth-2025-04-20,claude-code-20250219',
       'user-agent': 'claude-cli/2.1.0 (external, cli)',
       'x-app': 'cli',
     }
   }
-  return { ...base, 'x-api-key': profile.credential }
+  return { ...base, ...beta, 'x-api-key': profile.credential }
+}
+
+/** D1 — provider-native server tools; capped per request so a runaway
+ *  agentic search can never burn the user's key unbounded */
+const SEARCH_MAX_USES = 5
+const FETCH_MAX_USES = 5
+
+export function anthropicTools(
+  req: Pick<ResolvedChatRequest, 'search' | 'fetch'>,
+): { type: string; name: string; max_uses: number }[] {
+  return [
+    ...(req.search
+      ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: SEARCH_MAX_USES }]
+      : []),
+    ...(req.fetch
+      ? [{ type: 'web_fetch_20250910', name: 'web_fetch', max_uses: FETCH_MAX_USES }]
+      : []),
+  ]
 }
 
 /** Claude generations on ADAPTIVE thinking + output_config.effort — these
@@ -58,8 +85,10 @@ export function anthropicBody(req: ResolvedChatRequest): string {
   const adaptive = ADAPTIVE_THINKING.test(req.model)
   const budget = level && !adaptive ? THINKING_BUDGET[level] : 0
   const maxTokens = req.maxTokens ?? (level === 'high' ? 16384 : 8192)
+  const tools = anthropicTools(req)
   return JSON.stringify({
     model: req.model,
+    ...(tools.length ? { tools } : {}),
     // budget_tokens must stay BELOW max_tokens — widen the ceiling when needed
     max_tokens: budget ? Math.max(maxTokens, budget + 8192) : maxTokens,
     stream: true,
@@ -92,7 +121,7 @@ export function anthropicBody(req: ResolvedChatRequest): string {
 export function callAnthropic(req: ResolvedChatRequest, signal?: AbortSignal): Promise<Response> {
   return fetch(API_URL, {
     method: 'POST',
-    headers: anthropicHeaders(req.profile),
+    headers: anthropicHeaders(req.profile, { fetchTool: !!req.fetch }),
     body: anthropicBody(req),
     signal,
   })
@@ -111,8 +140,35 @@ interface AnthropicEvent {
   type?: string
   message?: { usage?: AnthropicUsage }
   usage?: AnthropicUsage
-  delta?: { type?: string; text?: string; thinking?: string }
+  delta?: { type?: string; text?: string; thinking?: string; partial_json?: string }
+  content_block?: {
+    type?: string
+    id?: string
+    name?: string
+    tool_use_id?: string
+    content?: unknown
+  }
   error?: { type?: string; message?: string }
+}
+
+/** rows of a web_search/web_fetch tool-result block → Nova sources */
+function blockSources(content: unknown, nFrom: number): { n: number; url: string; title: string }[] {
+  const rows = Array.isArray(content) ? content : [content]
+  const out: { n: number; url: string; title: string }[] = []
+  for (const row of rows) {
+    const r = row as { url?: unknown; title?: unknown } | null
+    if (r && typeof r.url === 'string')
+      out.push({ n: nFrom + out.length, url: r.url, title: typeof r.title === 'string' ? r.title : r.url })
+  }
+  return out
+}
+
+/** an *_tool_result block whose content is an error object, not a row list */
+function blockError(content: unknown): string | null {
+  const c = content as { type?: unknown; error_code?: unknown } | null
+  if (c && typeof c.type === 'string' && c.type.endsWith('_error'))
+    return typeof c.error_code === 'string' ? c.error_code : 'tool_error'
+  return null
 }
 
 /** total input-side tokens — base prompt + cache writes + cache reads */
@@ -130,6 +186,10 @@ function inputSideTokens(u: AnthropicUsage | undefined): number {
 export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   let inputTokens = 0
   let outputTokens = 0
+  // the OPEN server_tool_use block — input_json_delta belongs to a tool only
+  // while one is open, so stray deltas of other block kinds never leak out
+  let openToolId: string | null = null
+  let sourceN = 0
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -146,11 +206,38 @@ export function toNovaStream(upstream: ReadableStream<Uint8Array>): ReadableStre
           inputTokens = inputSideTokens(evt.message?.usage)
           emit({ type: 'message_start' })
           break
+        case 'content_block_start': {
+          const block = evt.content_block
+          if (block?.type === 'server_tool_use' && typeof block.id === 'string') {
+            openToolId = block.id
+            emit({ type: 'tool_start', id: block.id, name: block.name ?? 'tool' })
+          } else if (
+            (block?.type === 'web_search_tool_result' || block?.type === 'web_fetch_tool_result') &&
+            typeof block.tool_use_id === 'string'
+          ) {
+            const error = blockError(block.content)
+            const sources = error ? [] : blockSources(block.content, sourceN + 1)
+            sourceN += sources.length
+            emit({
+              type: 'tool_result',
+              id: block.tool_use_id,
+              ok: !error,
+              ...(error ? { summary: error } : {}),
+              ...(sources.length ? { sources } : {}),
+            })
+          }
+          break
+        }
+        case 'content_block_stop':
+          openToolId = null
+          break
         case 'content_block_delta':
           if (evt.delta?.type === 'text_delta' && evt.delta.text)
             emit({ type: 'block_delta', text: evt.delta.text })
           else if (evt.delta?.type === 'thinking_delta' && evt.delta.thinking)
             emit({ type: 'thinking_delta', text: evt.delta.thinking })
+          else if (evt.delta?.type === 'input_json_delta' && evt.delta.partial_json && openToolId)
+            emit({ type: 'tool_delta', id: openToolId, text: evt.delta.partial_json })
           break
         case 'message_delta':
           outputTokens = evt.usage?.output_tokens ?? outputTokens

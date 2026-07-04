@@ -93,6 +93,13 @@ export interface ChatProxyRequest {
    *  (Anthropic adaptive/budget thinking, Gemini thinkingConfig, OpenAI
    *  reasoning_effort). Absent = provider default. */
   thinking?: ThinkingLevel
+  /** D1 — enable the provider-NATIVE web search tool (Anthropic web_search,
+   *  Gemini google_search grounding). Only sent when the model's caps carry
+   *  webSearch; the provider bills the user's own key. */
+  search?: boolean
+  /** D1 — enable the provider-native URL fetch tool (Anthropic web_fetch,
+   *  Gemini url_context). Same capability gate as `search`. */
+  fetch?: boolean
   /** id of a stored server-side credential owned by the session user */
   credentialId?: string
   /** transitional client-held credential — retired once BYOK v2 ships */

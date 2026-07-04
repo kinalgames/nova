@@ -15,10 +15,23 @@ export const API_BASE: string =
  *  production has API_BASE === '' yet very much has an API */
 export const HAS_API: boolean = import.meta.env.PROD || API_BASE !== ''
 
+/** one linked source a tool result carries */
+export interface ToolSource {
+  n: number
+  url: string
+  title: string
+}
+
 export interface StreamHandlers {
   onDelta: (text: string) => void
   /** live reasoning text — thinking models stream it ahead of the reply */
   onThinking?: (text: string) => void
+  /** D1 — a provider-native (or Nova-side) tool invocation began */
+  onToolStart?: (id: string, name: string) => void
+  /** the invocation's arguments/query streaming in */
+  onToolDelta?: (id: string, text: string) => void
+  /** invocation finished — outcome + optional citations */
+  onToolResult?: (id: string, ok: boolean, summary?: string, sources?: ToolSource[]) => void
   onDone: (usage: { inputTokens: number; outputTokens: number }) => void
   onError: (
     code: string,
@@ -85,7 +98,18 @@ export async function streamChat(
         const frame = buf.slice(0, i)
         buf = buf.slice(i + 2)
         if (!frame.startsWith('data: ')) continue
-        let evt: { type?: string; text?: string; usage?: { inputTokens: number; outputTokens: number }; code?: string; message?: string }
+        let evt: {
+          type?: string
+          text?: string
+          usage?: { inputTokens: number; outputTokens: number }
+          code?: string
+          message?: string
+          id?: string
+          name?: string
+          ok?: boolean
+          summary?: string
+          sources?: ToolSource[]
+        }
         try {
           evt = JSON.parse(frame.slice(6))
         } catch {
@@ -93,6 +117,10 @@ export async function streamChat(
         }
         if (evt.type === 'block_delta' && evt.text) h.onDelta(evt.text)
         else if (evt.type === 'thinking_delta' && evt.text) h.onThinking?.(evt.text)
+        else if (evt.type === 'tool_start' && evt.id) h.onToolStart?.(evt.id, evt.name ?? 'tool')
+        else if (evt.type === 'tool_delta' && evt.id && evt.text) h.onToolDelta?.(evt.id, evt.text)
+        else if (evt.type === 'tool_result' && evt.id)
+          h.onToolResult?.(evt.id, evt.ok !== false, evt.summary, evt.sources)
         else if (evt.type === 'message_stop') {
           h.onDone(evt.usage ?? { inputTokens: 0, outputTokens: 0 })
           return

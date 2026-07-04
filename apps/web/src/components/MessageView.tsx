@@ -309,7 +309,11 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
             <button
               key={i}
               type="button"
-              onClick={() => openPreview(v, s.open)}
+              // real web citations open the page; legacy preview items keep
+              // opening the in-app preview
+              onClick={() =>
+                s.url ? window.open(s.url, '_blank', 'noopener') : openPreview(v, s.open ?? 'md')
+              }
               className="cursor-pointer rounded-xs border border-border bg-transparent px-2 py-0.5 text-left"
             >
               <sup>{s.n}</sup> {s.label}

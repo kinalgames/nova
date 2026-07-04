@@ -312,7 +312,9 @@ function initialState(): NovaState {
     systemPrompt: p.systemPrompt ?? '',
     activeSlot: p.activeSlot ?? 'smart',
     slots: sanitizeSlots(p.slots),
-    tools: p.tools ?? { web: true, fetch: true, files: true, bash: true },
+    // D1 — tools ship OFF by default (user opt-in per the search-chip
+    // decision); a persisted choice always wins
+    tools: p.tools ?? { web: false, fetch: false, files: false, bash: false },
     draft: '',
     q: '',
     typing: false,
@@ -957,27 +959,68 @@ export function StoreProvider({
         const abort = new AbortController()
         llmAbort.current = abort
         let acc = ''
-        // live reasoning — thinking deltas build a trace block ABOVE the reply
-        // text; the block stays on the message afterwards (collapsed) with the
-        // measured thinking duration as its meta line
+        // live research — thinking deltas and tool invocations build a trace
+        // block ABOVE the reply text; it stays on the message afterwards
+        // (collapsed) with the measured phase duration + source count as meta
         let think = ''
-        let thinkStart = 0
-        let thinkMs = 0
-        const blocksNow = (): Block[] => [
-          ...(think
-            ? [
-                {
-                  type: 'trace' as const,
-                  summary: i18n.t(thinkMs ? 'chat.thoughtDone' : 'chat.thoughtStream'),
-                  ...(thinkMs
-                    ? { meta: i18n.t('chat.thoughtMeta', { s: Math.max(1, Math.round(thinkMs / 1000)) }) }
-                    : {}),
-                  steps: [{ kind: 'think' as const, text: think }],
-                },
-              ]
-            : []),
-          { type: 'text' as const, size: 'lead' as const, text: acc },
-        ]
+        let phaseStart = 0
+        let phaseMs = 0
+        const liveTools: {
+          id: string
+          name: string
+          query: string
+          done: boolean
+          ok?: boolean
+          summary?: string
+          count: number
+        }[] = []
+        const sources: { n: number; url: string; title: string }[] = []
+        const hostOf = (url: string) => {
+          try {
+            return new URL(url).host.replace(/^www\./, '')
+          } catch {
+            return url
+          }
+        }
+        const blocksNow = (): Block[] => {
+          const steps = [
+            ...(think ? [{ kind: 'think' as const, text: think }] : []),
+            ...liveTools.map((tl) => ({
+              kind: 'tool' as const,
+              node: tl.done && tl.ok === false ? ('danger' as const) : ('accent' as const),
+              title: i18n.t(tl.name === 'web_fetch' ? 'chat.toolFetch' : 'chat.toolSearch'),
+              detail: !tl.done
+                ? '…'
+                : tl.ok === false
+                  ? (tl.summary ?? i18n.t('chat.toolFailed'))
+                  : i18n.t('chat.toolSources', { count: tl.count }),
+              tool: tl.name,
+              toolIcon: (tl.name === 'web_fetch' ? 'globe' : 'search') as 'globe' | 'search',
+              ...(tl.query ? { query: tl.query } : {}),
+            })),
+          ]
+          const summary = phaseMs
+            ? i18n.t(liveTools.length ? 'chat.searchDone' : 'chat.thoughtDone')
+            : i18n.t(liveTools.length ? 'chat.searchStream' : 'chat.thoughtStream')
+          const meta = [
+            ...(sources.length ? [i18n.t('chat.toolSources', { count: sources.length })] : []),
+            ...(phaseMs ? [i18n.t('chat.thoughtMeta', { s: Math.max(1, Math.round(phaseMs / 1000)) })] : []),
+          ].join(' · ')
+          return [
+            ...(steps.length
+              ? [{ type: 'trace' as const, summary, ...(meta ? { meta } : {}), steps }]
+              : []),
+            { type: 'text' as const, size: 'lead' as const, text: acc },
+            ...(sources.length
+              ? [
+                  {
+                    type: 'sources' as const,
+                    items: sources.map((src) => ({ n: src.n, label: hostOf(src.url), url: src.url })),
+                  },
+                ]
+              : []),
+          ]
+        }
         const writeBlocks = (extra: Partial<Message> = {}) =>
           set((x) => ({
             threads: {
@@ -985,15 +1028,16 @@ export function StoreProvider({
               [conv]: updateMessage(x.threads[conv], replyId, { blocks: blocksNow(), ...extra }),
             },
           }))
-        // the thinking phase ends at the first reply token (or at stop, for a
-        // reply that never leaves the thinking phase)
-        const settleThink = () => {
+        // the research phase (thinking + tool calls) ends at the first reply
+        // token — or at stop/done, for a reply that never leaves the phase
+        const settlePhase = () => {
           // floor 1ms — a same-millisecond phase must still settle to “done”
-          if (thinkStart && !thinkMs) thinkMs = Math.max(1, Date.now() - thinkStart)
+          if (phaseStart && !phaseMs) phaseMs = Math.max(1, Date.now() - phaseStart)
+          for (const tl of liveTools) tl.done = true
         }
         llmSettle.current = () => {
-          if (!think) return
-          settleThink()
+          if (!think && !liveTools.length) return
+          settlePhase()
           writeBlocks()
         }
         set((x) => ({
@@ -1029,6 +1073,11 @@ export function StoreProvider({
             // only models that CAN reason receive it — others never see the
             // knob, so no provider 4xx on an unsupported parameter
             ...(modelDef.caps.reasoning ? { thinking: prev.thinkingLevel } : {}),
+            // D1 — native web tools ride ONLY when the model can run them AND
+            // the user switched the tool on; unsupported models never see the
+            // flag, so no provider 4xx and no silent no-op
+            ...(modelDef.caps.webSearch && prev.tools.web ? { search: true } : {}),
+            ...(modelDef.caps.webSearch && prev.tools.fetch ? { fetch: true } : {}),
             messages: turns,
             // server-backed profiles chat by id — the secret stays sealed
             // server-side; transitional local profiles still send inline
@@ -1038,19 +1087,47 @@ export function StoreProvider({
           },
           {
             onThinking: (text) => {
-              if (!thinkStart) thinkStart = Date.now()
+              if (!phaseStart) phaseStart = Date.now()
               think += text
               writeBlocks()
             },
+            onToolStart: (id, name) => {
+              if (!phaseStart) phaseStart = Date.now()
+              liveTools.push({ id, name, query: '', done: false, count: 0 })
+              set({ typingLabel: i18n.t('chat.searchingLabel') })
+              writeBlocks()
+            },
+            onToolDelta: (id, text) => {
+              const tl = liveTools.find((x) => x.id === id)
+              if (!tl) return
+              // raw streaming args — keep the human part, cap the length
+              tl.query = (tl.query + text).slice(0, 200)
+              writeBlocks()
+            },
+            onToolResult: (id, ok, summary, toolSources) => {
+              const tl = liveTools.find((x) => x.id === id)
+              if (tl) {
+                tl.done = true
+                tl.ok = ok
+                tl.summary = summary
+                tl.count = toolSources?.length ?? 0
+                // the args finished streaming — show only the query VALUE, not
+                // the JSON shell it arrived in
+                const q = /"query"\s*:\s*"([^"]*)/.exec(tl.query)
+                if (q) tl.query = q[1]
+              }
+              if (toolSources) sources.push(...toolSources)
+              writeBlocks()
+            },
             onDelta: (text) => {
-              settleThink()
+              settlePhase()
               acc += text
               set({ typingLabel: i18n.t('chat.writingLabel') })
               writeBlocks()
             },
             onDone: (u) => {
               llmSettle.current = null
-              settleThink()
+              settlePhase()
               set({ typing: false })
               writeBlocks({
                 usage: {
@@ -1090,6 +1167,7 @@ export function StoreProvider({
             },
             onError: (code, message, status, retryAfterSec, requestId) => {
               llmSettle.current = null
+              settlePhase()
               // a rate-limited profile enters its cool-down window — the
               // rotation engine will route the NEXT send to the next profile
               if (status === 429)
@@ -1117,8 +1195,7 @@ export function StoreProvider({
                 errorAction: 'retry',
                 errorConv: conv,
               })
-              settleThink()
-              if (acc || think) writeBlocks() // keep any partial answer above the card
+              if (acc || think || liveTools.length) writeBlocks() // keep any partial answer above the card
             },
           },
           abort.signal,
@@ -1894,7 +1971,15 @@ function deriveValues(
   const toolToggle = (k: keyof NovaState['tools']) => () =>
     set((x) => ({ tools: { ...x.tools, [k]: !x.tools[k] } }))
   const chk = (k: keyof NovaState['tools']) => (s.tools[k] ? '✓' : '')
-  const rowFg = (k: keyof NovaState['tools']) => (s.tools[k] ? accentText : 'var(--text-2)')
+  // D1 — web tools follow the active model's capability: on an unsupported
+  // model the rows render faint and inert instead of silently no-oping
+  const webCapable = !!findModel(s.slots[s.activeSlot]).caps.webSearch
+  const rowFg = (k: keyof NovaState['tools']) =>
+    (k === 'web' || k === 'fetch') && !webCapable
+      ? 'var(--faint)'
+      : s.tools[k]
+        ? accentText
+        : 'var(--text-2)'
   const activeCount = tk.filter((k) => s.tools[k]).length
 
   const mkPreset = (
@@ -2195,8 +2280,8 @@ function deriveValues(
     fetchRowFg: rowFg('fetch'),
     filesRowFg: rowFg('files'),
     bashRowFg: rowFg('bash'),
-    toggle_web: toolToggle('web'),
-    toggle_fetch: toolToggle('fetch'),
+    toggle_web: webCapable ? toolToggle('web') : () => {},
+    toggle_fetch: webCapable ? toolToggle('fetch') : () => {},
     toggle_files: toolToggle('files'),
     toggle_bash: toolToggle('bash'),
     accent,

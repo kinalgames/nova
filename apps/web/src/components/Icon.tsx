@@ -13,6 +13,7 @@ import {
   Eye,
   FileText,
   Folder,
+  Globe,
   Image as ImageIcon,
   Inbox,
   Info,
@@ -52,6 +53,7 @@ import type { CSSProperties } from 'react'
 const REGISTRY = {
   plus: Plus,
   search: Search,
+  globe: Globe,
   nova: Sparkle,
   focus: Timer,
   file: FileText,
