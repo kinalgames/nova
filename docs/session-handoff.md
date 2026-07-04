@@ -5,25 +5,29 @@ TODO theo thứ tự, và bẫy đã cắn.
 
 ## ĐÃ DEPLOY — Cloudflare Workers (2 env, mỗi env 1 Worker serve web + API)
 
-- **dev**: https://nova-dev.kinalgames.workers.dev · **prod**: https://nova.kinalgames.workers.dev
-  (custom domain dự kiến: nova.kinal.co — khi gắn: thêm route, đổi 2 vars
-  BETTER_AUTH_URL/WEB_ORIGIN trong wrangler.jsonc, thêm redirect URI OAuth)
+- **prod canonical**: https://nova.kinal.co (custom domain gắn qua Dashboard,
+  vars BETTER_AUTH_URL/WEB_ORIGIN đã trỏ về — e295321; smoke: signup 200 +
+  D4 delete 200 trên domain mới). **dev**: https://nova-dev.kinalgames.workers.dev
+  · legacy prod: https://nova.kinalgames.workers.dev (TRUSTED_ORIGINS_EXTRA —
+  email login chạy; social dồn về canonical vì popup khác origin).
+  **CẦN USER**: thêm redirect URI
+  `https://nova.kinal.co/api/auth/callback/google` + `.../callback/github`
+  vào Google/GitHub OAuth consoles — social login trên prod ĐANG chờ cái này.
 - Same-origin: Workers Static Assets serve `apps/web/dist` (SPA fallback),
   `run_worker_first: /v1/* /api/* /healthz`. Client prod build `API_BASE=''`.
 - Deploy: `npm run build --workspace=@nova/web && cd apps/api && npx wrangler
   deploy --env dev|production`. Migrations: `npx wrangler d1 migrations apply
   DB --remote --env …`. D1: nova-dev `54de4c43…` / nova `65f66b6c…`.
-- Secrets đã nạp per env: BETTER_AUTH_SECRET, CREDENTIALS_KEY (random riêng
-  từng env), GEMINI_OAUTH_*, GOOGLE_CLIENT_*, GITHUB_CLIENT_* (app riêng
-  per env). CÒN THIẾU: AE_SQL_TOKEN + CF_ACCOUNT_ID (/v1/usage read-back).
-- **AE binding đang tạm comment trong wrangler.jsonc** — chờ user bấm enable
-  Analytics Engine trong dashboard; xong thì bỏ comment 2 dòng + redeploy.
+- Secrets đã nạp đủ per env: BETTER_AUTH_SECRET, CREDENTIALS_KEY,
+  GEMINI_OAUTH_*, GOOGLE_CLIENT_*, GITHUB_CLIENT_*, CF_ACCOUNT_ID,
+  AE_SQL_TOKEN, MS_GRAPH_* (mail). AE bindings ACTIVE cả 3 env
+  (nova_usage_local/dev/prod).
 - Social login: Google (1 client, 3 redirect URI) + GitHub (3 app riêng).
   Flow: redirect về /login → client adoptSocialSession() đổi cookie → bearer
   qua GET /v1/session-token → reload vào app. Local social cần đăng nhập
   cùng origin (cookie SameSite) — test trên cloud là chính.
-- CI auto-deploy dev: CHƯA — cần user tạo CF API token (Workers Scripts:Edit)
-  đặt vào GH secrets rồi thêm workflow.
+- CI auto-deploy: **WON'T DO** (user chốt 2026-07-03) — CI chỉ test; deploy
+  tay bằng wrangler sau gate xanh.
 
 ## Trạng thái repo
 
@@ -33,9 +37,11 @@ TODO theo thứ tự, và bẫy đã cắn.
   giữ buffer ≥3 khi thêm/xóa test). Demo mode ĐÃ XÓA — unit suite chạy
   fixture thật + hermetic SSE; xem mục "Gỡ demo mode".
 - Dev local: web `npm run dev` (:5173); api `cd apps/api && npx wrangler
-  dev --port 8787` (session bash `dev`; **restart wrangler sau khi đổi
-  `.dev.vars`**). D1 local đã migrate tới `0001` (provider_credential).
-  Test user: `minh@test.vn / matkhau-manh-123`.
+  dev --port 8787` (**restart wrangler sau khi đổi `.dev.vars`**). D1 local
+  đã apply đủ migrations (mới nhất = share 0003).
+  Test user local: `minh@test.vn / matkhau-manh-123` · dev cloud:
+  `tester@nova.dev / Nv-2qz8rGXz4OoD` (KHÔNG tồn tại trên prod — acc test
+  trên prod phải tạo rồi xóa ngay qua D4).
 - `.dev.vars` (gitignored): BETTER_AUTH_SECRET, R2/CF-Images creds,
   `CREDENTIALS_KEY`, `GEMINI_OAUTH_CLIENT_ID/SECRET` (cặp công khai
   gemini-cli), `GOOGLE_CLIENT_ID/SECRET`, `GITHUB_CLIENT_ID/SECRET`
@@ -78,24 +84,30 @@ TODO theo thứ tự, và bẫy đã cắn.
 
 - BYOK server-side sealed là source of truth; inline profile chỉ còn là
   đường transitional cho local rows chưa migrate.
-- Real product: auth gate bắt buộc (như ChatGPT); demo ở `/demo`.
+- Real product: auth gate bắt buộc (như ChatGPT). Demo mode ĐÃ XÓA
+  hoàn toàn 2026-07-04 (438424c).
 - Hạ tầng: Cloudflare-only + OSS tự host. LLM provider BYOK là ngoại lệ.
 - Account-kind = transport của CLI chính chủ (Claude Code / gemini-cli),
   EXPERIMENTAL, chỉ chạy trên subscription/account CỦA user.
 
-## USER SẼ TEST KHI DẬY — auth gemini & openai
+## PROVIDER SMOKE — trạng thái đã kiểm
 
-1. Chạy `wrangler dev` (:8787) + `npm run dev` (:5173), đăng nhập.
-2. Gemini 「Khóa API」: dán key AIza… → Test → chat (slot trỏ
-   gemini-2.5-flash).
-3. Gemini 「Tài khoản」: dán NGUYÊN nội dung `~/.gemini/oauth_creds.json`
-   (đã từng `gemini` login trên máy đó). Access token trần cũng chạy
-   nhưng hết hạn sau 1h.
-4. OpenAI: dán key sk-… → Test → chat gpt-5-mini (rẻ nhất).
-5. Lỗi upstream hiện nguyên văn trong bubble (⚠ code: detail) — đủ để
-   chẩn đoán key sai/quota.
+- Claude/OpenAI/Gemini: đã chạy live qua proxy (region-403 fix bằng Smart
+  Placement 8fcb60b — các phiên trước).
+- **Ollama: PROVEN 2026-07-04** — wrangler dev local → docker ollama
+  (:11434, model thật `ornith:35b` qwen3.5moe 34.7B): stream "2 + 2 bằng
+  4." đủ SSE contract, usage 91/389. LỘ 2 GAP THẬT (backlog B6b/B6c):
+  (1) `thinking` chưa map sang ollama `think:false` — reasoning model đốt
+  ~380 token thinking ẩn dù client gửi off; maxTokens nhỏ → reply RỖNG
+  (toàn thinking, 0 block_delta); (2) model picker whitelist cứng
+  (llama3.2/qwen2.5 placeholder) — model thật của user không chọn được
+  trong UI (server ĐÃ accept model tự do, chỉ vướng client defs).
 
-## BACKLOG ĐẦY ĐỦ (kiểm kê 2026-07-03; OAuth social + deploy ĐÃ XONG)
+## BACKLOG ĐẦY ĐỦ (RE-AUDIT 2026-07-04)
+
+Còn mở: **D1 tools-thật · B6b/B6c ollama · D6 (chờ điều kiện) · a11y
+contrast baseline 6 · desktop app (tương lai)**. Mọi thứ khác dưới đây
+đã gạch = DONE (giữ làm sử liệu quyết định).
 
 Backend:
 - ~~BE4 share /share/:id~~ ĐÃ XONG 2026-07-03 (user duyệt: unlisted + snapshot tĩnh + revoke + ẢNH THẬT): bảng D1 share (id random unguessable = credential, snapshot JSON, file_ids whitelist ownership-verified lúc tạo; migration 0003 applied 3 DB) · POST/DELETE /v1/shares (session) · GET /v1/shares/:id + /:id/files/:fileId (PUBLIC, chỉ serve file trong whitelist, nosniff) · client: menu Share tạo/copy link thật + Huỷ chia sẻ, share chết theo delConv + account-delete cascade · trang /share/:id trần (Markdown + ảnh public + CTA, noindex meta).
@@ -132,9 +144,11 @@ Backend:
   `reasoning_effort` (off→minimal chỉ gpt-5*, o-series omit);
   ollama: chưa (B6). Gemini transform đã cộng thoughtsTokenCount vào
   outputTokens từ trước — metering đúng sẵn.
-- ~~B4 structured logging~~ ĐÃ XONG 2026-07-03: middleware x-request-id (cf-ray ưu tiên, UUID fallback) trên MỌI response + log JSON mỗi request (method/path/status/ms, skip healthz) + log ‘chat’ per call (provider/model/status/uid/thinking/atts, không content) · client hiện ‘req ‹id›’ trong error card để correlate với wrangler tail. CÒN: B6 ollama client-direct · B7 sync
-  cursor/live-push · CI deploy-dev.yml ĐÃ CÓ (chờ GH secret
-  CLOUDFLARE_API_TOKEN) · AE_SQL_TOKEN chờ user tạo.
+- ~~B4 structured logging~~ ĐÃ XONG 2026-07-03: middleware x-request-id (cf-ray ưu tiên, UUID fallback) trên MỌI response + log JSON mỗi request (method/path/status/ms, skip healthz) + log ‘chat’ per call (provider/model/status/uid/thinking/atts, không content) · client hiện ‘req ‹id›’ trong error card để correlate với wrangler tail. CÒN: B6a ollama
+  client-direct (DEFERRED → desktop app) · B6b thinking→ollama `think`
+  · B6c ollama model picker linh hoạt. ~~B7 live sync~~ ĐÃ XONG
+  2026-07-03 (eabfa55, WebSocket op-log, 2-tab proven). CI deploy:
+  WON'T DO. AE_SQL_TOKEN: ĐÃ nạp.
 
 Design/Product:
 - **D1 Tools web/fetch/files/bash là MOCK** (RẤT LỚN — định hướng
@@ -161,13 +175,14 @@ Design/Product:
   titleFrom(prompt) sau reply đầu. Lưu ý kỹ thuật: conv mới sinh chưa
   commit vào sRef khi stream resolve đồng bộ → điều kiện "không tìm
   thấy = unnamed".
-- D4 account settings (đổi mật
-  khẩu/xoá tài khoản) · D5 email verify/reset (cần chọn email
-  provider — hỏi owner vì đụng nguyên tắc CF-only) · D6 R4 iOS +
-  F3 + P1/P3/P4 (chờ điều kiện) · D7 custom domain nova.kinal.co.
+- ~~D4 account settings~~ ĐÃ XONG (đổi mật khẩu + xóa tài khoản cascade,
+  proven live) · ~~D5 email verify~~ ĐÃ XONG 2026-07-04 (Microsoft Graph,
+  b3ee338) · ~~D7 custom domain~~ ĐÃ XONG 2026-07-04 (e295321, chờ user
+  thêm OAuth redirect URIs) · D6 R4 iOS + F3 + P1/P3/P4 (chờ điều kiện).
 
-Nhắc user: rotate R2/CF-Images token; dismiss Dependabot esbuild
-(accepted-risk); nâng actions Node 24 runner.
+Nhắc user: **thêm OAuth redirect URIs cho nova.kinal.co (social prod đang
+chờ)** · rotate R2/CF-Images token · dismiss Dependabot esbuild
+(accepted-risk) · nâng actions Node 24 runner.
 
 ## MOBILE AUDIT ĐÃ SHIP (2026-07-03)
 
