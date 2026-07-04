@@ -248,6 +248,9 @@ export interface NovaState {
   stickyProfile: Partial<Record<ProviderId, string>>
   /** profile id with an in-flight connection test (ephemeral, not persisted) */
   testingProfile: string | null
+  /** WHY the last connection test failed — shown under that profile's row
+   *  (ephemeral, cleared on the next successful test) */
+  testDetail: { id: string; msg: string } | null
   /** a newer deploy exists — show the update toast (ephemeral) */
   updateReady: boolean
   /** T8: server-side month usage rows (real mode; ephemeral, null until hydrated) */

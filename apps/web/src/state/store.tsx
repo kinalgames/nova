@@ -326,6 +326,7 @@ function initialState(): NovaState {
     autoRotate: p.autoRotate ?? true,
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
+    testDetail: null,
     updateReady: false,
     serverUsage: null,
     presetDefault: p.presetDefault ?? {
@@ -2105,10 +2106,13 @@ function deriveValues(
     if (row?.server && HAS_API) {
       set({ testingProfile: profileId })
       const model = findProvider(providerId).models.at(-1)?.id ?? ''
-      void pingCredential(profileId, providerId, model).then((status) => {
+      void pingCredential(profileId, providerId, model).then(({ status, detail }) => {
         void patchCredential(profileId, { status })
         set((x) => ({
           testingProfile: null,
+          // the failure REASON stays visible under the row — “Thất bại”
+          // without a why is a dead end
+          testDetail: status === 'active' || !detail ? null : { id: profileId, msg: detail },
           profiles: {
             ...x.profiles,
             [providerId]: (x.profiles[providerId] ?? []).map((f) =>
@@ -2171,6 +2175,28 @@ function deriveValues(
       kinds: p.auth.map((k) => ({
         kind: k,
         label: t(k === 'account' ? 'settings.kindAccount' : 'settings.kindApiKey'),
+        // progressive-disclosure CTA + per-provider guidance (only rendered
+        // once the user picks this path)
+        cta:
+          k === 'account'
+            ? t('settings.ctaAccount')
+            : p.field === 'endpoint'
+              ? t('settings.ctaEndpoint')
+              : t('settings.ctaApiKey'),
+        help:
+          k === 'account'
+            ? p.id === 'claude'
+              ? t('settings.accountHelpClaude')
+              : p.id === 'gemini'
+                ? t('settings.accountHelpGemini')
+                : ''
+            : '',
+        placeholder:
+          k === 'account'
+            ? p.id === 'claude'
+              ? 'sk-ant-oat01-…'
+              : t('settings.accountPlaceholder')
+            : p.placeholder,
       })),
       profiles: profs.map((f, i) => ({
         id: f.id,
@@ -2187,6 +2213,8 @@ function deriveValues(
             }`
           : '',
         testing: s.testingProfile === f.id,
+        // the last failed test's reason — rendered under this row
+        error: s.testDetail?.id === f.id ? s.testDetail.msg : '',
         test: () => testProfile(p.id, f.id),
         remove: () => removeProfile(p.id, f.id),
         moveUp: () => moveProfile(p.id, f.id, -1),
@@ -2208,7 +2236,8 @@ function deriveValues(
   // providers; ollama's dynamic models list in BOTH slots (the user knows
   // their local models' strength). Disconnected providers stay visible but
   // dimmed with a connect CTA — discovery beats hiding.
-  const fmtCtx = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n))
+  const fmtCtx = (n: number) =>
+    n >= 1_000_000 ? `${Math.round(n / 100_000) / 10}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n)
   const slotChoices = (slot: SlotId) =>
     provDefs
       .flatMap((p) => {
@@ -2853,10 +2882,10 @@ function deriveValues(
     typing: s.typing,
     typingLabel: s.typingLabel,
     activeCount,
-    // real context indicator: session tokens against a ~200k reference window
-    // (BYOK has no billing quota, so the bar reads “how much context is in
-    // play”, not “how much budget is left”). Honest numerator, no placeholder.
-    tokenPct: `${Math.min(98, Math.round((usageIn + usageOut) / 2000))}%`,
+    // real context indicator: this conversation's tokens against the ACTIVE
+    // model's actual window (1M/200k/…) — honest numerator AND denominator.
+    // Dynamic models without a known window fall back to 200k.
+    tokenPct: `${Math.min(98, Math.round(((usageIn + usageOut) / (findModel(s.slots[s.activeSlot]).ctx || 200_000)) * 100))}%`,
     tokenLabel: t('meter.tokenLabel'),
     tokenDetail: usageIn + usageOut > 0
       ? t('meter.usageDetail', {

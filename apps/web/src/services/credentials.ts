@@ -88,12 +88,18 @@ export async function deleteCredential(id: string): Promise<boolean> {
   }
 }
 
+export interface PingResult {
+  status: 'active' | 'error' | 'limited'
+  /** WHY it failed — the server's RFC7807 detail, so “Thất bại” is never mute */
+  detail?: string
+}
+
 /** REAL credential probe — a 1-token chat through the stored id */
 export async function pingCredential(
   id: string,
   providerId: ProviderId,
   model: string,
-): Promise<'active' | 'error' | 'limited'> {
+): Promise<PingResult> {
   try {
     const res = await fetch(`${API_BASE}/v1/chat`, {
       method: 'POST',
@@ -109,10 +115,12 @@ export async function pingCredential(
     })
     if (res.ok) {
       void res.body?.cancel()
-      return 'active'
+      return { status: 'active' }
     }
-    return res.status === 429 ? 'limited' : 'error'
+    const body = (await res.json().catch(() => ({}))) as { code?: string; detail?: string }
+    const detail = (body.detail ?? body.code ?? `HTTP ${res.status}`).slice(0, 280)
+    return { status: res.status === 429 ? 'limited' : 'error', detail }
   } catch {
-    return 'error'
+    return { status: 'error', detail: 'network' }
   }
 }

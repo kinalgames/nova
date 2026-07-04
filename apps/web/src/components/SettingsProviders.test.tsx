@@ -41,7 +41,8 @@ describe('Settings → Providers — accordion + profiles', () => {
     await expand(user, dialog, 'Claude')
     expect(within(dialog).getByText('Cá nhân')).toBeInTheDocument()
     expect(within(dialog).getByText('Dự phòng')).toBeInTheDocument()
-    expect(within(dialog).getAllByText(/đang dùng/).length).toBeGreaterThan(0)
+    // the in-use marker is now the quiet ● next to the profile name
+    expect(within(dialog).getAllByText('●').length).toBeGreaterThan(0)
     // accordion: opening ChatGPT closes Claude
     await expand(user, dialog, 'ChatGPT')
     expect(within(dialog).getByText('Khóa chính')).toBeInTheDocument()
@@ -54,6 +55,8 @@ describe('Settings → Providers — accordion + profiles', () => {
     await openProviders()
     const dialog = await screen.findByRole('dialog')
     await expand(user, dialog, 'Gemini')
+    // progressive disclosure: the form appears only after picking a path
+    await user.click(within(dialog).getByRole('button', { name: 'Đăng nhập bằng tài khoản — Gemini' }))
     await user.type(within(dialog).getByLabelText('API KEY — Gemini'), 'AIza-new-key-000')
     await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
     // the secret went to the server once (the form's default kind for gemini
@@ -68,9 +71,12 @@ describe('Settings → Providers — accordion + profiles', () => {
     const { store } = await openProviders()
     const dialog = await screen.findByRole('dialog')
     await expand(user, dialog, 'Claude')
-    await user.click(within(dialog).getByRole('button', { name: 'Giảm ưu tiên Cá nhân' }))
+    // secondary actions live behind the per-profile “…” menu now
+    await user.click(within(dialog).getByRole('button', { name: 'Tùy chọn hồ sơ Cá nhân' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Giảm ưu tiên' }))
     expect(store().s.profiles.claude.map((f) => f.name)).toEqual(['Dự phòng', 'Cá nhân'])
-    await user.click(within(dialog).getByRole('button', { name: 'Xóa hồ sơ Dự phòng' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Tùy chọn hồ sơ Dự phòng' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Xóa hồ sơ' }))
     expect(store().s.profiles.claude.map((f) => f.name)).toEqual(['Cá nhân'])
   })
 
@@ -143,6 +149,8 @@ describe('Settings → Providers — accordion + profiles', () => {
     await user.click(within(dialog).getAllByRole('button', { name: 'Kết nối — Gemini' })[0])
     expect(store().v.settingsTab).toBe('providers')
     expect(store().s.openProvider).toBe('gemini')
+    // the config opens calm: two add paths, the form appears on pick
+    await user.click(await within(dialog).findByRole('button', { name: 'Thêm khóa API — Gemini' }))
     expect(await within(dialog).findByLabelText('API KEY — Gemini')).toBeInTheDocument()
   })
 

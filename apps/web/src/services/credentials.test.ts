@@ -58,14 +58,26 @@ describe('credentials service — masked BYOK transport', () => {
     expect(await deleteCredential('c1')).toBe(false)
   })
 
-  it('ping maps http outcomes to a verdict', async () => {
+  it('ping maps http outcomes to a verdict + the failure reason', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('data: {}\n\n', { status: 200 })))
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toBe('active')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 429 })))
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toBe('limited')
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toBe('error')
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'active' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ code: 'rate_limited', detail: 'slow down' }), { status: 429 })),
+    )
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'limited', detail: 'slow down' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ code: 'invalid_credential', detail: 'x-api-key is not valid' }), { status: 400 })),
+    )
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({
+      status: 'error',
+      detail: 'x-api-key is not valid',
+    })
+    // a body without detail falls back to the code, then the bare status
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>', { status: 502 })))
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'error', detail: 'HTTP 502' })
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
-    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toBe('error')
+    expect(await pingCredential('c1', 'claude', 'claude-haiku-4-5')).toEqual({ status: 'error', detail: 'network' })
   })
 })

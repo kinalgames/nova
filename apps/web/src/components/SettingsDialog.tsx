@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Switch from '@radix-ui/react-switch'
+import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER } from './menu'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { setLanguage, type Language } from '../i18n'
@@ -356,60 +358,82 @@ function Account() {
 type ProviderVM = ReturnType<typeof useStore>['v']['providers'][number]
 
 /** inline add-profile form — kind picker (「Tài khoản」/「Khóa API」) + label + credential */
+/** Progressive add-profile: two calm buttons by default (đăng nhập tài
+ *  khoản / thêm khóa API); the form — ONE kind's fields only — appears when
+ *  a path is chosen. Nothing the user hasn't asked for is on screen. */
 function AddProfileForm({ pr }: { pr: ProviderVM }) {
   const { t } = useTranslation()
-  const [kind, setKind] = useState(pr.kinds[0].kind)
+  const [kind, setKind] = useState<null | (typeof pr.kinds)[number]['kind']>(null)
   const [name, setName] = useState('')
   const [cred, setCred] = useState('')
-  const submit = () => {
-    if (!cred.trim()) return
-    pr.addProfile(kind, name, cred)
+  const close = () => {
+    setKind(null)
     setName('')
     setCred('')
   }
+  const submit = () => {
+    if (!kind || !cred.trim()) return
+    pr.addProfile(kind, name, cred)
+    close()
+  }
+  if (kind === null)
+    return (
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        {pr.kinds.map((k) => (
+          <button
+            key={k.kind}
+            type="button"
+            onClick={() => setKind(k.kind)}
+            aria-label={`${k.cta} — ${pr.name}`}
+            className="tap-sm flex cursor-pointer items-center gap-1.5 rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-text-2 outline-none hover:bg-hover-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <Icon n={k.kind === 'account' ? 'user' : 'plus'} size={14} />
+            {k.cta}
+          </button>
+        ))}
+      </div>
+    )
+  const active = pr.kinds.find((k) => k.kind === kind)!
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      {pr.kinds.length > 1 && (
-        <div className="flex overflow-hidden rounded-sm border border-border">
-          {pr.kinds.map((k) => (
-            <button
-              key={k.kind}
-              type="button"
-              aria-pressed={kind === k.kind}
-              onClick={() => setKind(k.kind)}
-              className={`cursor-pointer border-none px-2.5 py-1.5 font-mono text-eyebrow ${
-                kind === k.kind ? 'bg-accent-soft text-accent-text' : 'bg-transparent text-muted'
-              }`}
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-      )}
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={t('settings.profileName')}
-        aria-label={`${t('settings.profileName')} — ${pr.name}`}
-        className="field w-32 rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
-      />
-      <input
-        value={cred}
-        onChange={(e) => setCred(e.target.value)}
-        placeholder={pr.placeholder}
-        aria-label={`${pr.fieldLabel} — ${pr.name}`}
-        spellCheck={false}
-        className="field min-w-0 flex-1 rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
-      />
-      <button
-        type="button"
-        onClick={submit}
-        disabled={!cred.trim()}
-        aria-label={`${t('settings.addProfile')} — ${pr.name}`}
-        className="cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2.5 py-1.5 font-mono text-eyebrow text-accent-text disabled:cursor-default disabled:opacity-[.38]"
-      >
-        {t('settings.addAction')}
-      </button>
+    <div className="mt-2.5 rounded-md border border-border bg-bg p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-mono text-eyebrow tracking-[.12em] text-label">{active.cta}</span>
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t('common.cancel')}
+          className="tap-sm flex cursor-pointer items-center justify-center border-none bg-transparent p-1 text-faint hover:text-text-2"
+        >
+          <Icon n="close" size={13} />
+        </button>
+      </div>
+      {active.help && <div className="mb-2.5 text-small leading-normal text-muted">{active.help}</div>}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t('settings.profileName')}
+          aria-label={`${t('settings.profileName')} — ${pr.name}`}
+          className="field w-32 max-sm:w-full rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
+        />
+        <input
+          value={cred}
+          onChange={(e) => setCred(e.target.value)}
+          placeholder={kind === 'account' ? active.placeholder : pr.placeholder}
+          aria-label={`${pr.fieldLabel} — ${pr.name}`}
+          spellCheck={false}
+          className="field min-w-0 flex-1 basis-[12rem] rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!cred.trim()}
+          aria-label={`${t('settings.addProfile')} — ${pr.name}`}
+          className="tap-sm cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2.5 py-1.5 font-mono text-eyebrow text-accent-text disabled:cursor-default disabled:opacity-[.38]"
+        >
+          {t('settings.addAction')}
+        </button>
+      </div>
     </div>
   )
 }
@@ -468,32 +492,51 @@ function Providers() {
               <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.profilesLabel')}</div>
               <div className="flex flex-col gap-1.5">
                 {pr.profiles.map((f) => (
-                  <div key={f.id} className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                    <span className="whitespace-nowrap rounded-xs bg-fill px-1.5 py-0.5 font-mono text-eyebrow text-muted">{f.kindLabel}</span>
-                    <span className="min-w-0 truncate text-small text-text max-sm:min-w-[6em] max-sm:flex-1">{f.name}</span>
-                    <span className="hidden min-w-0 flex-1 truncate font-mono text-eyebrow text-faint sm:block">
-                      {f.credential}
-                      {f.usage && <span className="ml-2 text-muted">{f.usage}</span>}
-                    </span>
-                    {f.inUse && <span className="whitespace-nowrap font-mono text-eyebrow text-accent-text">● {t('settings.profileInUse')}</span>}
-                    <span className="ml-auto whitespace-nowrap rounded-xs px-1.5 py-0.5 font-mono text-eyebrow" style={{ color: f.statusFg, background: f.statusBg }}>
-                      {f.badge}
-                    </span>
-                    {/* one unit — the controls wrap together, never an orphaned ✕ */}
-                    <span className="flex items-center gap-0.5">
-                      <button type="button" onClick={f.test} disabled={f.testing} aria-label={`${t('settings.test')} — ${f.name}`} className={`${iconBtn} font-mono text-eyebrow`}>
+                  <div key={f.id}>
+                    <div className="flex items-center gap-x-2">
+                      <span className="whitespace-nowrap rounded-xs bg-fill px-1.5 py-0.5 font-mono text-eyebrow text-muted">{f.kindLabel}</span>
+                      <span className="min-w-0 flex-1 truncate text-small text-text">
+                        {f.name}
+                        {f.inUse && <span className="ml-1.5 font-mono text-eyebrow text-accent-text">●</span>}
+                      </span>
+                      <span className="hidden min-w-0 max-w-[14rem] truncate font-mono text-eyebrow text-faint sm:block">
+                        {f.credential}
+                      </span>
+                      <span className="whitespace-nowrap rounded-xs px-1.5 py-0.5 font-mono text-eyebrow" style={{ color: f.statusFg, background: f.statusBg }}>
+                        {f.badge}
+                      </span>
+                      <button type="button" onClick={f.test} disabled={f.testing} aria-label={`${t('settings.test')} — ${f.name}`} className={`${iconBtn} tap-sm font-mono text-eyebrow`}>
                         {f.testing ? t('settings.testing') : t('settings.test')}
                       </button>
-                      <button type="button" onClick={f.moveUp} disabled={!f.canUp} aria-label={t('settings.moveUp', { name: f.name })} className={iconBtn}>
-                        <Icon n="caret" size={13} className="rotate-180" />
-                      </button>
-                      <button type="button" onClick={f.moveDown} disabled={!f.canDown} aria-label={t('settings.moveDown', { name: f.name })} className={iconBtn}>
-                        <Icon n="caret" size={13} />
-                      </button>
-                      <button type="button" onClick={f.remove} aria-label={t('settings.removeProfile', { name: f.name })} className={iconBtn}>
-                        <Icon n="close" size={13} />
-                      </button>
-                    </span>
+                      {/* secondary actions live behind “…” — the row stays calm */}
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger asChild>
+                          <button type="button" aria-label={t('settings.profileMenu', { name: f.name })} className={`${iconBtn} tap-sm justify-center`}>
+                            <Icon n="more" size={14} />
+                          </button>
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content align="end" sideOffset={6} className={MENU_CONTENT}>
+                            <DropdownMenu.Item disabled={!f.canUp} onSelect={f.moveUp} className={MENU_ITEM}>
+                              {t('settings.menuMoveUp')}
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item disabled={!f.canDown} onSelect={f.moveDown} className={MENU_ITEM}>
+                              {t('settings.menuMoveDown')}
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item onSelect={f.remove} className={MENU_ITEM_DANGER}>
+                              {t('settings.menuRemove')}
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
+                    </div>
+                    {f.usage && <div className="mt-0.5 pl-1 font-mono text-eyebrow text-muted">{f.usage}</div>}
+                    {/* WHY the test failed — never a mute “Thất bại” */}
+                    {f.error && (
+                      <div className="mt-1 rounded-sm border border-danger-line bg-danger-bg px-2 py-1 font-mono text-eyebrow leading-normal text-danger-text">
+                        {f.error}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -755,7 +798,7 @@ function SlotPicker({ title, desc, choices }: { title: string; desc: string; cho
         {choices.map((c) => (
           <div
             key={c.key}
-            className={`flex items-center gap-2.5 rounded-sm border px-3 py-2 ${
+            className={`relative flex items-center gap-2.5 rounded-sm border px-3 py-2 ${
               c.active ? 'border-accent-line bg-accent-soft' : 'border-border bg-transparent'
             } ${c.connected ? '' : 'opacity-60'}`}
           >
@@ -769,19 +812,20 @@ function SlotPicker({ title, desc, choices }: { title: string; desc: string; cho
                 aria-checked={c.active}
                 aria-label={`${title} — ${c.name}`}
                 onClick={c.pick}
-                className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-none bg-transparent p-0 text-left font-[inherit]"
+                className="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-0.5 border-none bg-transparent p-0 text-left font-[inherit]"
               >
                 <span className="min-w-0 truncate text-ui text-text">{c.name}</span>
                 {c.legacy && <span className="rounded-xs bg-fill px-1 py-0.5 font-mono text-micro text-muted">{c.legacy}</span>}
                 <CapIcons caps={c.caps} />
-                <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint">{c.meta}</span>
-                {c.active && <Icon n="check" size={14} className="shrink-0 text-accent" />}
+                {/* mobile: the meta drops to its own quiet second line */}
+                <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint max-sm:ml-0 max-sm:w-full">{c.meta}</span>
+                {c.active && <Icon n="check" size={14} className="shrink-0 text-accent max-sm:absolute max-sm:right-3" />}
               </button>
             ) : (
               <>
                 <span className="min-w-0 truncate text-ui text-muted">{c.name}</span>
                 <CapIcons caps={c.caps} />
-                <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint">{c.meta}</span>
+                <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint max-sm:hidden">{c.meta}</span>
                 <button
                   type="button"
                   onClick={c.connect}

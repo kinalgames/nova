@@ -32,7 +32,8 @@ export function ProviderNudge({ compact = false }: { compact?: boolean }) {
         <Icon n="plus" size={20} />
       </div>
       <div className="font-display text-h3">{t('chat.nudgeTitle')}</div>
-      <div className="mt-2 max-w-[420px] text-body leading-normal text-muted">{t('chat.nudgeBody')}</div>
+      {/* same 680px column as the composer/messages — one page, one width */}
+      <div className="mt-2 w-full max-w-[680px] px-4 text-body leading-normal text-muted">{t('chat.nudgeBody')}</div>
       <button type="button" onClick={v.nudgeGo} className={`${BTN_PRIMARY} mt-5`}>
         {v.nudgeLogin ? t('chat.nudgeCtaLogin') : t('chat.nudgeCta')}
       </button>
