@@ -2523,7 +2523,10 @@ function deriveValues(
       // start syncing this user's op-log immediately — no reload needed
       triggerSyncHydrate?.()
       triggerCredHydrate?.()
-      navigate(nav.authView === 'signup' ? { to: '/onboarding' } : { to: '/' })
+      // onboarding is keyed on assistantName, NOT the signup/login branch: a
+      // user who abandoned onboarding (name still null) must be RESUMED into
+      // it on their next email login, exactly as social login already does
+      navigate(me && me.assistantName === null ? { to: '/onboarding' } : { to: '/' })
       return null
     },
     // UX: OAuth in a POPUP — this window keeps its state; the popup lands

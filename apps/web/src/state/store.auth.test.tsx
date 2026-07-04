@@ -188,11 +188,34 @@ describe('store — real auth wiring (BE1)', () => {
   })
 
   it('signup derives the name from the email and lands on onboarding', async () => {
+    // a fresh account has no assistant name yet
+    vi.mocked(fetchMe).mockResolvedValueOnce({
+      id: 'u9',
+      name: 'lan.phuong',
+      email: 'lan.phuong@kinal.co',
+      assistantName: null,
+    })
     const { result } = await renderStore({ path: '/signup' })
     await act(async () => {
       await result.current.v.submitAuth('lan.phuong@kinal.co', 'password1')
     })
     expect(signUp).toHaveBeenCalledWith('lan.phuong', 'lan.phuong@kinal.co', 'password1')
+    expect(result.current.v.isOnboarding).toBe(true)
+  })
+
+  it('email LOGIN resumes onboarding when the account never named its assistant', async () => {
+    // the bug: an account that abandoned onboarding (assistantName null) was
+    // dropped onto /new on its next email login and could never finish it
+    vi.mocked(fetchMe).mockResolvedValueOnce({
+      id: 'u8',
+      name: 'Dang Do',
+      email: 'dangdo@kinal.co',
+      assistantName: null,
+    })
+    const { result } = await renderStore({ path: '/login' })
+    await act(async () => {
+      await result.current.v.submitAuth('dangdo@kinal.co', 'password1')
+    })
     expect(result.current.v.isOnboarding).toBe(true)
   })
 
