@@ -97,11 +97,6 @@ describe('views render on navigation', () => {
     expect(screen.getByText('Thanh phím tắt dưới cùng')).toBeInTheDocument()
   })
 
-  it('Settings in advanced mode reveals the custom-provider row', async () => {
-    await renderApp(undefined, { path: '/chat/c1?settings=providers', storeInit: { advanced: true } })
-    expect(await screen.findByText(/Thêm nhà cung cấp tùy chỉnh/)).toBeInTheDocument()
-  })
-
   it('Settings shows the shortcuts-bar toggle without advanced', async () => {
     await renderApp(undefined, { path: '/chat/c1?settings=general', storeInit: { advanced: false } })
     expect(await screen.findByText('Thanh phím tắt dưới cùng')).toBeInTheDocument()

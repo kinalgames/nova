@@ -25,20 +25,27 @@ beforeEach(() => {
 })
 
 const openProviders = () => renderApp(undefined, { path: '/chat/c1?settings=providers' })
+const expand = async (user: ReturnType<typeof makeUser>, dialog: HTMLElement, name: string) =>
+  user.click(within(dialog).getByRole('button', { name: `Mở cấu hình ${name}` }))
 
-describe('Settings → Providers — profiles, slots, rotation', () => {
-  it('lists seeded profiles with kind, status and the in-use marker', async () => {
+describe('Settings → Providers — accordion + profiles', () => {
+  it('rows collapse to a summary; expanding one reveals its profiles', async () => {
+    const user = makeUser()
     await openProviders()
     const dialog = await screen.findByRole('dialog')
+    // collapsed: summaries + status badges only — no profile rows yet
+    expect(within(dialog).getAllByText('2 hồ sơ').length).toBeGreaterThan(0)
+    expect(within(dialog).getByText('Chưa kết nối')).toBeInTheDocument() // gemini
+    expect(within(dialog).queryByText('Cá nhân')).not.toBeInTheDocument()
+    // expand Claude → its profiles + the in-use marker appear
+    await expand(user, dialog, 'Claude')
     expect(within(dialog).getByText('Cá nhân')).toBeInTheDocument()
     expect(within(dialog).getByText('Dự phòng')).toBeInTheDocument()
-    // every connected provider marks the profile rotation would use
     expect(within(dialog).getAllByText(/đang dùng/).length).toBeGreaterThan(0)
-    // gemini has no profiles yet
-    expect(within(dialog).getByText('Chưa kết nối')).toBeInTheDocument()
-    // model rows carry their catalog names (ollama's catalog is dynamic —
-    // nothing hardcoded to assert there)
-    expect(within(dialog).getByText('Claude Opus 4.8')).toBeInTheDocument()
+    // accordion: opening ChatGPT closes Claude
+    await expand(user, dialog, 'ChatGPT')
+    expect(within(dialog).getByText('Khóa chính')).toBeInTheDocument()
+    expect(within(dialog).queryByText('Cá nhân')).not.toBeInTheDocument()
   })
 
   // generous timeout: per-keystroke typing runs slower under coverage
@@ -46,6 +53,7 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
     const user = makeUser()
     await openProviders()
     const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Gemini')
     await user.type(within(dialog).getByLabelText('API KEY — Gemini'), 'AIza-new-key-000')
     await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
     // the secret went to the server once (the form's default kind for gemini
@@ -59,36 +67,83 @@ describe('Settings → Providers — profiles, slots, rotation', () => {
     const user = makeUser()
     const { store } = await openProviders()
     const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Claude')
     await user.click(within(dialog).getByRole('button', { name: 'Giảm ưu tiên Cá nhân' }))
     expect(store().s.profiles.claude.map((f) => f.name)).toEqual(['Dự phòng', 'Cá nhân'])
     await user.click(within(dialog).getByRole('button', { name: 'Xóa hồ sơ Dự phòng' }))
     expect(store().s.profiles.claude.map((f) => f.name)).toEqual(['Cá nhân'])
   })
 
-  it('assigns a slot to a cross-provider model from the models list', async () => {
+  it('the Trợ lý pickers assign slots per mode, with caps on every row', async () => {
     const user = makeUser()
-    const { store } = await openProviders()
+    const { store } = await renderApp(undefined, { path: '/chat/c1?settings=assistant' })
     const dialog = await screen.findByRole('dialog')
-    const miniFast = within(dialog).getByRole('button', { name: 'Nhanh — GPT-5 mini' })
-    expect(miniFast).toHaveAttribute('aria-pressed', 'false')
+    // the FAST picker lists fast-mode models; pick GPT-5 mini
+    const miniFast = within(dialog).getByRole('radio', { name: 'Nhanh — GPT-5 mini' })
+    expect(miniFast).toHaveAttribute('aria-checked', 'false')
     await user.click(miniFast)
-    expect(miniFast).toHaveAttribute('aria-pressed', 'true')
+    expect(miniFast).toHaveAttribute('aria-checked', 'true')
     expect(store().s.slots.fast).toEqual({ providerId: 'openai', modelId: 'gpt-5-mini' })
     // the previous fast model is unassigned now
     expect(
-      within(dialog).getByRole('button', { name: 'Nhanh — Claude Haiku 4.5' }),
-    ).toHaveAttribute('aria-pressed', 'false')
+      within(dialog).getByRole('radio', { name: 'Nhanh — Claude Haiku 4.5' }),
+    ).toHaveAttribute('aria-checked', 'false')
+    // capability glyphs ride each row (reasoning on the curated catalog)
+    expect(within(dialog).getAllByLabelText('Suy luận sâu').length).toBeGreaterThan(0)
+    // smart-mode models never render in the fast group and vice versa
+    expect(within(dialog).queryByRole('radio', { name: 'Nhanh — GPT-5' })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('radio', { name: 'Thông minh — GPT-5 mini' })).not.toBeInTheDocument()
   })
 
-  it('a provider without a usable profile cannot be routed to (approved spec)', async () => {
-    await openProviders()
+  it('hydrated ollama models list in BOTH pickers with caps, free pricing and a\n     LEGACY badge sorting last', async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, {
+      path: '/chat/c1?settings=assistant',
+      storeInit: {
+        profiles: {
+          claude: [{ id: 'p1', name: 'Khóa', kind: 'api_key', credential: 'sk-x', status: 'active' }],
+          gemini: [],
+          openai: [],
+          ollama: [{ id: 'po', name: 'Máy này', kind: 'api_key', credential: 'http://localhost:11434', status: 'active' }],
+        },
+        ollamaModels: [
+          { id: 'ornith:35b', name: 'ornith:35b', mode: 'fast', caps: { reasoning: true, vision: true }, ctx: 262_144, inPrice: 0, outPrice: 0 },
+          { id: 'sd-turbo', name: 'sd-turbo', mode: 'fast', caps: { imageGen: true, audio: true }, ctx: 0, inPrice: 0, outPrice: 0, legacy: true },
+        ],
+      },
+    })
     const dialog = await screen.findByRole('dialog')
-    expect(
-      within(dialog).getByRole('button', { name: 'Nhanh — Gemini 2.5 Flash' }),
-    ).toBeDisabled()
-    expect(
-      within(dialog).getByText('Thêm hồ sơ kết nối để dùng model của nhà cung cấp này.'),
-    ).toBeInTheDocument()
+    // both pickers carry the local model (mode does not gate dynamic models)
+    expect(within(dialog).getByRole('radio', { name: 'Thông minh — ornith:35b' })).toBeInTheDocument()
+    const localFast = within(dialog).getByRole('radio', { name: 'Nhanh — ornith:35b' })
+    // free local pricing + ctx render on the row's meta
+    expect(within(dialog).getAllByText(/262k ctx · Miễn phí/).length).toBeGreaterThan(0)
+    // capability glyphs from the dynamic catalog (audio + image generation)
+    expect(within(dialog).getAllByLabelText('Tạo ảnh').length).toBeGreaterThan(0)
+    expect(within(dialog).getAllByLabelText('Nghe âm thanh').length).toBeGreaterThan(0)
+    // the LEGACY-flagged model badges and sorts last within its group
+    expect(within(dialog).getAllByText('LEGACY').length).toBeGreaterThan(0)
+    const fastNames = within(dialog)
+      .getAllByRole('radio', { name: /^Nhanh —/ })
+      .map((r) => r.getAttribute('aria-label'))
+    expect(fastNames.indexOf('Nhanh — sd-turbo')).toBeGreaterThan(fastNames.indexOf('Nhanh — ornith:35b'))
+    // picking the local model routes the slot to the dynamic id
+    await user.click(localFast)
+    expect(store().s.slots.fast).toEqual({ providerId: 'ollama', modelId: 'ornith:35b' })
+  })
+
+  it('a disconnected provider\u2019s models dim with a Connect CTA that jumps to its config', async () => {
+    const user = makeUser()
+    const { store } = await renderApp(undefined, { path: '/chat/c1?settings=assistant' })
+    const dialog = await screen.findByRole('dialog')
+    // gemini has no profile → its models are visible but not pickable
+    expect(within(dialog).queryByRole('radio', { name: 'Nhanh — Gemini 2.5 Flash' })).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Gemini 2.5 Flash')).toBeInTheDocument()
+    // the CTA lands on the Providers tab with gemini's config expanded
+    await user.click(within(dialog).getAllByRole('button', { name: 'Kết nối — Gemini' })[0])
+    expect(store().v.settingsTab).toBe('providers')
+    expect(store().s.openProvider).toBe('gemini')
+    expect(await within(dialog).findByLabelText('API KEY — Gemini')).toBeInTheDocument()
   })
 
   it('toggles auto-rotate', async () => {

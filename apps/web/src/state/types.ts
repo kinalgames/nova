@@ -1,4 +1,4 @@
-import type { AuthProfile, ModelRef, MsgUsage, SlotId } from '@nova/shared'
+import type { AuthProfile, ModelDef, ModelRef, MsgUsage, SlotId } from '@nova/shared'
 import type { PresetId, ProviderId } from '../data/defs'
 import type { IconName } from '../components/Icon'
 import type { Thread } from './thread'
@@ -224,6 +224,10 @@ export interface NovaState {
   styles: StyleFlags
   /** which quality slot new messages route through */
   activeSlot: SlotId
+  /** which provider's config is expanded in Settings → Nhà cung cấp (accordion) */
+  openProvider: ProviderId | null
+  /** dynamic ollama catalog — hydrated from the user's endpoint (/api/tags) */
+  ollamaModels: ModelDef[]
   /** cross-provider model routing per slot */
   slots: Record<SlotId, ModelRef>
   tools: ToolFlags

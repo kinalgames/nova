@@ -271,6 +271,8 @@ function initialState(): NovaState {
     renamingConv: null,
     homeProject: null,
     nudgeNonce: 0,
+    openProvider: null,
+    ollamaModels: [],
     preview: null,
     respState: 'done',
     errorDetail: null,
@@ -2001,24 +2003,51 @@ function deriveValues(
       })),
       addProfile: (kind: ProfileKind, name: string, credential: string) =>
         addProfile(p.id, kind, name, credential),
-      // approved spec: a provider without a usable auth profile cannot be routed to
-      modelsEnabled: current != null,
-      needProfileHint: current == null ? t('settings.needProfileHint') : '',
-      models: p.models.map((m) => ({
-        id: m.id,
-        name: m.name,
-        enabled: current != null,
-        price:
-          m.inPrice === 0
-            ? t('settings.priceFree')
-            : `$${m.inPrice} / $${m.outPrice} · 1M`,
-        smartOn: s.slots.smart.providerId === p.id && s.slots.smart.modelId === m.id,
-        fastOn: s.slots.fast.providerId === p.id && s.slots.fast.modelId === m.id,
-        useSmart: () => setSlot('smart', { providerId: p.id, modelId: m.id }),
-        useFast: () => setSlot('fast', { providerId: p.id, modelId: m.id }),
-      })),
+      // accordion — one provider's config expands at a time
+      open: s.openProvider === p.id,
+      toggle: () =>
+        set((x) => ({ openProvider: x.openProvider === p.id ? null : p.id })),
+      summary: t('settings.profileCount', { count: profs.length }),
     }
   })
+
+  // Tợ lý → MODEL pickers: every catalog model of the slot's mode across ALL
+  // providers; ollama's dynamic models list in BOTH slots (the user knows
+  // their local models' strength). Disconnected providers stay visible but
+  // dimmed with a connect CTA — discovery beats hiding.
+  const fmtCtx = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n))
+  const slotChoices = (slot: SlotId) =>
+    provDefs
+      .flatMap((p) => {
+        const connected = (s.profiles[p.id] ?? []).length > 0
+        const models =
+          p.id === 'ollama' ? s.ollamaModels : p.models.filter((m) => m.mode === slot)
+        return models.map((m) => ({
+          key: `${p.id}:${m.id}`,
+          providerId: p.id,
+          providerName: p.id === 'ollama' ? t('vocab.providers.ollama.name') : p.name,
+          badgeBg: p.badgeBg,
+          badgeFg: p.badgeFg,
+          name: m.name,
+          caps: m.caps,
+          meta: [
+            m.ctx ? t('model.ctx', { ctx: fmtCtx(m.ctx) }) : '',
+            m.inPrice === 0 ? t('settings.priceFree') : `$${m.inPrice}/$${m.outPrice}`,
+          ]
+            .filter(Boolean)
+            .join(' · '),
+          legacy: m.legacy ? t('model.legacy') : '',
+          connected,
+          active: s.slots[slot].providerId === p.id && s.slots[slot].modelId === m.id,
+          pick: () => setSlot(slot, { providerId: p.id, modelId: m.id }),
+          // CTA for a disconnected provider — jump to its expanded config
+          connect: () => {
+            set({ openProvider: p.id, palette: false, drawerOpen: false })
+            navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'providers' }) })
+          },
+        }))
+      })
+      .sort((a, b) => Number(!!a.legacy) - Number(!!b.legacy))
   // sidebar data
   const sideProjects = s.projects.map((p) => ({
     id: p.id,
@@ -2522,6 +2551,8 @@ function deriveValues(
     // data
     suggestions,
     providers,
+    smartChoices: slotChoices('smart'),
+    fastChoices: slotChoices('fast'),
     presetsProj: mkPreset(viewProject.presets, (pid) => toggleProjectPreset(viewProject.id, pid)),
     presetsLib: mkPreset(s.presetDefault, togDef),
     projActiveNames,

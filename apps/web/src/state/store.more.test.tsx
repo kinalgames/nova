@@ -211,12 +211,14 @@ describe('store — skill presets', () => {
 })
 
 describe('store — model slots (cross-provider routing)', () => {
-  it('routes the fast slot to another provider\u2019s model', async () => {
+  it('routes the fast slot to another provider\u2019s model via the picker', async () => {
     const { result } = await setup()
-    const openai = result.current.v.providers.find((p) => p.id === 'openai')!
-    const mini = openai.models.find((m) => m.id === 'gpt-5-mini')!
-    expect(mini.enabled).toBe(true)
-    await act(async () => mini.useFast())
+    // the FAST picker lists fast-mode models across providers with caps meta
+    const mini = result.current.v.fastChoices.find((c) => c.key === 'openai:gpt-5-mini')!
+    expect(mini.connected).toBe(true)
+    expect(mini.caps.reasoning).toBe(true)
+    expect(mini.meta).toContain('$0.25')
+    await act(async () => mini.pick())
     expect(result.current.s.slots.fast).toEqual({
       providerId: 'openai',
       modelId: 'gpt-5-mini',
@@ -226,10 +228,29 @@ describe('store — model slots (cross-provider routing)', () => {
     expect(result.current.v.modelBGlyph).toBe('O')
     // the smart slot is untouched — slots are independent
     expect(result.current.s.slots.smart.providerId).toBe('claude')
-    // a provider with no usable profile is not routable
-    const gemini = result.current.v.providers.find((p) => p.id === 'gemini')!
-    expect(gemini.models[0].enabled).toBe(false)
-    expect(gemini.needProfileHint).not.toBe('')
+    // a provider with no profile lists DIMMED with a connect CTA, never pickable
+    const gem = result.current.v.smartChoices.find((c) => c.providerId === 'gemini')!
+    expect(gem.connected).toBe(false)
+  })
+
+  it('the smart picker lists only smart-mode models; ollama is dynamic', async () => {
+    const { result } = await setup()
+    const keys = result.current.v.smartChoices.map((c) => c.key)
+    expect(keys).toContain('claude:claude-opus-4-8')
+    expect(keys).toContain('claude:claude-sonnet-5')
+    expect(keys).toContain('openai:gpt-5')
+    // fast-mode models never leak into the smart list
+    expect(keys).not.toContain('claude:claude-haiku-4-5')
+    // no hardcoded ollama placeholders — its catalog comes from the endpoint
+    expect(keys.some((k) => k.startsWith('ollama:'))).toBe(false)
+    // a hydrated ollama catalog lists in BOTH pickers
+    await act(async () =>
+      result.current.set({
+        ollamaModels: [{ id: 'ornith:35b', name: 'ornith:35b', mode: 'fast', caps: { reasoning: true }, ctx: 262_144, inPrice: 0, outPrice: 0 }],
+      }),
+    )
+    expect(result.current.v.smartChoices.some((c) => c.key === 'ollama:ornith:35b')).toBe(true)
+    expect(result.current.v.fastChoices.some((c) => c.key === 'ollama:ornith:35b')).toBe(true)
   })
 })
 

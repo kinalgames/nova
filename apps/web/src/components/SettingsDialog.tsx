@@ -4,7 +4,7 @@ import * as Switch from '@radix-ui/react-switch'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { setLanguage, type Language } from '../i18n'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 import { ToggleRow } from './ToggleRow'
 import { PresetCard } from './PresetCard'
 import { ProviderLogo } from './ProviderLogo'
@@ -437,19 +437,28 @@ function Providers() {
       <div className="mb-3 flex flex-col gap-2.5">
         {v.providers.map((pr) => (
           <div key={pr.id} className="rounded-md border border-border bg-panel px-4 py-3">
-            <div className="flex items-center gap-3">
+            {/* collapsed row IS the toggle — config expands per provider */}
+            <button
+              type="button"
+              aria-expanded={pr.open}
+              aria-label={t('settings.providerToggle', { name: pr.name })}
+              onClick={pr.toggle}
+              className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent p-0 text-left font-[inherit]"
+            >
               <div className="flex size-9 shrink-0 items-center justify-center rounded-sm" style={{ background: pr.badgeBg, color: pr.badgeFg }}>
                 <ProviderLogo id={pr.id} size={20} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-body">{pr.name} {pr.rec}</div>
-                <div className="text-small text-muted">{pr.sub}</div>
+                <div className="text-small text-muted">{pr.open ? pr.sub : pr.summary}</div>
               </div>
               <span className="whitespace-nowrap rounded-xs px-2 py-1 font-mono text-eyebrow" style={{ color: pr.statusFg, background: pr.statusBg }}>
                 {pr.badge}
               </span>
-            </div>
+              <Icon n="caret" size={14} className={`shrink-0 text-faint transition-transform duration-150 ${pr.open ? 'rotate-180' : ''}`} />
+            </button>
 
+            {pr.open && (
             <div className="mt-3 border-t border-border pt-3">
               <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.profilesLabel')}</div>
               <div className="flex flex-col gap-1.5">
@@ -485,57 +494,10 @@ function Providers() {
               </div>
               <AddProfileForm pr={pr} />
             </div>
-
-            <div className="mt-3 border-t border-border pt-3">
-              <div className="mb-2 font-mono text-micro tracking-[.12em] text-faint">{t('settings.modelsAvailable')}</div>
-              {pr.needProfileHint && (
-                <div className="mb-2 text-small text-muted">{pr.needProfileHint}</div>
-              )}
-              <div className="flex flex-col gap-1.5">
-                {pr.models.map((md) => (
-                  <div key={md.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="whitespace-nowrap font-mono text-meta text-text">{md.name}</span>
-                    <span className="whitespace-nowrap font-mono text-eyebrow text-faint">{md.price}</span>
-                    <span className="ml-auto flex gap-1.5">
-                      <button
-                        type="button"
-                        aria-pressed={md.smartOn}
-                        aria-label={`${t('model.smart')} — ${md.name}`}
-                        onClick={md.useSmart}
-                        disabled={!md.enabled}
-                        className={`cursor-pointer whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
-                          md.smartOn
-                            ? 'border-accent-line bg-accent-soft text-accent-text'
-                            : 'border-border bg-transparent text-muted'
-                        }`}
-                      >
-                        {t('model.smart')}
-                      </button>
-                      <button
-                        type="button"
-                        aria-pressed={md.fastOn}
-                        aria-label={`${t('model.fast')} — ${md.name}`}
-                        onClick={md.useFast}
-                        disabled={!md.enabled}
-                        className={`cursor-pointer whitespace-nowrap rounded-sm border px-2 py-1 font-mono text-eyebrow disabled:cursor-default disabled:opacity-[.38] ${
-                          md.fastOn
-                            ? 'border-accent-line bg-accent-soft text-accent-text'
-                            : 'border-border bg-transparent text-muted'
-                        }`}
-                      >
-                        {t('model.fast')}
-                      </button>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         ))}
       </div>
-      {v.advanced && (
-        <button type="button" className="flex cursor-pointer items-center gap-1.5 border-none bg-transparent py-1 text-small text-faint"><Icon n="plus" size={13} /> {t('settings.addCustom')}</button>
-      )}
     </>
   )
 }
@@ -685,11 +647,98 @@ function DangerZone() {
   )
 }
 
+/** capability glyphs on a model row — each carries its own tooltip/aria */
+function CapIcons({ caps }: { caps: { reasoning?: boolean; vision?: boolean; audio?: boolean; imageGen?: boolean; toolUse?: boolean } }) {
+  const { t } = useTranslation()
+  const items = [
+    caps.reasoning && (['think', t('model.capReasoning')] as const),
+    caps.vision && (['eye', t('model.capVision')] as const),
+    caps.audio && (['mic', t('model.capAudio')] as const),
+    caps.imageGen && (['image', t('model.capImageGen')] as const),
+    caps.toolUse && (['wrench', t('model.capToolUse')] as const),
+  ].filter(Boolean) as (readonly [IconName, string])[]
+  if (items.length === 0) return null
+  return (
+    <span className="flex shrink-0 items-center gap-1.5 text-faint">
+      {items.map(([n, label]) => (
+        <span key={n} title={label} aria-label={label} role="img" className="flex">
+          <Icon n={n} size={13} />
+        </span>
+      ))}
+    </span>
+  )
+}
+
+type SlotChoice = ReturnType<typeof useStore>['v']['smartChoices'][number]
+
+function SlotPicker({ title, desc, choices }: { title: string; desc: string; choices: SlotChoice[] }) {
+  const { t } = useTranslation()
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex items-baseline gap-2">
+        <span className="text-body font-semibold">{title}</span>
+        <span className="text-small text-muted">{desc}</span>
+      </div>
+      <div role="radiogroup" aria-label={title} className="flex flex-col gap-1">
+        {choices.map((c) => (
+          <div
+            key={c.key}
+            className={`flex items-center gap-2.5 rounded-sm border px-3 py-2 ${
+              c.active ? 'border-accent-line bg-accent-soft' : 'border-border bg-transparent'
+            } ${c.connected ? '' : 'opacity-60'}`}
+          >
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-xs" style={{ background: c.badgeBg, color: c.badgeFg }}>
+              <ProviderLogo id={c.providerId} size={12} />
+            </span>
+            {c.connected ? (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={c.active}
+                aria-label={`${title} — ${c.name}`}
+                onClick={c.pick}
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-none bg-transparent p-0 text-left font-[inherit]"
+              >
+                <span className="min-w-0 truncate text-ui text-text">{c.name}</span>
+                {c.legacy && <span className="rounded-xs bg-fill px-1 py-0.5 font-mono text-micro text-muted">{c.legacy}</span>}
+                <CapIcons caps={c.caps} />
+                <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint">{c.meta}</span>
+                {c.active && <Icon n="check" size={14} className="shrink-0 text-accent" />}
+              </button>
+            ) : (
+              <>
+                <span className="min-w-0 truncate text-ui text-muted">{c.name}</span>
+                <CapIcons caps={c.caps} />
+                <span className="ml-auto whitespace-nowrap font-mono text-eyebrow text-faint">{c.meta}</span>
+                <button
+                  type="button"
+                  onClick={c.connect}
+                  aria-label={`${t('settings.connectCta')} — ${c.providerName}`}
+                  className="shrink-0 cursor-pointer whitespace-nowrap rounded-sm border border-accent-line bg-transparent px-2 py-1 font-mono text-eyebrow text-accent-text"
+                >
+                  {t('settings.connectCta')}
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function Assistant() {
   const { v } = useStore()
   const { t } = useTranslation()
   return (
     <>
+      <div className={`${LABEL} mb-1.5`}>{t('settings.modelSection')}</div>
+      <div className="mb-3 text-ui leading-normal text-muted">{t('settings.modelHelp')}</div>
+      <SlotPicker title={t('model.smart')} desc={t('model.smartDesc')} choices={v.smartChoices} />
+      <div className="mb-7">
+        <SlotPicker title={t('model.fast')} desc={t('model.fastDesc')} choices={v.fastChoices} />
+      </div>
+
       <div className={`${LABEL} mb-3`}>{t('settings.styleSection')}</div>
       <div role="group" aria-label={t('settings.styleSection')} className="mb-7 flex flex-wrap gap-2">
         <button type="button" aria-pressed={v.styleConcise} onClick={v.toggleConcise} className="cursor-pointer rounded-sm border px-4 py-2 text-left text-ui" style={{ borderColor: v.stConciseBd, background: v.stConciseBg, color: v.stConciseFg }}>{t('vocab.styles.concise')}</button>
