@@ -1,7 +1,36 @@
-# Session handoff — 2026-07-05 (AI Gateway, prompt caching, Gemini OAuth: shipped THEN removed)
+# Session handoff — 2026-07-05 (AI Gateway, prompt caching, Gemini OAuth: shipped THEN removed, trace UI redesign)
 
 Đọc file này ĐẦU TIÊN ở session kế. Trạng thái repo, quyết định đã chốt,
 TODO theo thứ tự, và bẫy đã cắn.
+
+## Trace timeline UI đã REDESIGN hoàn toàn (2026-07-05, sau chain-action)
+
+User phản hồi trực tiếp: card không hợp ngôn ngữ thiết kế "tờ giấy", 1 item
+(chỉ thinking hoặc 1 tool) vẫn hiện thẻ là thừa thãi, status "Nova đang…"
+bị duplicate (nằm ba chỗ cùng lúc: TypingIndicator nổi, nhánh chết
+`state==='streaming'`, và text summary của chính trace), điểm nối timeline
+"thò ra" 2 đầu không thẳng hàng với nút đầu/cuối, và icon Nova dùng chung
+lucide `Sparkle` với vô số app AI khác. Commit `b527be0` giải quyết cả 5:
+
+1. **Card → text**: summary trace giờ là button chữ thường, không border/bg.
+2. **Phân loại theo số bước**: 0 tool (chỉ thinking) → text muối italic đơn,
+   không timeline; đúng 1 tool → 1 dòng inline, không collapse; ≥ 2 bước →
+   timeline đầy đủ (data model không đổi, chain-action grouping vẫn áp dụng).
+3. **Status hiển ĐÚNG 1 NƠI**: cạnh tên "NOVA" trong header — đã xóa
+   `TypingIndicator` nổi + nhánh `state==='streaming'` (XÁC NHẬN DEAD CODE:
+   `respState` KHÔNG BAO GIỜ thành `'stream'` ngoài test — grep toàn bộ app
+   xác nhận) cùng 2 test chỉ tồn tại để exercise nhánh chết đó.
+4. **Rail đo phản ứng thật**: `TimelineRail` dùng `useLayoutEffect` đo vị trí
+   dot thật (`data-dot` marker) thay vì `border-l` trải toàn container (luôn
+   thò ra vì chiều cao step thay đổi theo nội dung). **Gotcha React thật đã
+   gặp**: layout effect của con chạy TRƯỚC khi ref của TỔ TIÊN được gắn
+   (ref+effect commit bottom-up) — fix bằng cách anchor trên ref của CHÍNH
+   NÓ, rồi `.parentElement` đi lên, thay vì nhận ref từ container qua props.
+5. **Logo Nova riêng**: `Icon.tsx`'s `nova` giờ là SVG hand-drawn (4-point burst
+   bất đối xứng, filled solid như ProviderLogo, KHÔNG phải lucide `Sparkle`).
+
+Verify: gate xanh (coverage 96.00/90.09/96.25/97.75) + đo pixel thật qua
+Playwright (dot-center và line-top/bottom khớp chính xác trước khi commit).
 
 ## CẢNH BÁO — Gemini Google-account OAuth ĐÃ BỊ GỠ BỎ HOÀN TOÀN (2026-07-05, cùng ngày với khi ship)
 
