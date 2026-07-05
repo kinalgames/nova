@@ -113,7 +113,8 @@ describe('T3 — tool events build the live trace + sources block', () => {
     expect(trace.steps[0]).toMatchObject({
       kind: 'tool',
       title: 'Tìm kiếm web',
-      detail: '2 nguồn',
+      // the real first result's title rides along — not just a bare count
+      detail: '2 nguồn — SJC',
       query: 'giá vàng hôm nay',
       toolIcon: 'search',
       node: 'accent',
@@ -196,6 +197,54 @@ describe('T3 — tool events build the live trace + sources block', () => {
     if (trace?.type !== 'trace') throw new Error('expected a trace block')
     expect(trace.summary).toBe('Đã tra cứu web')
     expect(trace.steps[0]).toMatchObject({ detail: '✓' })
+  })
+
+  it('T5/chain-action — a short lead reply + ≥ 2 think/tool steps becomes a chain: the lead becomes the summary, the trace ends with a done step, and the final text is the answer alone', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onDelta('Để mình kiểm tra giúp bạn.')
+      h.onThinking?.('Cần tra cứu trước.')
+      h.onToolStart?.('t1', 'web_search')
+      h.onToolResult?.('t1', true, undefined, [{ n: 1, url: 'https://a.vn', title: 'A' }])
+      h.onDelta('Xong, kết quả là X.')
+      h.onDone({ inputTokens: 9, outputTokens: 6 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'kiểm tra giúp' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    // the lead-in never repeats in the body — only the post-phase answer does
+    expect(msgText(nova)).toBe('Xong, kết quả là X.')
+
+    const trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.summary).toBe('Để mình kiểm tra giúp bạn.')
+    expect(trace.steps).toHaveLength(3)
+    expect(trace.steps[0]).toMatchObject({ kind: 'think' })
+    expect(trace.steps[1]).toMatchObject({ kind: 'tool' })
+    expect(trace.steps[2]).toMatchObject({ kind: 'done', title: 'Hoàn tất', detail: '· 1 giây' })
+  })
+
+  it('T5/chain-action — a lead reply followed by only 1 tool step stays plain: generic summary, no done step, lead + answer concatenate', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onDelta('Để mình xem thử.')
+      h.onToolStart?.('t1', 'web_search')
+      h.onToolResult?.('t1', true, undefined, [{ n: 1, url: 'https://a.vn', title: 'A' }])
+      h.onDelta(' Xong rồi.')
+      h.onDone({ inputTokens: 5, outputTokens: 4 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'xem giúp' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    expect(msgText(nova)).toBe('Để mình xem thử. Xong rồi.')
+
+    const trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.summary).toBe('Đã tra cứu web')
+    expect(trace.steps).toHaveLength(1)
+    expect(trace.steps.some((st) => st.kind === 'done')).toBe(false)
   })
 
   it('a failed fetch renders a danger step with its error code, no sources block', async () => {

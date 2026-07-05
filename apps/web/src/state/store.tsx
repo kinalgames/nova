@@ -963,6 +963,13 @@ export function StoreProvider({
         const abort = new AbortController()
         llmAbort.current = abort
         let acc = ''
+        // T5/chain-action — a short reply block BEFORE any think/tool activity
+        // is the model's own lead-in ("Để mình tra cứu…"); once ≥ 2 think/tool
+        // steps follow it, this becomes the chain's summary and the block
+        // text after the phase settles is the real answer alone (the lead
+        // never repeats in the body). Fewer than 2 steps, or no lead text,
+        // falls back to the plain phase summary and simple concatenation.
+        let leadText = ''
         // live research — thinking deltas and tool invocations build a trace
         // block ABOVE the reply text; it stays on the message afterwards
         // (collapsed) with the measured phase duration + source count as meta
@@ -976,6 +983,7 @@ export function StoreProvider({
           done: boolean
           ok?: boolean
           summary?: string
+          firstTitle?: string
           count: number
         }[] = []
         const sources: { n: number; url: string; title: string }[] = []
@@ -987,6 +995,11 @@ export function StoreProvider({
           }
         }
         const blocksNow = (): Block[] => {
+          // a chain needs its own short lead-in AND at least 2 think/tool
+          // steps — anything less renders with the plain generic summary
+          const stepCount = (think ? 1 : 0) + liveTools.length
+          const lead = leadText.trim()
+          const isChain = stepCount >= 2 && !!lead
           const steps = [
             ...(think ? [{ kind: 'think' as const, text: think }] : []),
             ...liveTools.map((tl) => ({
@@ -1004,7 +1017,13 @@ export function StoreProvider({
                 : tl.ok === false
                   ? (tl.summary ?? i18n.t('chat.toolFailed'))
                   : (tl.summary ??
-                    (tl.count ? i18n.t('chat.toolSources', { count: tl.count }) : '✓')),
+                    (tl.firstTitle
+                      ? tl.count > 1
+                        ? i18n.t('chat.toolSourcesNamed', { count: tl.count, title: tl.firstTitle })
+                        : tl.firstTitle
+                      : tl.count
+                        ? i18n.t('chat.toolSources', { count: tl.count })
+                        : '✓')),
               tool: tl.name,
               toolIcon: (tl.name === 'web_fetch'
                 ? 'globe'
@@ -1013,10 +1032,22 @@ export function StoreProvider({
                   : 'search') as 'globe' | 'search' | 'file',
               ...(tl.query ? { query: tl.query } : {}),
             })),
+            ...(isChain && phaseMs
+              ? [
+                  {
+                    kind: 'done' as const,
+                    node: 'check' as const,
+                    title: i18n.t('chat.traceDone'),
+                    detail: `· ${i18n.t('chat.thoughtMeta', { s: Math.max(1, Math.round(phaseMs / 1000)) })}`,
+                  },
+                ]
+              : []),
           ]
-          const summary = phaseMs
-            ? i18n.t(liveTools.length ? 'chat.searchDone' : 'chat.thoughtDone')
-            : i18n.t(liveTools.length ? 'chat.searchStream' : 'chat.thoughtStream')
+          const summary = isChain
+            ? lead
+            : phaseMs
+              ? i18n.t(liveTools.length ? 'chat.searchDone' : 'chat.thoughtDone')
+              : i18n.t(liveTools.length ? 'chat.searchStream' : 'chat.thoughtStream')
           const meta = [
             ...(sources.length ? [i18n.t('chat.toolSources', { count: sources.length })] : []),
             ...(phaseMs ? [i18n.t('chat.thoughtMeta', { s: Math.max(1, Math.round(phaseMs / 1000)) })] : []),
@@ -1025,7 +1056,7 @@ export function StoreProvider({
             ...(steps.length
               ? [{ type: 'trace' as const, summary, ...(meta ? { meta } : {}), steps }]
               : []),
-            { type: 'text' as const, size: 'lead' as const, text: acc },
+            { type: 'text' as const, size: 'lead' as const, text: isChain ? acc : lead + acc },
             ...(sources.length
               ? [
                   {
@@ -1128,6 +1159,7 @@ export function StoreProvider({
                 tl.ok = ok
                 tl.summary = summary
                 tl.count = toolSources?.length ?? 0
+                tl.firstTitle = toolSources?.[0]?.title
                 // the args finished streaming — show only the query VALUE, not
                 // the JSON shell it arrived in
                 const q = /"query"\s*:\s*"([^"]*)/.exec(tl.query)
@@ -1137,8 +1169,12 @@ export function StoreProvider({
               writeBlocks()
             },
             onDelta: (text) => {
+              // text before any think/tool activity is the model's lead-in
+              // (candidate chain summary); once the phase has started, delta
+              // text is the real answer that follows the collapsed trace
+              if (!phaseStart) leadText += text
+              else acc += text
               settlePhase()
-              acc += text
               set({ typingLabel: i18n.t('chat.writingLabel') })
               writeBlocks()
             },
