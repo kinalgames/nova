@@ -251,6 +251,35 @@ describe('openai adapter — Responses SSE transform to the Nova contract', () =
     })
   })
 
+  it('emits a citation event anchored at the annotation\'s own start/end index', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"response.created","response":{}}',
+          'data: {"type":"response.output_item.added","item":{"type":"web_search_call","id":"ws_1"}}',
+          'data: {"type":"response.output_item.done","item":{"type":"web_search_call","id":"ws_1","status":"completed","action":{"type":"search","query":"tin","sources":[{"url":"https://a.vn","title":"A"}]}}}',
+          'data: {"type":"response.output_text.delta","delta":"Theo A, giá tăng."}',
+          'data: {"type":"response.output_text.annotation.added","annotation":{"type":"url_citation","url":"https://a.vn","title":"A","start_index":5,"end_index":9}}',
+          'data: {"type":"response.completed","response":{"usage":{"input_tokens":2,"output_tokens":3}}}',
+        ]),
+      ),
+    )
+    const citation = events.find((e) => e.type === 'citation')
+    expect(citation).toMatchObject({ citeStart: 5, citeEnd: 9, citeSource: 1 })
+  })
+
+  it('an annotation with no start/end index never emits a citation event (sources-only fallback stays intact)', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"response.output_text.annotation.added","annotation":{"type":"url_citation","url":"https://d.vn","title":"D"}}',
+          'data: {"type":"response.completed","response":{"usage":{}}}',
+        ]),
+      ),
+    )
+    expect(events.find((e) => e.type === 'citation')).toBeUndefined()
+  })
+
   it('T5 — captures function_call items + responseId; continuation via previous_response_id', async () => {
     const { openaiToolTail } = await import('./openai')
     const round = { calls: [] as { id: string; name: string; args: string }[] } as import('./shared').RoundCapture

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 import { fromLinear } from '../state/thread'
 import type { Message } from '../state/types'
@@ -10,15 +10,20 @@ vi.mock('../services/highlight', () => ({
 
 beforeEach(() => localStorage.clear())
 
-const nova = (text: string): Message => ({
+type CitationFixture = { start: number; end: number; n?: number; text?: string; url?: string; title?: string }
+
+const nova = (text: string, citations?: CitationFixture[]): Message => ({
   id: 'md1',
   role: 'assistant',
   who: 'NOVA',
-  blocks: [{ type: 'text', text }],
+  blocks: [{ type: 'text', text, ...(citations ? { citations } : {}) }],
 })
 
 const seedConv = (text: string) => async () =>
   renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: fromLinear([nova(text)]) } }))
+
+const seedConvWithCitations = (text: string, citations: CitationFixture[]) => async () =>
+  renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: fromLinear([nova(text, citations)]) } }))
 
 const FULL_MD = [
   '# Tiêu đề lớn',
@@ -94,6 +99,37 @@ describe('markdown rendering in text blocks', () => {
       await user.click(screen.getByText('Sao chép'))
       expect(write).toHaveBeenCalledWith('const x = 1')
       expect(await screen.findByText('Đã chép')).toBeInTheDocument()
+    },
+    TEST_TIMEOUT,
+  )
+
+  it(
+    'a citation with a resolved source renders an inline marker linking to it, with a hover preview',
+    async () => {
+      const text = 'Giá vàng hôm nay tăng.'
+      await seedConvWithCitations(text, [
+        { start: 0, end: 13, n: 1, text: 'Giá vàng hôm nay', url: 'https://a.vn/gia', title: 'Giá vàng hôm nay' },
+      ])()
+
+      const marker = await screen.findByRole('link', { name: 'Giá vàng hôm nay' }, SLOW)
+      expect(marker).toHaveAttribute('href', 'https://a.vn/gia')
+      expect(marker).toHaveAttribute('target', '_blank')
+      expect(marker).toHaveTextContent('1')
+      // the cited text still reads naturally around the marker
+      expect(screen.getByText(/tăng\./)).toBeInTheDocument()
+    },
+    TEST_TIMEOUT,
+  )
+
+  it(
+    'a citation with no resolved source degrades to a plain numbered marker, never a dead link',
+    async () => {
+      await seedConvWithCitations('X là Y.', [{ start: 0, end: 1, n: 3 }])()
+      const marker = await screen.findByText('[3]', undefined, SLOW)
+      expect(marker.tagName).toBe('SUP')
+      // the cited character itself is preserved, right before the marker
+      expect(marker.parentElement).toHaveTextContent('X[3] là Y.')
+      expect(within(marker.parentElement!).queryByRole('link')).not.toBeInTheDocument()
     },
     TEST_TIMEOUT,
   )

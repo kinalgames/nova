@@ -130,6 +130,12 @@ interface GeminiChunk {
     groundingMetadata?: {
       webSearchQueries?: string[]
       groundingChunks?: { web?: { uri?: string; title?: string } }[]
+      /** which reply span each grounding chunk backs — offsets into the
+       *  candidate's OWN accumulated (non-thought) text */
+      groundingSupports?: {
+        segment?: { startIndex?: number; endIndex?: number; text?: string }
+        groundingChunkIndices?: number[]
+      }[]
     }
     urlContextMetadata?: {
       urlMetadata?: { retrievedUrl?: string; urlRetrievalStatus?: string }[]
@@ -218,6 +224,14 @@ export function toNovaStream(
       const grounding = chunk.candidates?.[0]?.groundingMetadata
       if (grounding?.groundingChunks?.length && !groundedEmitted) {
         groundedEmitted = true
+        // the SAME numbering the sources array below assigns, keyed by each
+        // chunk's ORIGINAL index — groundingSupports references chunks by
+        // that original index, which skips ahead of any chunk missing a uri
+        const chunkIndexToN = new Map<number, number>()
+        let n = sourceN
+        grounding.groundingChunks.forEach((g, i) => {
+          if (typeof g.web?.uri === 'string') chunkIndexToN.set(i, ++n)
+        })
         const sources = grounding.groundingChunks
           .filter((g) => typeof g.web?.uri === 'string')
           .map((g, i) => ({
@@ -230,6 +244,18 @@ export function toNovaStream(
         if (grounding.webSearchQueries?.length)
           emit({ type: 'tool_delta', id: 'gs-1', text: grounding.webSearchQueries.join(' · ') })
         emit({ type: 'tool_result', id: 'gs-1', ok: true, ...(sources.length ? { sources } : {}) })
+        for (const support of grounding.groundingSupports ?? []) {
+          const seg = support.segment
+          const chunkIdx = support.groundingChunkIndices?.[0]
+          if (typeof seg?.startIndex !== 'number' || typeof seg?.endIndex !== 'number') continue
+          const citeSource = typeof chunkIdx === 'number' ? chunkIndexToN.get(chunkIdx) : undefined
+          emit({
+            type: 'citation',
+            citeStart: seg.startIndex,
+            citeEnd: seg.endIndex,
+            ...(citeSource ? { citeSource } : {}),
+          })
+        }
       }
       const urlMeta = chunk.candidates?.[0]?.urlContextMetadata
       if (urlMeta?.urlMetadata?.length && !fetchedEmitted) {

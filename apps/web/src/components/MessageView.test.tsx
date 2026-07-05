@@ -188,8 +188,8 @@ describe('T2 — live thinking trace', () => {
   })
 })
 
-describe('T3 — sources block: real citations open the page', () => {
-  it('a url chip opens a new tab; a legacy chip opens the in-app preview', async () => {
+describe('T3 — sources block: one trigger, a list with real titles + favicons', () => {
+  it('shows a single "N nguồn" trigger; opening it lists each source, real urls open a new tab, legacy items open the in-app preview', async () => {
     const user = makeUser()
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
     const msgSrc: Message = {
@@ -201,17 +201,27 @@ describe('T3 — sources block: real citations open the page', () => {
         {
           type: 'sources',
           items: [
-            { n: 1, label: 'sjc.vn', url: 'https://www.sjc.vn/gia' },
+            { n: 1, label: 'sjc.vn', title: 'Giá vàng SJC', url: 'https://www.sjc.vn/gia' },
             { n: 2, label: 'báo cáo.md', open: 'md' },
           ],
         },
       ],
     }
     await renderApp((s) => s.set({ activeConv: 'c1', threads: { c1: fromLinear([msgSrc]) } }))
-    await user.click(await screen.findByRole('button', { name: /sjc\.vn/ }))
+    // the spread-out chip row collapses into ONE trigger showing the count
+    const trigger = await screen.findByRole('button', { name: '2 nguồn' })
+    expect(screen.queryByText('sjc.vn')).not.toBeInTheDocument()
+
+    await user.click(trigger)
+    expect(await screen.findByText('Giá vàng SJC')).toBeInTheDocument()
+    expect(screen.getByText('báo cáo.md')).toBeInTheDocument()
+
+    await user.click(screen.getByText('Giá vàng SJC'))
     expect(openSpy).toHaveBeenCalledWith('https://www.sjc.vn/gia', '_blank', 'noopener')
-    await user.click(screen.getByRole('button', { name: /báo cáo\.md/ }))
-    // legacy chip → in-app preview (no extra window.open)
+
+    await user.click(trigger)
+    await user.click(screen.getByText('báo cáo.md'))
+    // legacy item → in-app preview (no extra window.open)
     expect(openSpy).toHaveBeenCalledTimes(1)
     openSpy.mockRestore()
   })

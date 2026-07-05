@@ -155,7 +155,7 @@ interface OpenAIEvent {
       sources?: { url?: string; title?: string }[]
     }
   }
-  annotation?: { type?: string; url?: string; title?: string }
+  annotation?: { type?: string; url?: string; title?: string; start_index?: number; end_index?: number }
   response?: {
     id?: string
     usage?: { input_tokens?: number; output_tokens?: number }
@@ -187,7 +187,10 @@ export function toNovaStream(
   // url_citation annotations — the fallback citation channel when the
   // search call carries no action.sources
   const citations: { n: number; url: string; title: string }[] = []
-  const seenUrls = new Set<string>()
+  // every source's number, from EITHER path (action.sources or annotation
+  // fallback) — also THE dedup check, since a url can reach this adapter
+  // through both paths for the same search
+  const sourceNByUrl = new Map<string, number>()
   // function_call events carry the item id; the loop correlates by call_id
   const callIdOf = new Map<string, string>()
 
@@ -240,6 +243,7 @@ export function toNovaStream(
           const sources = (item.action?.sources ?? [])
             .filter((s) => typeof s.url === 'string')
             .map((s) => ({ n: ++sourceN, url: s.url!, title: s.title ?? s.url! }))
+          for (const s of sources) sourceNByUrl.set(s.url, s.n)
           if (sources.length) sourcesEmitted = true
           emit({
             type: 'tool_result',
@@ -251,9 +255,24 @@ export function toNovaStream(
         }
         case 'response.output_text.annotation.added': {
           const a = evt.annotation
-          if (a?.type === 'url_citation' && a.url && !seenUrls.has(a.url)) {
-            seenUrls.add(a.url)
-            citations.push({ n: ++sourceN, url: a.url, title: a.title ?? a.url })
+          if (a?.type === 'url_citation' && a.url) {
+            if (!sourceNByUrl.has(a.url)) {
+              const n = ++sourceN
+              citations.push({ n, url: a.url, title: a.title ?? a.url })
+              sourceNByUrl.set(a.url, n)
+            }
+            // start_index/end_index are offsets into the FULL accumulated
+            // output text — the same coordinate space the client builds from
+            // consecutive block_delta events, so they carry straight across
+            if (typeof a.start_index === 'number' && typeof a.end_index === 'number') {
+              const n = sourceNByUrl.get(a.url)
+              emit({
+                type: 'citation',
+                citeStart: a.start_index,
+                citeEnd: a.end_index,
+                ...(n ? { citeSource: n } : {}),
+              })
+            }
           }
           break
         }

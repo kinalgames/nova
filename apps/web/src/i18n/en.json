@@ -113,7 +113,6 @@
     "noProviderTitle": "No AI provider yet",
     "noProviderBody": "You haven't added an API key or account. Add a provider (Claude, Gemini, ChatGPT, or Ollama) to start a real conversation.",
     "addProviderCta": "Add a provider",
-    "sources": "Sources:",
     "traceHide": "Hide",
     "thoughtStream": "Thinking…",
     "thoughtDone": "Thought process",

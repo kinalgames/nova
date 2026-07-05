@@ -54,10 +54,13 @@ test('project lifecycle: create → view → config → delete', async ({ page }
 
 test('the showcase conversation replays rich blocks from data', async ({ page }) => {
   await page.goto('/chat/c1')
-  // table + trace summary + source chips render straight from thread data
+  // table + trace summary + sources trigger render straight from thread data
   await expect(page.getByText('Kích hoạt 72h')).toBeVisible()
   await expect(page.getByText('Nova đã tra cứu web và cập nhật tài liệu của bạn')).toBeVisible()
-  await expect(page.getByRole('button', { name: /techreview/ })).toBeVisible()
+  const sourcesTrigger = page.getByRole('button', { name: '2 nguồn' })
+  await expect(sourcesTrigger).toBeVisible()
+  await sourcesTrigger.click()
+  await expect(page.getByText(/techreview/)).toBeVisible()
 })
 
 test('palette search finds a conversation across projects, diacritic-insensitive', async ({

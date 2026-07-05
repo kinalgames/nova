@@ -96,11 +96,22 @@ export interface MsgAction {
 
 /** a renderable content block inside a message */
 export type Block =
-  | { type: 'text'; text: string; size?: 'body' | 'lead' }
+  | {
+      type: 'text'
+      text: string
+      size?: 'body' | 'lead'
+      /** spans of `text` a source backs — offsets are INTO THIS FIELD, already
+       *  shifted/clamped for however the reply text was assembled (chain
+       *  summary vs lead+body) so they always index correctly here */
+      citations?: { start: number; end: number; n?: number; text?: string; url?: string; title?: string }[]
+    }
   | { type: 'files'; label?: string; items: MsgAttachment[] }
   | { type: 'trace'; summary: string; meta?: string; steps: TraceStep[] }
   | { type: 'table'; head: string[]; rows: { text: string; tone?: BlockTone }[][] }
-  | { type: 'sources'; items: { n: number; label: string; open?: PreviewKind; url?: string }[] }
+  | {
+      type: 'sources'
+      items: { n: number; label: string; title?: string; open?: PreviewKind; url?: string }[]
+    }
   | { type: 'actions'; items: MsgAction[] }
 
 /** assistant in-flight states rendered on the last message */

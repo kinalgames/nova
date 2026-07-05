@@ -124,8 +124,8 @@ describe('T3 — tool events build the live trace + sources block', () => {
     if (src?.type !== 'sources') throw new Error('expected a sources block')
     // labels are bare hostnames (www. stripped); urls open the real page
     expect(src.items).toEqual([
-      { n: 1, label: 'sjc.vn', url: 'https://www.sjc.vn/gia' },
-      { n: 2, label: 'pnj.vn', url: 'https://pnj.vn' },
+      { n: 1, label: 'sjc.vn', title: 'SJC', url: 'https://www.sjc.vn/gia' },
+      { n: 2, label: 'pnj.vn', title: 'PNJ', url: 'https://pnj.vn' },
     ])
   })
 
@@ -292,6 +292,55 @@ describe('T3 — tool events build the live trace + sources block', () => {
     expect(trace.summary).toBe('Đã tra cứu web')
     // still ≥ 2 steps → done still closes it, even though it isn't chain-summary material
     expect(trace.steps.at(-1)).toMatchObject({ kind: 'done' })
+  })
+
+  it('citations/T5 — a chain citation targeting the answer (acc) anchors correctly; one targeting only the dropped lead-in is discarded', async () => {
+    const lead1 = 'Để mình kiểm tra giúp bạn.'
+    const answer = 'Xong, kết quả là X.'
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onDelta(lead1)
+      h.onThinking?.('Cần tra cứu trước.')
+      h.onToolStart?.('t1', 'web_search')
+      h.onToolResult?.('t1', true, undefined, [{ n: 1, url: 'https://a.vn', title: 'A' }])
+      h.onDelta(answer)
+      // targets "Xong" inside the answer (kept)
+      h.onCitation?.(lead1.length, lead1.length + 4, 1, 'Xong')
+      // targets the lead-in itself, dropped from the body in chain mode (discarded)
+      h.onCitation?.(0, 5, 1, lead1.slice(0, 5))
+      h.onDone({ inputTokens: 9, outputTokens: 6 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'kiểm tra giúp' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    expect(msgText(nova)).toBe(answer)
+    const textBlock = nova.blocks.find((b) => b.type === 'text')
+    if (textBlock?.type !== 'text') throw new Error('expected a text block')
+    expect(textBlock.citations).toEqual([
+      { start: 0, end: 4, n: 1, text: 'Xong', url: 'https://a.vn', title: 'A' },
+    ])
+  })
+
+  it('citations/T5 — a plain (non-chain) reply anchors a citation in the concatenated lead+answer body', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onDelta('Giá vàng hôm nay tăng.')
+      h.onCitation?.(0, 13, 1, 'Giá vàng hôm nay'.slice(0, 13))
+      h.onDone({ inputTokens: 3, outputTokens: 2 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'giá vàng' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    expect(msgText(nova)).toBe('Giá vàng hôm nay tăng.')
+    const textBlock = nova.blocks.find((b) => b.type === 'text')
+    if (textBlock?.type !== 'text') throw new Error('expected a text block')
+    // no tool_result ever surfaced n:1 as a real source — the citation still
+    // anchors correctly, just without a url/title to show in a preview
+    expect(textBlock.citations).toEqual([
+      { start: 0, end: 13, n: 1, text: 'Giá vàng hôm nay'.slice(0, 13) },
+    ])
   })
 
   it('a failed fetch renders a danger step with its error code, no sources block', async () => {

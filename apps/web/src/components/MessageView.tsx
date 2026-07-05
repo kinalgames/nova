@@ -1,4 +1,5 @@
 import { Fragment, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import * as HoverCard from '@radix-ui/react-hover-card'
 import { useTranslation } from 'react-i18next'
 import { API_BASE } from '../services/llm'
 import { getToken } from '../services/token'
@@ -61,6 +62,72 @@ function openPreview(v: V, kind: PreviewKind, name = '') {
 function runAction(v: V, action: MsgAction['action']) {
   if (action === 'copy') v.copyCode()
   else openPreview(v, action)
+}
+
+/** the sources block: one "N nguồn" trigger instead of a spread-out chip row
+ *  — opens a small list with a favicon + real title per source. Controlled
+ *  (not hover-only) so a TAP opens it too, matching TopBar's usage meter. */
+function SourcesBlock({ items }: { items: Extract<Block, { type: 'sources' }>['items'] }) {
+  const { v } = useStore()
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-3">
+      <HoverCard.Root open={open} onOpenChange={setOpen} openDelay={120} closeDelay={80}>
+        <HoverCard.Trigger asChild>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="tap-sm flex cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-small text-muted outline-none"
+          >
+            <Icon n="globe" size={13} />
+            {t('chat.toolSources', { count: items.length })}
+          </button>
+        </HoverCard.Trigger>
+        <HoverCard.Portal>
+          <HoverCard.Content
+            side="bottom"
+            align="start"
+            sideOffset={8}
+            className="z-[80] max-h-[320px] w-[300px] overflow-y-auto rounded-sm border border-border bg-panel p-1.5 shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
+          >
+            {items.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                // real web citations open the page; legacy preview items keep
+                // opening the in-app preview
+                onClick={() =>
+                  s.url ? window.open(s.url, '_blank', 'noopener') : openPreview(v, s.open ?? 'md')
+                }
+                className="flex w-full cursor-pointer items-start gap-2.5 rounded-xs px-2.5 py-2 text-left outline-none hover:bg-hover-1"
+              >
+                <sup className="mt-0.5 shrink-0 text-eyebrow text-faint">{s.n}</sup>
+                {s.url && (
+                  <img
+                    src={`${API_BASE}/v1/favicon?domain=${encodeURIComponent(s.label)}`}
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="mt-0.5 shrink-0 rounded-xs"
+                    onError={(e) => {
+                      e.currentTarget.style.visibility = 'hidden'
+                    }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="truncate text-small text-text">{s.title || s.label}</div>
+                  {/* the host line only adds information for a real web source —
+                      a legacy (url-less) item's label already IS the whole title */}
+                  {s.url && s.title && <div className="truncate text-eyebrow text-faint">{s.label}</div>}
+                </div>
+              </button>
+            ))}
+          </HoverCard.Content>
+        </HoverCard.Portal>
+      </HoverCard.Root>
+    </div>
+  )
 }
 
 /** plain-text approximation of a markdown block — Suspense fallback while the
@@ -294,7 +361,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
           }
         >
           <Suspense fallback={<Rich text={block.text} />}>
-            <Markdown text={block.text} />
+            <Markdown text={block.text} citations={block.citations} />
           </Suspense>
           {streaming && <span className={CARET} />}
         </div>
@@ -380,25 +447,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
         </div>
       )
     case 'sources':
-      return (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-small text-muted">
-          <span>{t('chat.sources')}</span>
-          {block.items.map((s, i) => (
-            <button
-              key={i}
-              type="button"
-              // real web citations open the page; legacy preview items keep
-              // opening the in-app preview
-              onClick={() =>
-                s.url ? window.open(s.url, '_blank', 'noopener') : openPreview(v, s.open ?? 'md')
-              }
-              className="tap-sm cursor-pointer rounded-xs border border-border bg-transparent px-2 py-0.5 text-left"
-            >
-              <sup>{s.n}</sup> {s.label}
-            </button>
-          ))}
-        </div>
-      )
+      return <SourcesBlock items={block.items} />
     case 'actions':
       return (
         <div className="mt-4 flex flex-wrap gap-4 text-small text-muted">

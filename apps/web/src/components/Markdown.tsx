@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { useTranslation } from 'react-i18next'
 import { Icon } from './Icon'
+import { CitationMark } from './CitationMark'
+import { remarkCitations, type CitationSpan } from '../services/remarkCitations'
 
 /**
  * Markdown renderer for assistant/user text blocks, mapped onto the paper
@@ -71,11 +73,15 @@ function CodeCard({ code, lang }: { code: string; lang: string }) {
   )
 }
 
-export default function Markdown({ text }: { text: string }) {
+export default function Markdown({ text, citations }: { text: string; citations?: CitationSpan[] }) {
+  // a fresh plugin array every render would make ReactMarkdown reparse the
+  // whole tree even when only unrelated state changed elsewhere
+  const plugins = useMemo(() => [remarkGfm, remarkBreaks, remarkCitations(citations ?? [])], [citations])
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks]}
+      remarkPlugins={plugins}
       components={{
+        sup: CitationMark,
         p: (p) => <p className="m-0 [&:not(:first-child)]:mt-3" {...p} />,
         strong: (p) => <b className="font-semibold" {...p} />,
         a: ({ href, children }) => (

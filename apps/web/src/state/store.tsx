@@ -987,6 +987,10 @@ export function StoreProvider({
           count: number
         }[] = []
         const sources: { n: number; url: string; title: string }[] = []
+        // raw citation spans, offsets into the ONE continuous onDelta stream
+        // (leadText immediately followed by acc) — blocksNow() remaps these
+        // onto whatever the actual rendered body text turns out to be
+        const rawCitations: { start: number; end: number; n?: number; text?: string }[] = []
         const hostOf = (url: string) => {
           try {
             return new URL(url).host.replace(/^www\./, '')
@@ -1059,16 +1063,57 @@ export function StoreProvider({
             ...(sources.length ? [i18n.t('chat.toolSources', { count: sources.length })] : []),
             ...(phaseMs ? [i18n.t('chat.thoughtMeta', { s: Math.max(1, Math.round(phaseMs / 1000)) })] : []),
           ].join(' · ')
+          // rawCitations are offsets into leadText+acc, the raw onDelta stream
+          // -- remap onto whatever text actually renders: acc alone (chain,
+          // lead becomes the summary above) or trimmed-lead+acc (plain reply).
+          // A span that falls entirely inside text the body drops (the
+          // chain's lead-in, or whitespace trim() removed) is discarded,
+          // never left pointing at the wrong characters.
+          const leadTrimStart = leadText.length - leadText.trimStart().length
+          const accStartRaw = leadText.length
+          // resolve each citation's numbered source into its url/title RIGHT
+          // here — the UI layer never has to cross-reference the sources
+          // block, it just renders what it's given
+          const srcOf = (n: number | undefined) => (n ? sources.find((s) => s.n === n) : undefined)
+          const citations = rawCitations.flatMap(({ start, end, n, text }) => {
+            const src = srcOf(n)
+            const extra = src ? { url: src.url, title: src.title } : {}
+            if (isChain) {
+              if (end <= accStartRaw) return []
+              const s = Math.max(start, accStartRaw) - accStartRaw
+              const e = end - accStartRaw
+              return s < e ? [{ start: s, end: e, n, text, ...extra }] : []
+            }
+            if (start >= accStartRaw)
+              return [
+                {
+                  start: lead.length + (start - accStartRaw),
+                  end: lead.length + (end - accStartRaw),
+                  n,
+                  text,
+                  ...extra,
+                },
+              ]
+            const leadKeptEnd = leadTrimStart + lead.length
+            const s = Math.max(start, leadTrimStart) - leadTrimStart
+            const e = Math.min(end, leadKeptEnd) - leadTrimStart
+            return s < e ? [{ start: s, end: e, n, text, ...extra }] : []
+          })
           return [
             ...(steps.length
               ? [{ type: 'trace' as const, summary, ...(meta ? { meta } : {}), steps }]
               : []),
-            { type: 'text' as const, size: 'lead' as const, text: isChain ? acc : lead + acc },
+            {
+              type: 'text' as const,
+              size: 'lead' as const,
+              text: isChain ? acc : lead + acc,
+              ...(citations.length ? { citations } : {}),
+            },
             ...(sources.length
               ? [
                   {
                     type: 'sources' as const,
-                    items: sources.map((src) => ({ n: src.n, label: hostOf(src.url), url: src.url })),
+                    items: sources.map((src) => ({ n: src.n, label: hostOf(src.url), title: src.title, url: src.url })),
                   },
                 ]
               : []),
@@ -1183,6 +1228,10 @@ export function StoreProvider({
               else acc += text
               settlePhase()
               set({ typingLabel: i18n.t('chat.writingLabel') })
+              writeBlocks()
+            },
+            onCitation: (start, end, n, text) => {
+              rawCitations.push({ start, end, n, text })
               writeBlocks()
             },
             onDone: (u) => {

@@ -113,7 +113,6 @@
     "noProviderTitle": "Chưa có nhà cung cấp AI",
     "noProviderBody": "Bạn chưa thêm khóa API hay tài khoản nào. Thêm một nhà cung cấp (Claude, Gemini, ChatGPT hoặc Ollama) để bắt đầu trò chuyện thật.",
     "addProviderCta": "Thêm nhà cung cấp",
-    "sources": "Nguồn:",
     "traceHide": "Ẩn",
     "thoughtStream": "Đang suy nghĩ…",
     "thoughtDone": "Quá trình suy nghĩ",

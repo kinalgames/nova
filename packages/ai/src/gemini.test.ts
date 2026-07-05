@@ -251,6 +251,26 @@ describe('gemini adapter — SSE transform to the Nova contract', () => {
     })
   })
 
+  it('D1/citations — groundingSupports emit citation events anchored at their own segment offsets', async () => {
+    const meta =
+      '"groundingMetadata":{"groundingChunks":[{"web":{"uri":"https://a.vn","title":"A"}},{"web":{"uri":"https://b.vn","title":"B"}}],"groundingSupports":[{"segment":{"startIndex":0,"endIndex":4,"text":"giá tăng"},"groundingChunkIndices":[1]}]}'
+    const events = await collect(
+      toNovaStream(sse(['data: {"candidates":[{"content":{"parts":[{"text":"giá tăng"}]},' + meta + '}]}'])),
+    )
+    const citation = events.find((e) => e.type === 'citation')
+    // groundingChunkIndices:[1] -> the SECOND grounding chunk -> source n=2
+    expect(citation).toMatchObject({ citeStart: 0, citeEnd: 4, citeSource: 2 })
+  })
+
+  it('D1/citations — a grounding chunk missing a uri does not shift the numbering groundingSupports reference', async () => {
+    const meta =
+      '"groundingMetadata":{"groundingChunks":[{"web":{}},{"web":{"uri":"https://b.vn","title":"B"}}],"groundingSupports":[{"segment":{"startIndex":0,"endIndex":1,"text":"x"},"groundingChunkIndices":[1]}]}'
+    const events = await collect(toNovaStream(sse(['data: {"candidates":[{"content":{"parts":[{"text":"x"}]},' + meta + '}]}'])))
+    const citation = events.find((e) => e.type === 'citation')
+    // the invalid chunk 0 never got a number, so chunk 1 (the only valid one) is n=1
+    expect(citation).toMatchObject({ citeStart: 0, citeEnd: 1, citeSource: 1 })
+  })
+
   it('D1 — urlContextMetadata surfaces as a web_fetch tool call with retrieval status', async () => {
     const events = await collect(
       toNovaStream(

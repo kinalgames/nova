@@ -32,6 +32,9 @@ export interface StreamHandlers {
   onToolDelta?: (id: string, text: string) => void
   /** invocation finished — outcome + optional citations */
   onToolResult?: (id: string, ok: boolean, summary?: string, sources?: ToolSource[]) => void
+  /** a source anchors to a span of the reply text accumulated so far this
+   *  turn (offsets into the SAME string built from onDelta calls) */
+  onCitation?: (start: number, end: number, sourceN?: number, text?: string) => void
   onDone: (usage: { inputTokens: number; outputTokens: number }) => void
   onError: (
     code: string,
@@ -109,6 +112,10 @@ export async function streamChat(
           ok?: boolean
           summary?: string
           sources?: ToolSource[]
+          citeStart?: number
+          citeEnd?: number
+          citeSource?: number
+          citeText?: string
         }
         try {
           evt = JSON.parse(frame.slice(6))
@@ -121,6 +128,8 @@ export async function streamChat(
         else if (evt.type === 'tool_delta' && evt.id && evt.text) h.onToolDelta?.(evt.id, evt.text)
         else if (evt.type === 'tool_result' && evt.id)
           h.onToolResult?.(evt.id, evt.ok !== false, evt.summary, evt.sources)
+        else if (evt.type === 'citation' && typeof evt.citeStart === 'number' && typeof evt.citeEnd === 'number')
+          h.onCitation?.(evt.citeStart, evt.citeEnd, evt.citeSource, evt.citeText)
         else if (evt.type === 'message_stop') {
           h.onDone(evt.usage ?? { inputTokens: 0, outputTokens: 0 })
           return

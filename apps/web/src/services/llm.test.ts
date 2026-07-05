@@ -273,6 +273,24 @@ describe('llm service — SSE client', () => {
     ])
   })
 
+  it('routes citation events with all fields, and skips a malformed one missing start/end', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        sseResponse([
+          'data: {"type":"citation","citeStart":5,"citeEnd":9,"citeSource":1,"citeText":"1916"}\n\n',
+          'data: {"type":"citation","citeSource":2}\n\n',
+          'data: {"type":"message_stop"}\n\n',
+        ]),
+      ),
+    )
+    const s = make()
+    const seen: unknown[] = []
+    s.h.onCitation = (...a) => seen.push(a)
+    await streamChat(req, s.h)
+    expect(seen).toEqual([[5, 9, 1, '1916']])
+  })
+
   it('a stream that ends without message_stop still resolves as done', async () => {
     vi.stubGlobal(
       'fetch',

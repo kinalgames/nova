@@ -86,9 +86,9 @@
   --text-body: 15px;
   --text-body--line-height: 1.55;
   /* the one role reserved for Nova's own reply prose — deliberately its own
-     token (not reused from text-small, which happens to share 13px) so a
-     future change to compact UI captions never silently resizes chat replies */
-  --text-reply: 13px;
+     token (not reused from any compact-UI size) so a future change to
+     captions/labels never silently resizes chat replies */
+  --text-reply: 14px;
   --text-reply--line-height: 1.55;
   --text-lead: 18px;
   --text-lead--line-height: 1.6;

@@ -20,6 +20,7 @@ import { listOllamaModels, pullOllamaModel } from './ollama-catalog'
 import { files } from './files'
 import { shares } from './shares'
 import { resolveAttachments } from './attachments'
+import { favicon } from './favicon'
 import { tapNovaUsage, usage, type UsageEnv } from './usage'
 import type { MailEnv } from './mail'
 import type { SyncOp } from '@nova/shared'
@@ -190,6 +191,10 @@ app.route('/v1/files', files)
 
 // BE4: public unlisted conversation snapshots (create/revoke need a session)
 app.route('/v1/shares', shares)
+
+// Citations/T8: favicon proxy for the citation hover preview (sessionless
+// — an <img> tag cannot carry a bearer token; see favicon.ts)
+app.route('/v1/favicon', favicon)
 
 app.get('/healthz', (c) =>
   c.json({

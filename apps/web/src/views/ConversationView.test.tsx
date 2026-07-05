@@ -6,10 +6,14 @@ beforeEach(() => localStorage.clear())
 
 describe('ConversationView — data-driven message blocks', () => {
   it('renders the showcase thread from data: text, table, sources, file blocks', async () => {
+    const user = makeUser()
     await renderApp(undefined, { path: '/chat/c1' })
     expect(await screen.findByText('Kích hoạt 72h')).toBeInTheDocument() // table head
     expect((await screen.findAllByText('plan.md')).length).toBeGreaterThan(0) // file block
-    expect(screen.getByText(/techreview/)).toBeInTheDocument() // source chip
+    // sources collapse behind a single "N nguồn" trigger now
+    const trigger = await screen.findByRole('button', { name: '2 nguồn' })
+    await user.click(trigger)
+    expect(await screen.findByText(/techreview/)).toBeInTheDocument()
   })
 
   it('a non-image file pill opens its preview', async () => {
@@ -36,10 +40,11 @@ describe('ConversationView — data-driven message blocks', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
-  it('a source chip opens its preview', async () => {
+  it('a source item opens its preview', async () => {
     const user = makeUser()
     await renderApp(undefined, { path: '/chat/c1' })
-    await user.click(await screen.findByRole('button', { name: /techreview/ }))
+    await user.click(await screen.findByRole('button', { name: '2 nguồn' }))
+    await user.click(await screen.findByText(/techreview/))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 
