@@ -1,7 +1,43 @@
-# Session handoff — 2026-07-05 (AI Gateway, prompt caching, Gemini OAuth popup)
+# Session handoff — 2026-07-05 (AI Gateway, prompt caching, Gemini OAuth: shipped THEN removed)
 
 Đọc file này ĐẦU TIÊN ở session kế. Trạng thái repo, quyết định đã chốt,
 TODO theo thứ tự, và bẫy đã cắn.
+
+## CẢNH BÁO — Gemini Google-account OAuth ĐÃ BỊ GỠ BỎ HOÀN TOÀN (2026-07-05, cùng ngày với khi ship)
+
+ĐỪNG tái xây tính năng này theo pattern cũ (tái dùng OAuth client của
+gemini-cli để gọi cloudcode-pa.googleapis.com thay user) trừ khi đã nghiên
+cứu kỹ một cơ chế khác an toàn hơn về ToS. Lý do gỡ (mỗi lý do đủ riêng để
+quyết định gỡ):
+
+1. Google sunset hoàn toàn Code Assist (cloudcode-pa) cho tài khoản cá nhân
+   (free/Pro/Ultra) từ 2026-06-18 — chỉ Enterprise/Standard license còn
+   dùng được. Nguồn: developers.googleblog.com/an-important-update-
+   transitioning-gemini-cli-to-antigravity-cli/.
+2. Google đang BAN tài khoản Google THẬT của user dùng app bên thứ ba tái
+   sử dụng OAuth client của gemini-cli để truy cập Code Assist — đúng
+   pattern tính năng này đã xây. Xác nhận qua google-gemini/gemini-cli
+   discussion #20632, openclaw/openclaw issue #14203, Google AI Developers
+   Forum thread "[Urgent] Mass 403 ToS Bans…".
+
+Đã gỡ sạch: GeminiOAuthPanel.tsx, nhánh account trong AddProfileForm,
+state/actions popup trong store, 2 route /oauth/gemini/*, toàn bộ nhánh
+account trong packages/ai/src/gemini.ts (parseAccountCredential /
+fetchAccessToken / discoverProject), i18n oauth*/accountHelpGemini/
+errGeminiEntitlement. providerAuth.gemini giờ chỉ còn ['api_key'].
+callGemini từ chối bất kỳ profile không phải api_key bằng
+ProviderConfigError thay vì rơi vào code cũ. GEMINI_OAUTH_CLIENT_ID/SECRET
+vẫn còn cấu hình trên Cloudflare (vô hại, không tốn phí) nhưng không còn
+code nào đọc đến.
+
+CẦN LÀM: xóa credential 'account'-kind Gemini đã tạo lúc test sống trên
+nova-dev (gắn với tester@nova.dev) — giờ vô dụng, nên dọn qua Settings
+→ xóa hồ sơ, tránh sót dữ liệu không còn ý nghĩa.
+
+Commit ghép nối: e5af554 (ship) → 27b9db7 (polish) → ba0f0c1 (revert, có
+rationale đầy đủ trong message). Verified: full gate xanh + Playwright
+thật trên cả nova-dev và nova.kinal.co xác nhận Gemini chỉ còn nút "Add API
+key", không còn đăng nhập tài khoản.
 
 ## Đã ship phiên 2026-07-05 (3 release, cả 3 đã deploy dev + production)
 
@@ -23,8 +59,8 @@ TODO theo thứ tự, và bẫy đã cắn.
    `{ type: 'ephemeral' }` ở 3 điểm ổn định: system prompt cuối, tools
    cuối, block cuối của message cuối cùng. User tự kiểm log Gateway xác
    nhận cache hoạt động.
-3. **Gemini sign-in qua popup Google OAuth — THAY THẾ HOÀN TOÀN dán token
-   thủ công cho account kind** (user chốt: "nếu được oauth nên bắn ra
+3. **[ĐÃ GỢ BỚ — xem section cảnh báo đầu file] Gemini sign-in qua popup
+   Google OAuth — THAY THẾ HOÀN TOÀN dán token thủ công cho account kind** (user chốt: "nếu được oauth nên bắn ra
    popup thay vì redirect"). Tái dùng client_id/secret CÔNG KHAI của
    gemini-cli (client type "installed application" — RFC 8252 loopback,
    Google chấp nhận `http://localhost:<port>/...` bất kỳ port nào
@@ -570,17 +606,18 @@ chờ)** · rotate R2/CF-Images token · dismiss Dependabot esbuild
 - gh CLI: `gh run watch` ngay sau push bắt nhầm run cũ — sleep 15–30s
   rồi lấy run theo headSha.
 
-## Số liệu gate hiện hành (2026-07-05, sau Gemini OAuth)
+## Số liệu gate hiện hành (2026-07-05, sau khi GỠ Gemini OAuth — commit ba0f0c1)
 
 - typecheck 0 · lint 0 error/5 warning pre-existing (store.tsx: 2
   react-refresh/only-export-components + 3 react-hooks/exhaustive-deps,
-  đều pre-existing trước phiên này) · e2e 25/25 (~18s) · coverage web
-  **95.98 / 90.00 / 96.08 / 97.73** trên floors 95/90/94/96 — **branches
-  đúng bằng floor, 0 buffer** — build sạch.
+  đều pre-existing từ trước) · e2e 25/25 (~14s) · coverage web
+  **95.95 / 90.02 / 96.13 / 97.72** trên floors 95/90/94/96 — **branches
+  sát floor, chỉ +0.02** — build sạch.
 - Lệnh chuẩn trước commit:
   `npm run typecheck && npm run lint && npm run test && npm run test:coverage && npm run build && npm run test:e2e`
   (toàn bộ chuỗi `&&` thuần, không pipe — pipestatus-gate).
-- **CẢNH BÁO**: branch coverage đúng bằng floor 90.00 — phiên sau nếu
-  xóa bớt nhánh test/code (không thêm) có thể rớt dưới floor ngay lập
-  tức — cân nhắc hạ floor xuống 89 hoặc thêm test trước khi xóa code
-  đường nhánh bất kỳ.
+- **CẢNH BÁO**: branch coverage sát floor 90 (90.0–90.1 dao động giữa
+  các run, đã quan sát nhiều lần qua nhiều phiên) — phiên sau nếu xóa
+  bớt nhánh test/code (không thêm) có thể rớt dưới floor ngay lập tức
+  — cân nhắc hạ floor xuống 89 hoặc thêm test trước khi xóa code đường
+  nhánh bất kỳ.
