@@ -1,7 +1,51 @@
-# Session handoff — 2026-07-04 (kết phiên D1: tools thật)
+# Session handoff — 2026-07-05 (AI Gateway, prompt caching, Gemini OAuth popup)
 
 Đọc file này ĐẦU TIÊN ở session kế. Trạng thái repo, quyết định đã chốt,
 TODO theo thứ tự, và bẫy đã cắn.
+
+## Đã ship phiên 2026-07-05 (3 release, cả 3 đã deploy dev + production)
+
+1. **AI Gateway routing cho Anthropic** — Anthropic 403 "Request not
+   allowed" hoá ra là egress IP của Cloudflare Workers bị chặn theo colo
+   (KHÔNG PHẢI credential sai; Smart Placement không đủ vì chỉ là gợi ý
+   cho CF chứ không đảm bảo colo). Fix: route qua AI Gateway "nova"
+   (Authenticated Gateway TẮT — để BYOK key pass-through không bị chặn
+   401) làm origin thay thế. `packages/ai/src/anthropic.ts`:
+   `callAnthropic(req, signal, env)` nhận `ANTHROPIC_BASE_URL` override,
+   mặc định vẫn `api.anthropic.com`. `wrangler.jsonc`:
+   `ANTHROPIC_BASE_URL: "https://gateway.ai.cloudflare.com/v1/346d7d74298e7e60d4071adc7b3c6c7c/nova/anthropic"`
+   cả 2 env. **Xác nhận MIỄN PHÍ** — pass-through BYOK không tính vào
+   Unified Billing, chỉ giới hạn log lưu trữ 1M/tháng (dư sức trên
+   Workers Paid).
+2. **Anthropic prompt caching** — OpenAI/Gemini cache tự động
+   server-side, Anthropic cần `cache_control` marker tường minh (trước
+   đây Nova chỉ ĐO cache tokens chứ chưa YÊU CẦU cache). Đánh dấu
+   `{ type: 'ephemeral' }` ở 3 điểm ổn định: system prompt cuối, tools
+   cuối, block cuối của message cuối cùng. User tự kiểm log Gateway xác
+   nhận cache hoạt động.
+3. **Gemini sign-in qua popup Google OAuth — THAY THẾ HOÀN TOÀN dán token
+   thủ công cho account kind** (user chốt: "nếu được oauth nên bắn ra
+   popup thay vì redirect"). Tái dùng client_id/secret CÔNG KHAI của
+   gemini-cli (client type "installed application" — RFC 8252 loopback,
+   Google chấp nhận `http://localhost:<port>/...` bất kỳ port nào
+   KHÔNG cần đăng ký trước trên Google Console). Cơ chế: 2 route mới
+   `GET /v1/credentials/oauth/gemini/start` (build authorize URL,
+   `prompt=consent` để luôn nhận refresh_token, KHÔNG PKCE — xác nhận từ
+   log thật gemini-cli) + `POST /v1/credentials/oauth/gemini/exchange`
+   (đổi code→refresh_token, client_secret ở lại server). Redirect
+   `http://localhost:58219/oauth2callback` KHÔNG cần server thật lắng
+   nghe — browser báo lỗi kết nối nhưng address bar vẫn giữ `?code=…`,
+   user copy dán lại vào popup (KHÔNG strict-verify `state` — không có
+   vector CSRF trong luồng copy-paste thủ công của chính user). Sau
+   exchange, tái dùng 100% `addProfile('gemini','account',…)` đã có sẵn
+   — không sửa adapter Gemini. Component mới `GeminiOAuthPanel.tsx`
+   thay thế hoàn toàn generic form cho combo `gemini + account`; Claude
+   setup-token KHÔNG đổi. Known limitation: Safari HTTPS-Only mode chặn
+   callback `http://localhost` (GitHub issue #1486 gemini-cli) — chưa
+   xử lý, khuyến nghị Chrome/Firefox nếu user báo lỗi.
+   **Backlog treo**: Claude (claude login) và OpenAI (Codex CLI) có
+   luồng OAuth tương đương theo user gợi ý — CHƯA verify chi tiết
+   (client_id/scope/redirect thật), cần research riêng trước khi code.
 
 ## D1 — TOOLS THẬT: SHIPPED TOÀN BỘ (2026-07-04, prod + dev)
 
@@ -46,12 +90,11 @@ Xem `docs/d1-tools-design.md` (status SHIPPED). Tóm tắt nhanh:
   MCP Playwright one-call (seed→goto→đo, KHÔNG tách call — reconnect
   mất state). **Ability mới (project)**: `nova-ux-copy` — copy cho người
   dùng phổ thông, progressive disclosure mọi UI.
-- **CÒN MỞ UI/UX**: chuẩn hóa icon size theo vai trò (13-22px đang trộn;
-  survey: 14 chiếm 27, 13×17, 16×16, 15×16…) · quiet-mode input chưa
-  disable khi chưa provider · OAuth login thật thay paste-token (desktop
-  app / popup flow). Sau đó: Nova-side search cho ollama/local, PDF qua
-  Responses input_file, coverage buffer nới khi thêm test UI (branches
-  hiện ~90.3 — sát floor 90).
+- **CÒN MỞ UI/UX**: (đã xong icon size chuẩn hóa và Gemini OAuth popup —
+  xem section đầu file). Còn: Nova-side search cho ollama/local, PDF qua
+  Responses input_file, Claude/OpenAI OAuth tương đương (backlog, chưa
+  verify), coverage buffer nới khi thêm test UI (branches hiện đúng 90.00
+  — KHÔNG còn buffer, jitter ±1 điểm giữa 2 run đã quan sát nhiều lần).
 
 ## ĐÃ DEPLOY — Cloudflare Workers (2 env, mỗi env 1 Worker serve web + API)
 
@@ -527,11 +570,17 @@ chờ)** · rotate R2/CF-Images token · dismiss Dependabot esbuild
 - gh CLI: `gh run watch` ngay sau push bắt nhầm run cũ — sleep 15–30s
   rồi lấy run theo headSha.
 
-## Số liệu gate hiện hành
+## Số liệu gate hiện hành (2026-07-05, sau Gemini OAuth)
 
-- typecheck 0 · lint 0 (warnings pre-existing trong store.tsx) · unit
-  597/597 root (web 478, ~27s) · e2e 25/25 (~13s) · coverage web 95.97 /
-  90.18 / 95.9 / 97.63 trên floors 95/90/94/96 · build sạch.
+- typecheck 0 · lint 0 error/5 warning pre-existing (store.tsx: 2
+  react-refresh/only-export-components + 3 react-hooks/exhaustive-deps,
+  đều pre-existing trước phiên này) · e2e 25/25 (~18s) · coverage web
+  **95.98 / 90.00 / 96.08 / 97.73** trên floors 95/90/94/96 — **branches
+  đúng bằng floor, 0 buffer** — build sạch.
 - Lệnh chuẩn trước commit:
-  `npm run typecheck && npm run lint && npm run test && npm run build && git commit …`
-  (e2e + coverage thêm khi chạm UI/logic tương ứng).
+  `npm run typecheck && npm run lint && npm run test && npm run test:coverage && npm run build && npm run test:e2e`
+  (toàn bộ chuỗi `&&` thuần, không pipe — pipestatus-gate).
+- **CẢNH BÁO**: branch coverage đúng bằng floor 90.00 — phiên sau nếu
+  xóa bớt nhánh test/code (không thêm) có thể rớt dưới floor ngay lập
+  tức — cân nhắc hạ floor xuống 89 hoặc thêm test trước khi xóa code
+  đường nhánh bất kỳ.
