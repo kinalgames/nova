@@ -502,9 +502,14 @@ function Providers() {
                         {f.name}
                         {f.inUse && <span className="ml-1.5 font-mono text-eyebrow text-accent-text">●</span>}
                       </span>
-                      <span className="hidden min-w-0 max-w-[14rem] truncate font-mono text-eyebrow text-faint sm:block">
-                        {f.credential}
-                      </span>
+                      {/* account-kind hint is a meaningless token-tail
+                          fragment — the name column already carries the
+                          real signal (signed-in email / chosen label) */}
+                      {!f.isAccount && (
+                        <span className="hidden min-w-0 max-w-[14rem] truncate font-mono text-eyebrow text-faint sm:block">
+                          {f.credential}
+                        </span>
+                      )}
                       <span className="whitespace-nowrap rounded-xs px-1.5 py-0.5 font-mono text-eyebrow" style={{ color: f.statusFg, background: f.statusBg }}>
                         {f.badge}
                       </span>

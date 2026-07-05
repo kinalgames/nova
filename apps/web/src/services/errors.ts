@@ -35,6 +35,13 @@ export function humanErrorDetail(code: string, message: string, status?: number)
   const low = msg.toLowerCase()
   if (status === 403 || low.includes('not allowed') || low.includes('unsupported_country'))
     return `${i18n.t('chat.errRegion')} · ${msg}`
+  // Gemini's Google-account transport (Code Assist): the newest models are
+  // gated behind a Google subscription tier — the account signs in fine but
+  // the model call itself 404s. Detected on message text (the upstream
+  // status stays a generic 404, not a dedicated code) — verified against
+  // real gemini-cli reports of the identical failure.
+  if (low.includes('requested entity was not found'))
+    return `${i18n.t('chat.errGeminiEntitlement')} · ${msg}`
   if (
     status === 401 ||
     code === 'invalid_credential' ||

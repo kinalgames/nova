@@ -12,12 +12,15 @@ import type { ProviderVM } from './SettingsDialog'
 export function GeminiOAuthPanel({ pr }: { pr: ProviderVM }) {
   const { v } = useStore()
   const { t } = useTranslation()
-  const [name, setName] = useState('')
   const [pasted, setPasted] = useState('')
   const oauth = v.geminiOAuth
   const submit = () => {
     if (!pasted.trim()) return
-    v.submitGeminiCode(pasted, name)
+    v.submitGeminiCode(pasted)
+    // an authorization code is single-use — a failed exchange needs a fresh
+    // popup anyway, so clearing now (rather than only on success) never
+    // strands the user with a stale value that looks like it might retry
+    setPasted('')
   }
   return (
     <div>
@@ -33,13 +36,6 @@ export function GeminiOAuthPanel({ pr }: { pr: ProviderVM }) {
       </button>
       <div className="mb-2.5 text-small leading-normal text-muted">{t('settings.oauthPasteHelp')}</div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t('settings.profileName')}
-          aria-label={`${t('settings.profileName')} — ${pr.name}`}
-          className="field w-32 max-sm:w-full rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-small text-text"
-        />
         <input
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}

@@ -27,7 +27,7 @@ vi.mock('../services/credentials', async (importOriginal) => ({
   deleteCredential: vi.fn(async () => true),
   pingCredential: vi.fn(async () => 'active' as const),
   startGeminiOAuth: vi.fn(async () => 'https://accounts.google.com/o/oauth2/v2/auth'),
-  exchangeGeminiCode: vi.fn(async () => ({ ok: true, refreshToken: '1//abc' })),
+  exchangeGeminiCode: vi.fn(async () => ({ ok: true, refreshToken: '1//abc', email: 'toi@gmail.com' })),
 }))
 
 vi.mock('../services/llm', () => ({
@@ -188,7 +188,7 @@ describe('store — Gemini OAuth popup (replaces the manual paste for account ki
 
   it('submitGeminiCode rejects a paste with no code and never starts an exchange', async () => {
     const { result } = await renderStore({ world: 'real' })
-    await act(async () => result.current.v.submitGeminiCode('not a url', 'Tài khoản Google'))
+    await act(async () => result.current.v.submitGeminiCode('not a url'))
     expect(result.current.s.geminiOAuth).toEqual({
       status: 'idle',
       error:
@@ -197,7 +197,7 @@ describe('store — Gemini OAuth popup (replaces the manual paste for account ki
     expect(exchangeGeminiCode).not.toHaveBeenCalled()
   })
 
-  it('submitGeminiCode exchanges the pasted code, seals a Gemini profile and closes the popup', async () => {
+  it('submitGeminiCode exchanges the pasted code, seals a Gemini profile (named after the signed-in email) and closes the popup', async () => {
     const popup = { close: vi.fn() } as unknown as Window
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup)
     const { result } = await renderStore({ world: 'real' })
@@ -206,11 +206,10 @@ describe('store — Gemini OAuth popup (replaces the manual paste for account ki
     await act(async () =>
       result.current.v.submitGeminiCode(
         'http://localhost:58219/oauth2callback?state=x&code=4%2F0Ab_realcode&scope=email',
-        'Tài khoản Google',
       ),
     )
     await waitFor(() =>
-      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'Tài khoản Google', '1//abc'),
+      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'toi@gmail.com', '1//abc'),
     )
     await waitFor(() =>
       expect(result.current.s.geminiOAuth).toEqual({ status: 'idle', error: null }),
@@ -231,10 +230,7 @@ describe('store — Gemini OAuth popup (replaces the manual paste for account ki
     await act(async () => result.current.v.startGeminiLogin())
     await waitFor(() => expect(result.current.s.geminiOAuth.status).toBe('ready'))
     await act(async () =>
-      result.current.v.submitGeminiCode(
-        'http://localhost:58219/oauth2callback?code=bad-code',
-        'Tài khoản Google',
-      ),
+      result.current.v.submitGeminiCode('http://localhost:58219/oauth2callback?code=bad-code'),
     )
     await waitFor(() =>
       expect(result.current.s.geminiOAuth).toEqual({

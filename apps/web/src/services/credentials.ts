@@ -155,6 +155,10 @@ export async function startGeminiOAuth(): Promise<string | null> {
 export interface ExchangeResult {
   ok: boolean
   refreshToken?: string
+  /** the signed-in Google account — used as the profile name so the row
+   *  reads "you@gmail.com", never a token-tail fragment. Best-effort: may
+   *  be absent even on success (userinfo lookup failed) */
+  email?: string
   /** plain-word-mappable code/detail on failure — same shape as PingResult */
   code?: string
   detail?: string
@@ -172,12 +176,13 @@ export async function exchangeGeminiCode(code: string): Promise<ExchangeResult> 
     })
     const body = (await res.json().catch(() => ({}))) as {
       refreshToken?: string
+      email?: string
       code?: string
       detail?: string
     }
     if (!res.ok) return { ok: false, code: body.code ?? 'error', detail: body.detail }
     if (!body.refreshToken) return { ok: false, code: 'no_refresh_token', detail: body.detail }
-    return { ok: true, refreshToken: body.refreshToken }
+    return { ok: true, refreshToken: body.refreshToken, email: body.email }
   } catch {
     return { ok: false, code: 'network', detail: 'network' }
   }

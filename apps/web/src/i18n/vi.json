@@ -111,6 +111,7 @@
     "errCredGone": "Hồ sơ này không còn trên máy chủ — hãy xóa và thêm lại.",
     "errSession": "Phiên đăng nhập đã hết — hãy đăng nhập lại.",
     "errNetwork": "Mất kết nối mạng — kiểm tra Internet của bạn rồi thử lại.",
+    "errGeminiEntitlement": "Tài khoản Google này chưa được cấp quyền dùng model qua đăng nhập trực tiếp (Google giới hạn theo gói thuê bao) — hãy thêm Khóa API (API Key) để dùng ngay.",
     "errGeneric": "Có lỗi xảy ra khi kết nối",
     "noProviderTitle": "Chưa có nhà cung cấp AI",
     "noProviderBody": "Bạn chưa thêm khóa API hay tài khoản nào. Thêm một nhà cung cấp (Claude, Gemini, ChatGPT hoặc Ollama) để bắt đầu trò chuyện thật.",

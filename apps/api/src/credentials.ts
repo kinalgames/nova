@@ -106,15 +106,35 @@ credentials.post('/oauth/gemini/exchange', async (c) => {
     const detail = await res.text().catch(() => '')
     return problem(400, 'oauth_exchange_failed', detail.slice(0, 500) || `Google returned ${res.status}`)
   }
-  const data = (await res.json().catch(() => ({}))) as { refresh_token?: string }
+  const data = (await res.json().catch(() => ({}))) as {
+    refresh_token?: string
+    access_token?: string
+  }
   if (!data.refresh_token)
     return problem(
       502,
       'no_refresh_token',
       'Google did not return a refresh token — try again (Nova always asks for fresh consent)',
     )
-  return c.json({ refreshToken: data.refresh_token })
+  // best-effort: the signed-in email reads FAR better as the profile name
+  // than a token-tail hint ("…Ab_realcode") — a failed lookup never blocks
+  // the exchange, the client just falls back to a generic label
+  const email = data.access_token ? await fetchGoogleEmail(data.access_token) : null
+  return c.json({ refreshToken: data.refresh_token, email })
 })
+
+async function fetchGoogleEmail(accessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { email?: string }
+    return typeof data.email === 'string' && data.email ? data.email : null
+  } catch {
+    return null
+  }
+}
 
 async function requireUser(c: { env: CredentialsEnv; req: { raw: Request } }) {
   try {

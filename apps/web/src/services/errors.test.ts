@@ -37,6 +37,19 @@ describe('humanErrorDetail — provider bodies become one human sentence', () =>
     expect(humanErrorDetail('upstream_error', '{"error":{"type":"overloaded_error","message":"Overloaded"}}')).toContain('quá tải')
   })
 
+  it('classifies the Gemini Code Assist model-entitlement 404 by message, not code', () => {
+    // the real upstream shape (verified against gemini-cli's own reports) —
+    // status stays a generic 404 and code stays 'upstream_error', so this
+    // MUST match on message text alone
+    const body = JSON.stringify({
+      error: { code: 404, message: 'Requested entity was not found.', status: 'NOT_FOUND' },
+    })
+    const out = humanErrorDetail('upstream_error', body, 404)
+    expect(out).toContain('chưa được cấp quyền')
+    expect(out).toContain('Khóa API')
+    expect(out).toContain('Requested entity was not found.')
+  })
+
   it('falls back to code + innermost message for unknown errors', () => {
     const out = humanErrorDetail('stream_closed', '{"error":{"message":"boom"}}', 500)
     // unknown classes lead with plain words; the technical tail stays for devs

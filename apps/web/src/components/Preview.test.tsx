@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { configure, screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderApp } from '../test/util'
+
+// the real-file tests below run a fetch → parse → render pipeline (markdown/
+// csv) that can outrun the default 1000ms under coverage instrumentation's
+// overhead on the parallel projects run — same headroom as store.credentials
+configure({ asyncUtilTimeout: 5000 })
 
 beforeEach(() => localStorage.clear())
 

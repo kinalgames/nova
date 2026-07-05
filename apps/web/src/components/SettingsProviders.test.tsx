@@ -19,7 +19,11 @@ vi.mock('../services/credentials', async (importOriginal) => ({
   listCredentials: vi.fn(async () => null),
   // D1 follow-up — the Gemini OAuth popup + exchange transport
   startGeminiOAuth: vi.fn(async () => 'https://accounts.google.com/o/oauth2/v2/auth'),
-  exchangeGeminiCode: vi.fn(async () => ({ ok: true, refreshToken: '1//exchanged-refresh' })),
+  exchangeGeminiCode: vi.fn(async () => ({
+    ok: true,
+    refreshToken: '1//exchanged-refresh',
+    email: 'toi@gmail.com',
+  })),
 }))
 
 beforeEach(() => {
@@ -90,9 +94,10 @@ describe('Settings → Providers — accordion + profiles', () => {
       'http://localhost:58219/oauth2callback?state=x&code=4%2F0Ab_realcode&scope=email',
     )
     await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
-    // no name typed — addProfile falls back to the kind's default label
+    // no name field to fill in — the signed-in Google email becomes the
+    // profile name automatically (never a token-tail hint the user can't read)
     await waitFor(() =>
-      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'Tài khoản', '1//exchanged-refresh'),
+      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'toi@gmail.com', '1//exchanged-refresh'),
     )
     openSpy.mockRestore()
   })

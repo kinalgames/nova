@@ -2098,7 +2098,9 @@ function deriveValues(
     })
   }
 
-  const submitGeminiCode = (pasted: string, name: string) => {
+  // no name field to fill in — the signed-in Google account IS the name
+  // (row reads "you@gmail.com", never a meaningless token-tail hint)
+  const submitGeminiCode = (pasted: string) => {
     const code = extractOAuthCode(pasted)
     if (!code) {
       set((x) => ({ geminiOAuth: { ...x.geminiOAuth, error: t('settings.oauthNoCode') } }))
@@ -2115,7 +2117,7 @@ function deriveValues(
         })
         return
       }
-      addProfile('gemini', 'account', name, res.refreshToken!)
+      addProfile('gemini', 'account', res.email ?? '', res.refreshToken!)
       geminiPopup.current?.close()
       geminiPopup.current = null
       set({ geminiOAuth: { status: 'idle', error: null } })
@@ -2262,6 +2264,10 @@ function deriveValues(
         id: f.id,
         name: f.name,
         kindLabel: t(f.kind === 'account' ? 'settings.kindAccount' : 'settings.kindApiKey'),
+        // account-kind hint is a meaningless token-tail fragment (name
+        // already carries the real signal — signed-in email or a chosen
+        // label) — api_key hint stays: it lets the user verify the right key
+        isAccount: f.kind === 'account',
         credential: f.credential,
         badge: t(`vocab.profileStatus.${f.status}`),
         statusFg: profileStatusMap[f.status].fg,

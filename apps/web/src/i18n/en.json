@@ -111,6 +111,7 @@
     "errCredGone": "This profile is no longer on the server — remove it and add it again.",
     "errSession": "Your session has expired — please sign in again.",
     "errNetwork": "No internet connection — check your network and retry.",
+    "errGeminiEntitlement": "This Google account isn't entitled to this model via direct sign-in (Google gates it by subscription tier) — add an API Key instead for guaranteed access.",
     "errGeneric": "Something went wrong while connecting",
     "noProviderTitle": "No AI provider yet",
     "noProviderBody": "You haven't added an API key or account. Add a provider (Claude, Gemini, ChatGPT, or Ollama) to start a real conversation.",

@@ -74,21 +74,41 @@ describe('POST /oauth/gemini/exchange', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('exchanges a real code for the refresh token, posting the exact params Google expects', async () => {
+  it('exchanges a real code for the refresh token, posting the exact params Google expects, and looks up the signed-in email', async () => {
     authState.session = { user: { id: 'u1' } }
-    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
-      const params = new URLSearchParams(init.body as string)
-      expect(params.get('code')).toBe('4/0Ab_code')
-      expect(params.get('client_id')).toBe('test-id.apps.googleusercontent.com')
-      expect(params.get('client_secret')).toBe('test-secret')
-      expect(params.get('redirect_uri')).toBe('http://localhost:58219/oauth2callback')
-      expect(params.get('grant_type')).toBe('authorization_code')
-      return new Response(JSON.stringify({ refresh_token: '1//abc', access_token: 'ya29.x' }), { status: 200 })
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === 'https://oauth2.googleapis.com/token') {
+        const params = new URLSearchParams(init!.body as string)
+        expect(params.get('code')).toBe('4/0Ab_code')
+        expect(params.get('client_id')).toBe('test-id.apps.googleusercontent.com')
+        expect(params.get('client_secret')).toBe('test-secret')
+        expect(params.get('redirect_uri')).toBe('http://localhost:58219/oauth2callback')
+        expect(params.get('grant_type')).toBe('authorization_code')
+        return new Response(JSON.stringify({ refresh_token: '1//abc', access_token: 'ya29.x' }), { status: 200 })
+      }
+      expect(url).toBe('https://www.googleapis.com/oauth2/v2/userinfo')
+      expect((init?.headers as Record<string, string>).authorization).toBe('Bearer ya29.x')
+      return new Response(JSON.stringify({ email: 'someone@gmail.com' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
     const res = await post({ code: '4/0Ab_code' })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ refreshToken: '1//abc' })
+    expect(await res.json()).toEqual({ refreshToken: '1//abc', email: 'someone@gmail.com' })
+  })
+
+  it('a failed email lookup never blocks the exchange — the client just falls back to a generic label', async () => {
+    authState.session = { user: { id: 'u1' } }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === 'https://oauth2.googleapis.com/token')
+          return new Response(JSON.stringify({ refresh_token: '1//abc', access_token: 'ya29.x' }), { status: 200 })
+        return new Response('server error', { status: 500 })
+      }),
+    )
+    const res = await post({ code: '4/0Ab_code' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ refreshToken: '1//abc', email: null })
   })
 
   it('surfaces a Google-side rejection as 400, not a mute 500', async () => {
