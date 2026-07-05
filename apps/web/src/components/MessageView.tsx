@@ -4,6 +4,7 @@ import { API_BASE } from '../services/llm'
 import { getToken } from '../services/token'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { NovaMark } from './NovaMark'
 import { GrowingTextarea } from './GrowingTextarea'
 import { BTN_PRIMARY } from './ui'
 import type {
@@ -21,7 +22,6 @@ const Markdown = lazy(() => import('./Markdown'))
 
 const USER_LABEL = 'mb-2.5 font-mono text-eyebrow tracking-[.12em] text-muted'
 const NOVA_HEAD = 'mb-3 flex items-center gap-2'
-const NOVA_DOT = 'flex size-[22px] items-center justify-center rounded-full bg-accent text-bg'
 const NOVA_TAG = 'font-mono text-eyebrow tracking-[.12em] text-accent-text'
 const ACT = 'tap-sm inline-flex cursor-pointer items-center gap-1 border-none bg-transparent text-left'
 const NODE = 'absolute -left-[26.5px] top-0.5 size-[11px] rounded-full border-2 bg-bg'
@@ -286,7 +286,13 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
   switch (block.type) {
     case 'text':
       return (
-        <div className={`${block.size === 'lead' ? 'text-lead' : 'text-body'} mt-3 leading-relaxed first:mt-0`}>
+        <div
+          className={
+            block.size === 'lead'
+              ? 'mt-3 text-reply first:mt-0'
+              : 'mt-3 text-body leading-relaxed first:mt-0'
+          }
+        >
           <Suspense fallback={<Rich text={block.text} />}>
             <Markdown text={block.text} />
           </Suspense>
@@ -583,9 +589,7 @@ export function MessageView({
   return (
     <div className="group/msg mb-8 mt-8 first:mt-0">
       <div className={NOVA_HEAD}>
-        <span className={NOVA_DOT}>
-          <Icon n="nova" size={13} />
-        </span>
+        <NovaMark size={22} on="--bg" />
         <span className={NOVA_TAG}>{message.who}</span>
         <VersionNav id={message.id} />
         {/* the ONE place a live status shows — never duplicated elsewhere */}

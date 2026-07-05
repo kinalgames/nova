@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { NovaMark } from './NovaMark'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 type ConvVM = ReturnType<typeof useStore>['v']['sideConvs'][number]
@@ -138,7 +139,7 @@ export function Sidebar() {
               onClick={v.goHome}
               className="flex min-w-0 cursor-pointer items-center gap-2 border-none bg-transparent"
             >
-              <div className="size-[13px] shrink-0 rounded-full bg-ink shadow-[inset_-3px_-3px_0_var(--side)]" />
+              <NovaMark size={13} on="--side" />
               <span className="font-display text-h3">Nova</span>
             </button>
             <button
@@ -158,7 +159,7 @@ export function Sidebar() {
               onClick={v.goHome}
               className="touch-hide flex size-9 cursor-pointer items-center justify-center border-none bg-transparent transition-opacity group-hover:opacity-0"
             >
-              <div className="size-[13px] shrink-0 rounded-full bg-ink shadow-[inset_-3px_-3px_0_var(--side)]" />
+              <NovaMark size={13} on="--side" />
             </button>
             <button
               type="button"

@@ -32,6 +32,7 @@ import {
   RotateCcw,
   Search,
   Settings,
+  Sparkle,
   Square,
   SquareTerminal,
   ThumbsDown,
@@ -67,6 +68,7 @@ const REGISTRY = {
   plus: Plus,
   search: Search,
   globe: Globe,
+  nova: Sparkle,
   focus: Timer,
   file: FileText,
   settings: Settings,
@@ -107,37 +109,7 @@ const REGISTRY = {
   pin: Pin,
 } satisfies Record<string, LucideIcon>
 
-export type IconName = keyof typeof REGISTRY | 'nova'
-
-/**
- * Nova's own mark — a hand-drawn asymmetric 4-point burst (one long ray,
- * three short), not a generic "AI sparkle" glyph shared with every other
- * chat product. Filled (not stroked) like the provider brand marks in
- * ProviderLogo.tsx — a logo reads as a solid shape, the rest of the app's
- * icons read as ink strokes.
- */
-function NovaMark({
-  size,
-  className,
-  style,
-}: {
-  size: number
-  className?: string
-  style?: CSSProperties
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      style={{ flexShrink: 0, display: 'block', ...style }}
-    >
-      <path d="M12 1 L13.56 10.44 L19 12 L13.56 13.56 L12 19 L10.44 13.56 L5 12 L10.44 10.44 Z" />
-    </svg>
-  )
-}
+export type IconName = keyof typeof REGISTRY
 
 export function Icon({
   n,
@@ -154,7 +126,6 @@ export function Icon({
   style?: CSSProperties
   className?: string
 }) {
-  if (n === 'nova') return <NovaMark size={size} className={className} style={style} />
   const C = REGISTRY[n]
   return (
     <C

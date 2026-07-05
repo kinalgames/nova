@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { NovaMark } from './NovaMark'
 import { BTN_PRIMARY } from './ui'
 
 /** transient notice toast (share-link copied, …) — auto-clears from the store */
@@ -28,9 +29,7 @@ export function UpdateToast() {
       role="status"
       className="fixed bottom-5 left-1/2 z-[90] flex w-max max-w-[min(92vw,26rem)] -translate-x-1/2 flex-wrap items-center gap-3 rounded-md border border-border bg-panel py-2.5 pl-4 pr-2.5 shadow-overlay animate-[fadeUp_180ms_var(--ease-paper)]"
     >
-      <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-accent text-bg">
-        <Icon n="nova" size={13} />
-      </span>
+      <NovaMark size={22} on="--panel" />
       <span className="text-ui text-text">{t('update.ready')}</span>
       <button
         type="button"

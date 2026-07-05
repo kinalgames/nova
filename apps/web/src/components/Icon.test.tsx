@@ -11,17 +11,9 @@ describe('<Icon>', () => {
   })
 
   it('inherits color via currentColor (stroke not hardcoded)', () => {
-    const { container } = render(<Icon n="check" />)
+    const { container } = render(<Icon n="nova" />)
     const svg = container.querySelector('svg')
     expect(svg?.getAttribute('stroke')).toBe('currentColor')
-  })
-
-  it("the nova mark is Nova's own filled brand shape, not a generic stroke icon", () => {
-    const { container } = render(<Icon n="nova" size={22} />)
-    const svg = container.querySelector('svg')
-    expect(svg?.getAttribute('fill')).toBe('currentColor')
-    expect(svg?.getAttribute('width')).toBe('22')
-    expect(container.querySelector('path')).toBeInTheDocument()
   })
 
   it('honours an explicit size', () => {

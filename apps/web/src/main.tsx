@@ -5,13 +5,9 @@ import '@fontsource/fraunces/400.css'
 import '@fontsource/fraunces/400-italic.css'
 import '@fontsource/fraunces/500.css'
 import '@fontsource/fraunces/600.css'
-// Geist Sans is the identity face (latin only). The Vietnamese glyphs it
-// lacks fall through PER-GLYPH to Inter — metrically close to Geist, so mixed
-// vi+latin words stay coherent (Inter only ships its vietnamese woff2 here,
-// since Geist covers latin first). Geist Mono ships vietnamese itself.
-import '@fontsource/geist-sans/400.css'
-import '@fontsource/geist-sans/500.css'
-import '@fontsource/geist-sans/600.css'
+// Inter is the identity face for body text — it ships full Vietnamese
+// coverage natively, so mixed vi+latin prose never falls back per-glyph to a
+// second typeface mid-word. Geist Mono ships vietnamese itself and stays for code.
 import '@fontsource/geist-mono/400.css'
 import '@fontsource/geist-mono/500.css'
 import '@fontsource/inter/400.css'

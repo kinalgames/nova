@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
+import { NovaMark } from './NovaMark'
 
 const INPUT = 'field w-full rounded-md border border-border bg-panel px-3 py-3 text-body'
 
@@ -194,7 +195,7 @@ export function Auth() {
     <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-bg p-6 animate-[dim_.2s_ease]">
       <div className="w-[380px] max-w-full">
         <div className="mb-6 flex items-center justify-center gap-2.5">
-          <div className="size-[15px] rounded-full bg-ink shadow-[inset_-4px_-4px_0_var(--bg)]" />
+          <NovaMark size={15} on="--bg" />
           <span className="font-display text-h2">Nova</span>
         </div>
 

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
-import { Icon } from './Icon'
+import { NovaMark } from './NovaMark'
 import type { Message } from '../state/types'
 
 /** the plain text of a message — focus mode strips everything to the words */
@@ -41,9 +41,7 @@ export function QuietMode() {
                   </div>
                 ) : (
                   <div className="mb-3 flex items-center gap-2">
-                    <span className="flex size-[22px] items-center justify-center rounded-full bg-accent text-bg">
-                      <Icon n="nova" size={13} />
-                    </span>
+                    <NovaMark size={22} on="--bg" />
                     <span className="font-mono text-eyebrow tracking-[.12em] text-accent-text">
                       {(v.assistantName.trim() || 'Nova').toUpperCase()}
                     </span>

@@ -4,6 +4,7 @@ import { useStore } from '../state/store'
 import { Composer } from '../components/Composer'
 import { Icon } from '../components/Icon'
 import { MessageView } from '../components/MessageView'
+import { NovaMark } from '../components/NovaMark'
 import { ProviderNudge } from '../components/ProviderNudge'
 import type { MsgState, RespState } from '../state/types'
 
@@ -92,8 +93,8 @@ function EmptyChat() {
   const { t } = useTranslation()
   return (
     <div className="flex min-h-[58vh] flex-col items-center justify-center text-center">
-      <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-bg">
-        <Icon n="nova" size={22} />
+      <div className="mb-4">
+        <NovaMark size={48} on="--bg" />
       </div>
       <div className="font-display text-h2">{t('chat.emptyTitle')}</div>
       <div className="mt-2 max-w-[420px] text-body leading-normal text-muted">

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
+import { NovaMark } from './NovaMark'
 import { MENU_CONTENT, MENU_ITEM, MENU_ITEM_DANGER, MENU_SEP } from './menu'
 
 const navRow =
@@ -126,7 +127,7 @@ export function MobileDrawer() {
           </VisuallyHidden>
           <div className="flex h-14 flex-shrink-0 items-center justify-between pl-4 pr-3.5">
             <div className="flex items-center gap-2">
-              <div className="size-[13px] rounded-full bg-ink shadow-[inset_-3px_-3px_0_var(--side)]" />
+              <NovaMark size={13} on="--side" />
               <span className="font-display text-h3">Nova</span>
             </div>
             <Dialog.Close asChild>

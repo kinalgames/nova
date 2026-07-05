@@ -85,6 +85,11 @@
   --text-ui--line-height: 1.45;
   --text-body: 15px;
   --text-body--line-height: 1.55;
+  /* the one role reserved for Nova's own reply prose — deliberately its own
+     token (not reused from text-small, which happens to share 13px) so a
+     future change to compact UI captions never silently resizes chat replies */
+  --text-reply: 13px;
+  --text-reply--line-height: 1.55;
   --text-lead: 18px;
   --text-lead--line-height: 1.6;
   --text-h3: 22px;
@@ -176,10 +181,11 @@
 
   /* type */
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  /* Geist Sans = identity (latin); missing Vietnamese glyphs fall through
-     PER-GLYPH to Inter (metrically close to Geist) rather than system-ui.
-     Geist Mono ships vietnamese, so it stands alone. */
-  --font-body: 'Geist Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  /* Inter carries full Vietnamese glyph coverage natively (no per-glyph
+     fallback mid-word like Geist Sans required), so it is the one body face
+     across latin and vietnamese text. Geist Mono ships vietnamese, so it
+     stands alone for code. */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   /* motion — paper is calm: quiet durations, one easing */
