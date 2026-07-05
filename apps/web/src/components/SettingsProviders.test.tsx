@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
-import { addCredential } from '../services/credentials'
+import { addCredential, exchangeGeminiCode } from '../services/credentials'
 
 // the real product seals credentials server-side (BE3) — mock the transport
 // so the form flow runs against a deterministic server row
@@ -99,6 +99,31 @@ describe('Settings → Providers — accordion + profiles', () => {
     await waitFor(() =>
       expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'toi@gmail.com', '1//exchanged-refresh'),
     )
+    openSpy.mockRestore()
+  })
+
+  it('a failed exchange shows the reason under the paste field, in plain words', async () => {
+    const user = makeUser()
+    vi.mocked(exchangeGeminiCode).mockResolvedValueOnce({
+      ok: false,
+      code: 'oauth_exchange_failed',
+      detail: 'invalid_grant: code already used',
+    })
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    await openProviders()
+    const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Gemini')
+    await user.click(within(dialog).getByRole('button', { name: 'Đăng nhập bằng tài khoản — Gemini' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Mở Google để đăng nhập' }))
+    await user.type(
+      within(dialog).getByLabelText('Dán địa chỉ sau khi đăng nhập — Gemini'),
+      'http://localhost:58219/oauth2callback?code=stale-code',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
+    await waitFor(() =>
+      expect(within(dialog).getByText(/invalid_grant: code already used/)).toBeInTheDocument(),
+    )
+    expect(addCredential).not.toHaveBeenCalled()
     openSpy.mockRestore()
   })
 

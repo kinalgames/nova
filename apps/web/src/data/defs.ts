@@ -106,11 +106,14 @@ export const provDefs: ProviderDef[] = [
     auth: providerAuth.gemini,
     field: 'key',
     placeholder: 'AIza…',
-    // Gemini 3 generation (ai.google.dev 2026-07): 3.1 Pro ≤200k-prompt tier
-    // $2/$12; 3.5 Flash $1.50/$9 — the 2.5 line is no longer latest-top
+    // Gemini 3 generation (ai.google.dev 2026-07): 3.1 Pro Preview ≤200k-prompt
+    // tier $2/$12; 3.5 Flash (GA) $1.50/$9 — the 2.5 line is no longer latest-top.
+    // 3.1 Pro's real model id keeps the -preview suffix (Google has not
+    // promoted it to GA yet) — dropping it 404s "Requested entity was not
+    // found" on EVERY surface (api_key and Code Assist alike), verified live.
     models: [
       // cache-read pricing unverified for the 3.x line — absent by design
-      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', mode: 'smart', caps: { reasoning: true, vision: true, audio: true, video: true, toolUse: true, webSearch: true }, ctx: 1_048_576, maxOut: 65_536, inPrice: 2, outPrice: 12 },
+      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', mode: 'smart', caps: { reasoning: true, vision: true, audio: true, video: true, toolUse: true, webSearch: true }, ctx: 1_048_576, maxOut: 65_536, inPrice: 2, outPrice: 12 },
       { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', mode: 'fast', caps: { reasoning: true, vision: true, audio: true, video: true, toolUse: true, webSearch: true }, ctx: 1_048_576, maxOut: 65_536, inPrice: 1.5, outPrice: 9 },
     ],
     rec: false,

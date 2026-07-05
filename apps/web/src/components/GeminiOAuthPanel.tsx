@@ -14,8 +14,9 @@ export function GeminiOAuthPanel({ pr }: { pr: ProviderVM }) {
   const { t } = useTranslation()
   const [pasted, setPasted] = useState('')
   const oauth = v.geminiOAuth
+  // the submit button's own `disabled` already gates on the same trimmed
+  // check (below) — no second guard here, one source of truth
   const submit = () => {
-    if (!pasted.trim()) return
     v.submitGeminiCode(pasted)
     // an authorization code is single-use — a failed exchange needs a fresh
     // popup anyway, so clearing now (rather than only on success) never
