@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   addCredential,
   deleteCredential,
+  exchangeGeminiCode,
+  extractOAuthCode,
   listCredentials,
   patchCredential,
   pingCredential,
+  startGeminiOAuth,
 } from './credentials'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -95,5 +98,52 @@ describe('credentials service — masked BYOK transport', () => {
       detail: 'network',
       code: 'network',
     })
+  })
+})
+
+describe('Gemini OAuth (D1 follow-up) — popup start + code exchange', () => {
+  it('startGeminiOAuth returns the ready url; null on failure or network throw', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ok({ url: 'https://accounts.google.com/x' })))
+    expect(await startGeminiOAuth()).toBe('https://accounts.google.com/x')
+    vi.stubGlobal('fetch', vi.fn(async () => ok({}, 500)))
+    expect(await startGeminiOAuth()).toBeNull()
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
+    expect(await startGeminiOAuth()).toBeNull()
+  })
+
+  it('exchangeGeminiCode returns the refresh token on success', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ok({ refreshToken: '1//abc' })))
+    expect(await exchangeGeminiCode('4/0Ab')).toEqual({ ok: true, refreshToken: '1//abc' })
+  })
+
+  it('exchangeGeminiCode surfaces the server detail on failure, never throws', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok({ code: 'oauth_exchange_failed', detail: 'invalid_grant' }, 400)),
+    )
+    expect(await exchangeGeminiCode('stale')).toEqual({
+      ok: false,
+      code: 'oauth_exchange_failed',
+      detail: 'invalid_grant',
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
+    expect(await exchangeGeminiCode('x')).toEqual({ ok: false, code: 'network', detail: 'network' })
+  })
+
+  it('extractOAuthCode parses the code out of a pasted failed-redirect URL', () => {
+    expect(
+      extractOAuthCode('http://localhost:58219/oauth2callback?state=x&code=4%2F0Ab_CODE&scope=email'),
+    ).toBe('4/0Ab_CODE')
+  })
+
+  it('extractOAuthCode also accepts a bare pasted code', () => {
+    expect(extractOAuthCode('  4/0Ab_bareCode  ')).toBe('4/0Ab_bareCode')
+  })
+
+  it('extractOAuthCode refuses a URL with no code param, and empty/whitespace input', () => {
+    expect(extractOAuthCode('http://localhost:58219/oauth2callback?error=access_denied')).toBeNull()
+    expect(extractOAuthCode('')).toBeNull()
+    expect(extractOAuthCode('   ')).toBeNull()
+    expect(extractOAuthCode('this is not a code')).toBeNull()
   })
 })

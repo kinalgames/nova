@@ -69,9 +69,12 @@ import { createShare, revokeShare, type ShareMsg } from '../services/share'
 import {
   addCredential,
   deleteCredential,
+  exchangeGeminiCode,
+  extractOAuthCode,
   listCredentials,
   patchCredential,
   pingCredential,
+  startGeminiOAuth,
   type ServerCredential,
 } from '../services/credentials'
 import { fetchMonthUsage } from '../services/usage'
@@ -327,6 +330,7 @@ function initialState(): NovaState {
     stickyProfile: p.stickyProfile ?? {},
     testingProfile: null,
     testDetail: null,
+    geminiOAuth: { status: 'idle', error: null },
     updateReady: false,
     serverUsage: null,
     presetDefault: p.presetDefault ?? {
@@ -388,6 +392,10 @@ export function StoreProvider({
   /** settles the in-flight reply's trace on stop() — an aborted stream fires
    *  no callback, and a trace left “Đang suy nghĩ…” forever is stale data */
   const llmSettle = useRef<(() => void) | null>(null)
+  /** the Gemini OAuth consent popup — not React state (a Window isn't
+   *  serializable); closed explicitly on success so the user isn't left
+   *  looking at a stale Google tab */
+  const geminiPopup = useRef<Window | null>(null)
   const delTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const set = useCallback((u: Updater) => {
@@ -1627,8 +1635,9 @@ export function StoreProvider({
         adoptAccount,
         ollamaRefresh: hydrateOllama,
         ollamaPullStart: pullOllama,
+        geminiPopup,
       }),
-    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama],
+    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama, geminiPopup],
   )
 
   const store: Store = useMemo(
@@ -1671,6 +1680,7 @@ function deriveValues(
     adoptAccount: (me: SessionUser) => void
     ollamaRefresh: () => Promise<void>
     ollamaPullStart: (model: string) => void
+    geminiPopup: React.RefObject<Window | null>
   },
 ) {
   const {
@@ -1678,6 +1688,7 @@ function deriveValues(
     goTo,
     ollamaRefresh,
     ollamaPullStart,
+    geminiPopup,
     send,
     stop,
     copyCode,
@@ -2071,6 +2082,52 @@ function deriveValues(
       profiles: { ...x.profiles, [providerId]: [...(x.profiles[providerId] ?? []), prof] },
     }))
   }
+  // — Gemini OAuth popup (D1 follow-up) — opens Google's consent screen,
+  // then trades the pasted authorization code for a refresh token through
+  // the EXACT SAME addProfile('gemini','account',…) path a manual paste
+  // already used — no new storage mechanism, just a friendlier way to reach it.
+  const startGeminiLogin = () => {
+    set({ geminiOAuth: { status: 'opening', error: null } })
+    void startGeminiOAuth().then((url) => {
+      if (!url) {
+        set({ geminiOAuth: { status: 'idle', error: t('settings.oauthStartFailed') } })
+        return
+      }
+      geminiPopup.current = window.open(url, 'nova-gemini-oauth', 'width=480,height=640')
+      set({ geminiOAuth: { status: 'ready', error: null } })
+    })
+  }
+
+  const submitGeminiCode = (pasted: string, name: string) => {
+    const code = extractOAuthCode(pasted)
+    if (!code) {
+      set((x) => ({ geminiOAuth: { ...x.geminiOAuth, error: t('settings.oauthNoCode') } }))
+      return
+    }
+    set({ geminiOAuth: { status: 'exchanging', error: null } })
+    void exchangeGeminiCode(code).then((res) => {
+      if (!res.ok) {
+        set({
+          geminiOAuth: {
+            status: 'ready',
+            error: humanErrorDetail(res.code ?? 'error', res.detail ?? '', undefined),
+          },
+        })
+        return
+      }
+      addProfile('gemini', 'account', name, res.refreshToken!)
+      geminiPopup.current?.close()
+      geminiPopup.current = null
+      set({ geminiOAuth: { status: 'idle', error: null } })
+    })
+  }
+
+  const cancelGeminiOAuth = () => {
+    geminiPopup.current?.close()
+    geminiPopup.current = null
+    set({ geminiOAuth: { status: 'idle', error: null } })
+  }
+
   const removeProfile = (providerId: ProviderId, profileId: string) => {
     const row = s.profiles[providerId]?.find((f) => f.id === profileId)
     if (row?.server) void deleteCredential(profileId) // optimistic — list re-syncs on next boot
@@ -2427,6 +2484,10 @@ function deriveValues(
     modelMenuLabel: t('model.menuLabel'),
     autoRotate: s.autoRotate,
     toggleAutoRotate: () => set((x) => ({ autoRotate: !x.autoRotate })),
+    geminiOAuth: s.geminiOAuth,
+    startGeminiLogin,
+    submitGeminiCode,
+    cancelGeminiOAuth,
     // current-month usage roll-up for Settings → Providers — server-side
     // totals (cross-device) when hydrated, the local roll-up otherwise
     monthUsage: serverMonth

@@ -8,18 +8,26 @@ configure({ asyncUtilTimeout: 5000 })
 import { PERSIST_KEY } from './persist'
 import {
   addCredential,
+  exchangeGeminiCode,
   listCredentials,
   pingCredential,
+  startGeminiOAuth,
   type ServerCredential,
 } from '../services/credentials'
 import { streamChat } from '../services/llm'
 
-vi.mock('../services/credentials', () => ({
+vi.mock('../services/credentials', async (importOriginal) => ({
+  // extractOAuthCode is pure — fall through to the real implementation
+  // (already unit-tested directly); only the network-calling functions
+  // below are given deterministic test doubles
+  ...(await importOriginal<typeof import('../services/credentials')>()),
   listCredentials: vi.fn(async () => [] as ServerCredential[]),
   addCredential: vi.fn(async () => null),
   patchCredential: vi.fn(async () => true),
   deleteCredential: vi.fn(async () => true),
   pingCredential: vi.fn(async () => 'active' as const),
+  startGeminiOAuth: vi.fn(async () => 'https://accounts.google.com/o/oauth2/v2/auth'),
+  exchangeGeminiCode: vi.fn(async () => ({ ok: true, refreshToken: '1//abc' })),
 }))
 
 vi.mock('../services/llm', () => ({
@@ -58,6 +66,8 @@ beforeEach(() => {
   vi.mocked(listCredentials).mockResolvedValue([])
   vi.mocked(addCredential).mockClear()
   vi.mocked(streamChat as Mock).mockClear()
+  vi.mocked(startGeminiOAuth).mockClear()
+  vi.mocked(exchangeGeminiCode).mockClear()
 })
 
 describe('store — server-side BYOK wiring (BE3)', () => {
@@ -147,5 +157,106 @@ describe('store — server-side BYOK wiring (BE3)', () => {
     const refreshed = result.current.v.providers.find((p) => p.id === 'claude')!
     expect(refreshed.profiles[0].error).toContain('Chạm giới hạn tốc độ')
     expect(refreshed.profiles[0].error).toContain('quota exceeded')
+  })
+})
+
+describe('store — Gemini OAuth popup (replaces the manual paste for account kind)', () => {
+  it('startGeminiLogin surfaces a plain-words error when the start route fails', async () => {
+    vi.mocked(startGeminiOAuth).mockResolvedValueOnce(null)
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.v.startGeminiLogin())
+    await waitFor(() =>
+      expect(result.current.s.geminiOAuth).toEqual({
+        status: 'idle',
+        error: 'Không mở được trang đăng nhập Google — thử lại.',
+      }),
+    )
+  })
+
+  it('startGeminiLogin opens the Google popup and marks the flow ready', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.v.startGeminiLogin())
+    await waitFor(() => expect(result.current.s.geminiOAuth).toEqual({ status: 'ready', error: null }))
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://accounts.google.com/o/oauth2/v2/auth',
+      'nova-gemini-oauth',
+      'width=480,height=640',
+    )
+    openSpy.mockRestore()
+  })
+
+  it('submitGeminiCode rejects a paste with no code and never starts an exchange', async () => {
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.v.submitGeminiCode('not a url', 'Tài khoản Google'))
+    expect(result.current.s.geminiOAuth).toEqual({
+      status: 'idle',
+      error:
+        'Không tìm thấy mã trong nội dung đã dán — hãy sao chép toàn bộ địa chỉ sau khi đăng nhập.',
+    })
+    expect(exchangeGeminiCode).not.toHaveBeenCalled()
+  })
+
+  it('submitGeminiCode exchanges the pasted code, seals a Gemini profile and closes the popup', async () => {
+    const popup = { close: vi.fn() } as unknown as Window
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup)
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.v.startGeminiLogin())
+    await waitFor(() => expect(result.current.s.geminiOAuth.status).toBe('ready'))
+    await act(async () =>
+      result.current.v.submitGeminiCode(
+        'http://localhost:58219/oauth2callback?state=x&code=4%2F0Ab_realcode&scope=email',
+        'Tài khoản Google',
+      ),
+    )
+    await waitFor(() =>
+      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'Tài khoản Google', '1//abc'),
+    )
+    await waitFor(() =>
+      expect(result.current.s.geminiOAuth).toEqual({ status: 'idle', error: null }),
+    )
+    expect(popup.close).toHaveBeenCalled()
+    openSpy.mockRestore()
+  })
+
+  it('submitGeminiCode surfaces an exchange failure in plain words and keeps the popup open', async () => {
+    const popup = { close: vi.fn() } as unknown as Window
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup)
+    vi.mocked(exchangeGeminiCode).mockResolvedValueOnce({
+      ok: false,
+      code: 'oauth_exchange_failed',
+      detail: 'invalid_grant',
+    })
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.v.startGeminiLogin())
+    await waitFor(() => expect(result.current.s.geminiOAuth.status).toBe('ready'))
+    await act(async () =>
+      result.current.v.submitGeminiCode(
+        'http://localhost:58219/oauth2callback?code=bad-code',
+        'Tài khoản Google',
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.s.geminiOAuth).toEqual({
+        status: 'ready',
+        error: 'Có lỗi xảy ra khi kết nối · oauth_exchange_failed: invalid_grant',
+      }),
+    )
+    expect(addCredential).not.toHaveBeenCalled()
+    expect(popup.close).not.toHaveBeenCalled()
+    openSpy.mockRestore()
+  })
+
+  it('cancelGeminiOAuth closes the popup and resets to idle without touching credentials', async () => {
+    const popup = { close: vi.fn() } as unknown as Window
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup)
+    const { result } = await renderStore({ world: 'real' })
+    await act(async () => result.current.v.startGeminiLogin())
+    await waitFor(() => expect(result.current.s.geminiOAuth.status).toBe('ready'))
+    act(() => result.current.v.cancelGeminiOAuth())
+    expect(result.current.s.geminiOAuth).toEqual({ status: 'idle', error: null })
+    expect(popup.close).toHaveBeenCalled()
+    expect(exchangeGeminiCode).not.toHaveBeenCalled()
+    openSpy.mockRestore()
   })
 })

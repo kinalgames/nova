@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
 import { addCredential } from '../services/credentials'
 
@@ -17,6 +17,9 @@ vi.mock('../services/credentials', async (importOriginal) => ({
   })),
   // boot hydration behaves like the hermetic 503 — keep the fixture profiles
   listCredentials: vi.fn(async () => null),
+  // D1 follow-up — the Gemini OAuth popup + exchange transport
+  startGeminiOAuth: vi.fn(async () => 'https://accounts.google.com/o/oauth2/v2/auth'),
+  exchangeGeminiCode: vi.fn(async () => ({ ok: true, refreshToken: '1//exchanged-refresh' })),
 }))
 
 beforeEach(() => {
@@ -56,14 +59,42 @@ describe('Settings → Providers — accordion + profiles', () => {
     const dialog = await screen.findByRole('dialog')
     await expand(user, dialog, 'Gemini')
     // progressive disclosure: the form appears only after picking a path
-    await user.click(within(dialog).getByRole('button', { name: 'Đăng nhập bằng tài khoản — Gemini' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Thêm khóa API — Gemini' }))
     await user.type(within(dialog).getByLabelText('API KEY — Gemini'), 'AIza-new-key-000')
     await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
-    // the secret went to the server once (the form's default kind for gemini
-    // is the account segment); the row returns with a hint
-    expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'Tài khoản', 'AIza-new-key-000')
+    // the secret went to the server once; the row returns with a hint
+    expect(addCredential).toHaveBeenCalledWith('gemini', 'api_key', 'Khóa API', 'AIza-new-key-000')
     expect((await within(dialog).findAllByText('Chưa kiểm tra')).length).toBeGreaterThan(0)
     expect(within(dialog).getByText('…0-000')).toBeInTheDocument()
+  })
+
+  it('D1 follow-up — Gemini account kind runs the OAuth popup panel, not a manual paste', { timeout: 15_000 }, async () => {
+    const user = makeUser()
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    await openProviders()
+    const dialog = await screen.findByRole('dialog')
+    await expand(user, dialog, 'Gemini')
+    await user.click(within(dialog).getByRole('button', { name: 'Đăng nhập bằng tài khoản — Gemini' }))
+    // no manual credential field for this path — only the open-Google button
+    // and the paste-after-signin field
+    expect(within(dialog).queryByLabelText('API KEY — Gemini')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Mở Google để đăng nhập' }))
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://accounts.google.com/o/oauth2/v2/auth',
+      'nova-gemini-oauth',
+      'width=480,height=640',
+    )
+    const paste = within(dialog).getByLabelText('Dán địa chỉ sau khi đăng nhập — Gemini')
+    await user.type(
+      paste,
+      'http://localhost:58219/oauth2callback?state=x&code=4%2F0Ab_realcode&scope=email',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
+    // no name typed — addProfile falls back to the kind's default label
+    await waitFor(() =>
+      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'Tài khoản', '1//exchanged-refresh'),
+    )
+    openSpy.mockRestore()
   })
 
   it('reorders priority with the arrows and removes a profile', async () => {

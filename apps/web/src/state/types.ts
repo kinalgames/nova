@@ -251,6 +251,8 @@ export interface NovaState {
   /** WHY the last connection test failed — shown under that profile's row
    *  (ephemeral, cleared on the next successful test) */
   testDetail: { id: string; msg: string } | null
+  /** Gemini OAuth popup flow (D1 follow-up) — ephemeral, never persisted */
+  geminiOAuth: { status: 'idle' | 'opening' | 'ready' | 'exchanging'; error: string | null }
   /** a newer deploy exists — show the update toast (ephemeral) */
   updateReady: boolean
   /** T8: server-side month usage rows (real mode; ephemeral, null until hydrated) */

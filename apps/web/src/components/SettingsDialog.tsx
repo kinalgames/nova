@@ -11,6 +11,7 @@ import { ToggleRow } from './ToggleRow'
 import { PresetCard } from './PresetCard'
 import { ProviderLogo } from './ProviderLogo'
 import { BTN_DANGER, BTN_DANGER_OUTLINE, BTN_PRIMARY, BTN_SECONDARY } from './ui'
+import { GeminiOAuthPanel } from './GeminiOAuthPanel'
 
 const TABS = [
   { id: 'general', labelKey: 'settings.tabGeneral', icon: 'settings' },
@@ -355,7 +356,7 @@ function Account() {
   )
 }
 
-type ProviderVM = ReturnType<typeof useStore>['v']['providers'][number]
+export type ProviderVM = ReturnType<typeof useStore>['v']['providers'][number]
 
 /** inline add-profile form — kind picker (「Tài khoản」/「Khóa API」) + label + credential */
 /** Progressive add-profile: two calm buttons by default (đăng nhập tài
@@ -394,6 +395,7 @@ function AddProfileForm({ pr }: { pr: ProviderVM }) {
       </div>
     )
   const active = pr.kinds.find((k) => k.kind === kind)!
+  const isGeminiOAuth = pr.id === 'gemini' && kind === 'account'
   return (
     <div className="mt-2.5 rounded-md border border-border bg-bg p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -407,8 +409,9 @@ function AddProfileForm({ pr }: { pr: ProviderVM }) {
           <Icon n="close" size={13} />
         </button>
       </div>
-      {active.help && <div className="mb-2.5 text-small leading-normal text-muted">{active.help}</div>}
-      <div className="flex flex-wrap items-center gap-1.5">
+      {isGeminiOAuth && <GeminiOAuthPanel pr={pr} />}
+      {!isGeminiOAuth && active.help && <div className="mb-2.5 text-small leading-normal text-muted">{active.help}</div>}
+      {!isGeminiOAuth && <div className="flex flex-wrap items-center gap-1.5">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -433,7 +436,7 @@ function AddProfileForm({ pr }: { pr: ProviderVM }) {
         >
           {t('settings.addAction')}
         </button>
-      </div>
+      </div>}
     </div>
   )
 }
