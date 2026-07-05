@@ -995,11 +995,18 @@ export function StoreProvider({
           }
         }
         const blocksNow = (): Block[] => {
-          // a chain needs its own short lead-in AND at least 2 think/tool
-          // steps — anything less renders with the plain generic summary
+          // a chain needs its own short (≤120 char — a real one-liner, not
+          // a paragraph that bled in) lead-in AND at least 2 think/tool steps;
+          // a long lead falls back to the generic summary so nothing is ever
+          // truncated out of the visible reply — it just isn't chain-summary
+          // material
           const stepCount = (think ? 1 : 0) + liveTools.length
           const lead = leadText.trim()
-          const isChain = stepCount >= 2 && !!lead
+          const LEAD_MAX = 120
+          const isChain = stepCount >= 2 && !!lead && lead.length <= LEAD_MAX
+          // the done marker only needs the step count — independent of
+          // whether there happened to be a usable lead-in
+          const doneEligible = stepCount >= 2 && !!phaseMs
           const steps = [
             ...(think ? [{ kind: 'think' as const, text: think }] : []),
             ...liveTools.map((tl) => ({
@@ -1032,7 +1039,7 @@ export function StoreProvider({
                   : 'search') as 'globe' | 'search' | 'file',
               ...(tl.query ? { query: tl.query } : {}),
             })),
-            ...(isChain && phaseMs
+            ...(doneEligible
               ? [
                   {
                     kind: 'done' as const,
@@ -1920,9 +1927,10 @@ function deriveValues(
       },
       busy: c.id === activeConv && s.typing,
       deleting: s.deleting.includes(c.id),
-      // the open conversation reads through TEXT COLOR — a paper list keeps
-      // rows flat, only the transient hover wash may tint the background
-      bg: 'transparent',
+      // the open conversation reads through text color AND a permanent soft
+      // wash (the SAME token the transient hover uses) — text-only wasn't
+      // legible enough to spot the active row at a glance
+      bg: isActive ? 'var(--hover-1)' : 'transparent',
       // an unnamed conversation renders muted — the name simply isn't there yet
       fg: isActive ? 'var(--accent-text)' : c.title === null ? 'var(--muted)' : 'var(--text-2)',
       onSelect: () => set({ activeConv: c.id, palette: false, drawerOpen: false }),

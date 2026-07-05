@@ -247,6 +247,53 @@ describe('T3 — tool events build the live trace + sources block', () => {
     expect(trace.steps.some((st) => st.kind === 'done')).toBe(false)
   })
 
+  it('T5/chain-action — ≥ 2 steps with NO lead-in still gets the done step (only the summary falls back to generic)', async () => {
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onThinking?.('Cần tra cứu trước.')
+      h.onToolStart?.('t1', 'web_search')
+      h.onToolResult?.('t1', true, undefined, [{ n: 1, url: 'https://a.vn', title: 'A' }])
+      h.onDelta('Xong, kết quả là X.')
+      h.onDone({ inputTokens: 9, outputTokens: 6 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'kiểm tra' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    expect(msgText(nova)).toBe('Xong, kết quả là X.')
+    const trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    // no lead-in → generic summary, but the done marker still closes the chain
+    expect(trace.summary).toBe('Đã tra cứu web')
+    expect(trace.steps).toHaveLength(3)
+    expect(trace.steps[2]).toMatchObject({ kind: 'done', title: 'Hoàn tất' })
+  })
+
+  it('T5/chain-action — a lead-in longer than one short line falls back to the generic summary, never truncated out of the reply', async () => {
+    const longLead =
+      'Mình sẽ rà soát kỹ từng phần của bản báo cáo benchmark, đối chiếu với số liệu khảo sát gần nhất và tổng hợp lại thành một bảng so sánh rõ ràng cho bạn xem nhé, có thể sẽ mất chút thời gian.'
+    vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
+      h.onDelta(longLead)
+      h.onThinking?.('Cần tra cứu trước.')
+      h.onToolStart?.('t1', 'web_search')
+      h.onToolResult?.('t1', true, undefined, [{ n: 1, url: 'https://a.vn', title: 'A' }])
+      h.onDelta(' Xong rồi.')
+      h.onDone({ inputTokens: 9, outputTokens: 6 })
+    })
+    const { result } = await withRealProfile()
+    await act(async () => result.current.set({ draft: 'so sánh giúp' }))
+    await act(async () => result.current.v.send())
+
+    const nova = result.current.v.sent.at(-1)!
+    // the long lead is NEVER dropped — it rides in the visible reply text
+    expect(msgText(nova)).toBe(`${longLead} Xong rồi.`)
+    const trace = nova.blocks.find((b) => b.type === 'trace')
+    if (trace?.type !== 'trace') throw new Error('expected a trace block')
+    expect(trace.summary).toBe('Đã tra cứu web')
+    // still ≥ 2 steps → done still closes it, even though it isn't chain-summary material
+    expect(trace.steps.at(-1)).toMatchObject({ kind: 'done' })
+  })
+
   it('a failed fetch renders a danger step with its error code, no sources block', async () => {
     vi.mocked(streamChat).mockImplementationOnce(async (_req: ChatProxyRequest, h: StreamHandlers) => {
       h.onToolStart?.('t9', 'web_fetch')

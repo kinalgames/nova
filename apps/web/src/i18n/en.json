@@ -87,7 +87,7 @@
     "headerFallback": "Conversation",
     "emptyTitle": "New conversation",
     "emptyBody": "Ask anything, attach files, or pick a suggestion. Nova remembers the context of the <b>{{project}}</b> project.",
-    "thinkingLabel": "Nova is thinking…",
+    "thinkingLabel": "Thinking…",
     "writingLabel": "Writing a reply…",
     "approvalTitle": "Run command ({{tool}})",
     "approvalAllow": "Allow",
