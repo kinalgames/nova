@@ -129,6 +129,25 @@ type NovaStreamEvent =
   kept for exactly this) on the streaming message; collapses to the
   summary line when done. Works identically on mobile (trace already
   responsive-tested).
+- **Chain-action grouping (2026-07-05)**: a short reply block the model
+  emits BEFORE any think/tool activity (tracked as `leadText`, separate
+  from the real answer `acc`, split on whether `phaseStart` has fired
+  yet) becomes the trace's summary line INSTEAD of the generic
+  "Đã tra cứu web"/"Quá trình suy nghĩ" strings, but only when the phase
+  also collects ≥ 2 think/tool steps (`stepCount = think?1:0 +
+  liveTools.length`) — that combo is what counts as a "chain". A chain's
+  step list ends with a synthetic `done` step (settled phase duration).
+  Fewer than 2 steps, or no lead text, falls back to the plain behavior
+  unchanged (generic summary, no done step, lead+answer concatenate into
+  one body). See `store.tsx`'s `blocksNow()`. A successful search/fetch
+  tool step's `detail` also now surfaces the first real result's title
+  (`sources[0].title`, already on the wire) instead of a bare count.
+  **Still open**: the renderer also supports `quote`/`code` step kinds
+  (an excerpt of what a search/fetch found, a code-tool's output) that
+  only the demo fixture (`test/showcase.ts`) ever populated — wiring
+  those from real tool content needs the SSE contract's `tool_result` to
+  carry more than `summary`/`sources` (e.g. a text excerpt), which no
+  adapter emits yet. Backlog, not done.
 - **Sources block**: `tool_result.sources` accumulate into the
   message's `sources` block; citations link out.
 - **Composer “Thêm vào chat” menu** (shipped): the existing web/fetch
