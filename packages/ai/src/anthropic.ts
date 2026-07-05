@@ -218,6 +218,8 @@ interface AnthropicEvent {
     thinking?: string
     partial_json?: string
     signature?: string
+    /** citations_delta — one citation to attach to the CURRENT text block */
+    citation?: { cited_text?: string; url?: string; title?: string }
   }
   content_block?: {
     type?: string
@@ -276,6 +278,18 @@ export function toNovaStream(
   const blocks: Record<string, unknown>[] = []
   let cur: Record<string, unknown> | null = null
   let curArgs = ''
+  // citation offsets are computed against the ONE continuous stream of
+  // block_delta text this turn — the exact string the client accumulates.
+  // A turn can carry more than one text content block (e.g. a lead-in
+  // before a tool call, then the final answer); blockStartOffset anchors
+  // each new block's local text to its place in that shared coordinate space.
+  let emittedTotal = 0
+  let blockStartOffset = 0
+  let blockText = ''
+  let citeSearchFrom = 0
+  // web_search_result_location citations carry url/title but no numeric
+  // index, so sources already surfaced this turn are looked up by url
+  const sourceNByUrl = new Map<string, number>()
 
   return novaLineStream(upstream, {
     line(line, emit) {
@@ -299,6 +313,11 @@ export function toNovaStream(
             curArgs = ''
             blocks.push(cur)
           }
+          if (block?.type === 'text') {
+            blockStartOffset = emittedTotal
+            blockText = ''
+            citeSearchFrom = 0
+          }
           if (
             (block?.type === 'server_tool_use' || block?.type === 'tool_use') &&
             typeof block.id === 'string'
@@ -312,6 +331,7 @@ export function toNovaStream(
             const error = blockError(block.content)
             const sources = error ? [] : blockSources(block.content, sourceN + 1)
             sourceN += sources.length
+            for (const s of sources) sourceNByUrl.set(s.url, s.n)
             emit({
               type: 'tool_result',
               id: block.tool_use_id,
@@ -344,6 +364,23 @@ export function toNovaStream(
           if (d?.type === 'text_delta' && d.text) {
             if (cur) cur.text = String(cur.text ?? '') + d.text
             emit({ type: 'block_delta', text: d.text })
+            blockText += d.text
+            emittedTotal += d.text.length
+          } else if (d?.type === 'citations_delta' && d.citation?.cited_text) {
+            const citedText = d.citation.cited_text
+            const idx = blockText.indexOf(citedText, citeSearchFrom)
+            if (idx !== -1) {
+              citeSearchFrom = idx + citedText.length
+              emit({
+                type: 'citation',
+                citeStart: blockStartOffset + idx,
+                citeEnd: blockStartOffset + idx + citedText.length,
+                citeText: citedText,
+                ...(d.citation.url && sourceNByUrl.has(d.citation.url)
+                  ? { citeSource: sourceNByUrl.get(d.citation.url) }
+                  : {}),
+              })
+            }
           } else if (d?.type === 'thinking_delta' && d.thinking) {
             if (cur) cur.thinking = String(cur.thinking ?? '') + d.thinking
             emit({ type: 'thinking_delta', text: d.thinking })

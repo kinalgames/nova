@@ -95,6 +95,7 @@ export interface NovaStreamEvent {
     | 'tool_start' // a tool invocation began (provider-native or Nova-side)
     | 'tool_delta' // the invocation's arguments/query streaming in
     | 'tool_result' // invocation finished — summary + optional sources
+    | 'citation' // a source anchors to a span of the reply text (see fields below)
     | 'message_stop'
     | 'error'
   text?: string
@@ -111,6 +112,21 @@ export interface NovaStreamEvent {
   summary?: string
   /** tool_result — citations the reply can reference */
   sources?: NovaSource[]
+  /** citation — start offset (UTF-16 code units, exclusive-end range like
+   *  String.slice) into the reply text accumulated so far from this turn's
+   *  block_delta events. Every adapter normalizes its own wire format
+   *  (Anthropic: the just-streamed delta's own range; OpenAI/Gemini: the
+   *  provider's own start/end index) onto this ONE shared coordinate space. */
+  citeStart?: number
+  /** citation — end offset, exclusive */
+  citeEnd?: number
+  /** citation — matches the `n` of a NovaSource surfaced by a tool_result
+   *  (same turn, same web_search/web_fetch invocation) */
+  citeSource?: number
+  /** citation — the exact quoted span, when the provider sends it verbatim
+   *  (Anthropic does; OpenAI/Gemini give offsets only, so this is absent —
+   *  the client slices citeStart..citeEnd from the text itself instead) */
+  citeText?: string
 }
 
 /** a credential that cannot possibly reach the provider — a 400, never a 502 */

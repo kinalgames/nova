@@ -353,6 +353,66 @@ describe('anthropic adapter — SSE transform to the Nova contract', () => {
     })
   })
 
+  it('citations_delta anchors to the reply text’s own offset and resolves the numbered source by url', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"content_block_start","content_block":{"type":"web_search_tool_result","tool_use_id":"t1","content":[{"type":"web_search_result","url":"https://en.wikipedia.org/wiki/Claude_Shannon","title":"Claude Shannon"}]}}',
+          'data: {"type":"content_block_start","content_block":{"type":"text"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Based on the search results, "}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Claude Shannon was born on April 30, 1916"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"citations_delta","citation":{"type":"web_search_result_location","url":"https://en.wikipedia.org/wiki/Claude_Shannon","title":"Claude Shannon","cited_text":"Claude Shannon was born on April 30, 1916"}}}',
+          'data: {"type":"content_block_stop"}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    const citation = events.find((e) => e.type === 'citation')
+    // 'Based on the search results, ' is 29 chars — the cited span starts right after it
+    expect(citation).toMatchObject({
+      citeStart: 29,
+      citeEnd: 29 + 'Claude Shannon was born on April 30, 1916'.length,
+      citeText: 'Claude Shannon was born on April 30, 1916',
+      citeSource: 1,
+    })
+  })
+
+  it('citations_delta with an unrecognized url still anchors the span (no citeSource, never dropped)', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"content_block_start","content_block":{"type":"text"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"X is Y"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"citations_delta","citation":{"type":"web_search_result_location","url":"https://unknown.example","cited_text":"X is Y"}}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    const citation = events.find((e) => e.type === 'citation')
+    expect(citation).toMatchObject({ citeStart: 0, citeEnd: 6, citeText: 'X is Y' })
+    expect(citation?.citeSource).toBeUndefined()
+  })
+
+  it('two citations in the same block resolve to distinct, non-overlapping offsets in stream order', async () => {
+    const events = await collect(
+      toNovaStream(
+        sse([
+          'data: {"type":"content_block_start","content_block":{"type":"text"}}',
+          'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"A says X. B says X."}}',
+          'data: {"type":"content_block_delta","delta":{"type":"citations_delta","citation":{"url":"https://a.vn","cited_text":"X"}}}',
+          'data: {"type":"content_block_delta","delta":{"type":"citations_delta","citation":{"url":"https://b.vn","cited_text":"X"}}}',
+          'data: {"type":"message_stop"}',
+        ]),
+      ),
+    )
+    const cites = events.filter((e) => e.type === 'citation')
+    expect(cites).toHaveLength(2)
+    expect(cites.map((c) => [c.citeStart, c.citeEnd])).toEqual([
+      [7, 8],
+      [17, 18],
+    ])
+  })
+
   it('a tool-result ERROR surfaces ok:false; stray json deltas outside a tool never leak', async () => {
     const events = await collect(
       toNovaStream(
