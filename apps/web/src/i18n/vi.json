@@ -89,8 +89,6 @@
     "emptyBody": "Hỏi bất cứ điều gì, đính kèm tệp, hoặc chọn một gợi ý. Nova nhớ ngữ cảnh của dự án <b>{{project}}</b>.",
     "thinkingLabel": "Nova đang suy nghĩ…",
     "writingLabel": "Đang viết câu trả lời…",
-    "novaWorking": "Nova đang làm việc",
-    "streamReplying": "· đang trả lời",
     "approvalTitle": "Chạy lệnh ({{tool}})",
     "approvalAllow": "Cho phép",
     "approvalDeny": "Từ chối",

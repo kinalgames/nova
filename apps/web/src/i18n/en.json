@@ -89,8 +89,6 @@
     "emptyBody": "Ask anything, attach files, or pick a suggestion. Nova remembers the context of the <b>{{project}}</b> project.",
     "thinkingLabel": "Nova is thinking…",
     "writingLabel": "Writing a reply…",
-    "novaWorking": "Nova is working",
-    "streamReplying": "· replying",
     "approvalTitle": "Run command ({{tool}})",
     "approvalAllow": "Allow",
     "approvalDeny": "Deny",

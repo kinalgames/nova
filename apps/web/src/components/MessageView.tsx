@@ -1,11 +1,11 @@
-import { Fragment, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { API_BASE } from '../services/llm'
 import { getToken } from '../services/token'
 import { useStore } from '../state/store'
 import { Icon } from './Icon'
 import { GrowingTextarea } from './GrowingTextarea'
-import { BTN_PRIMARY, BTN_SECONDARY } from './ui'
+import { BTN_PRIMARY } from './ui'
 import type {
   Block,
   Message,
@@ -162,16 +162,60 @@ function FilePill({ f }: { f: MsgAttachment }) {
   )
 }
 
+/**
+ * The rail's connecting line must run from the FIRST node's center to the
+ * LAST node's center — never past either end. Step heights vary with content
+ * (a long thinking sentence wraps, a tool row grows an extra line), so a
+ * fixed CSS inset drifts; this measures the actual rendered dot positions
+ * (marked `data-dot`) and sizes the line to match exactly, re-measuring on
+ * every render so it tracks live-streaming growth.
+ */
+function TimelineRail() {
+  const [span, setSpan] = useState<{ top: number; height: number } | null>(null)
+  // an anchor marks OUR OWN position; its parentElement is the steps
+  // container. Reading an ANCESTOR's ref here would race React's commit
+  // order (a child's layout effect runs before the DOM ref on an ancestor
+  // host node is attached) — anchoring on our own node sidesteps that.
+  const anchorRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const root = anchorRef.current?.parentElement
+    if (!root) return
+    const dots = root.querySelectorAll<HTMLElement>('[data-dot]')
+    if (dots.length < 2) {
+      setSpan(null)
+      return
+    }
+    const rootTop = root.getBoundingClientRect().top
+    const first = dots[0].getBoundingClientRect()
+    const last = dots[dots.length - 1].getBoundingClientRect()
+    const top = first.top + first.height / 2 - rootTop
+    const bottom = last.top + last.height / 2 - rootTop
+    setSpan((prev) =>
+      prev && prev.top === top && prev.height === bottom - top ? prev : { top, height: bottom - top },
+    )
+  })
+  return (
+    <>
+      <div ref={anchorRef} className="hidden" />
+      {span && <div className="absolute -left-0.5 w-0.5 bg-border" style={{ top: span.top, height: span.height }} />}
+    </>
+  )
+}
+
 function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
   const { v } = useStore()
   if (!open) return null
   return (
-    <div className="relative mb-1.5 flex flex-col gap-4 border-l-2 border-border pl-5">
+    <div className="relative mb-1.5 flex flex-col gap-4 pl-5">
+      <TimelineRail />
       {steps.map((st, i) => {
         if (st.kind === 'think') {
           return (
             <div key={i} className="relative">
-              <span className="absolute -left-[26px] top-0.5 size-2.5 rounded-full border-2 border-dashed border-border bg-bg" />
+              <span
+                data-dot
+                className="absolute -left-[26px] top-0.5 size-2.5 rounded-full border-2 border-dashed border-border bg-bg"
+              />
               <div className="text-body italic leading-normal text-muted">{st.text}</div>
             </div>
           )
@@ -179,7 +223,10 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
         if (st.kind === 'done') {
           return (
             <div key={i} className="relative">
-              <span className="absolute -left-[27.5px] top-px flex size-[13px] items-center justify-center rounded-full bg-accent text-bg">
+              <span
+                data-dot
+                className="absolute -left-[27.5px] top-px flex size-[13px] items-center justify-center rounded-full bg-accent text-bg"
+              >
                 <Icon n="check" size={9} stroke={2.5} />
               </span>
               <div className="text-ui font-medium text-text-2">
@@ -192,7 +239,7 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
           st.node === 'danger' ? 'border-danger' : st.node === 'accent' ? 'border-accent' : 'border-border'
         return (
           <div key={i} className="relative">
-            <span className={`${NODE} ${nodeCls}`} />
+            <span data-dot className={`${NODE} ${nodeCls}`} />
             <div className={NODE_TEXT}>
               {st.title} {st.detail && <span className="text-muted">{st.detail}</span>}
             </div>
@@ -259,17 +306,41 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
           </div>
         </div>
       )
-    case 'trace':
+    case 'trace': {
+      // paper, not a card: thinking-only is a muted note, a lone tool call is
+      // one inline row — only a real multi-step chain earns the timeline rail
+      const onlyThink = block.steps.length === 1 && block.steps[0].kind === 'think'
+      const single = block.steps.length === 1 && block.steps[0].kind !== 'think'
+      if (onlyThink) {
+        const full = block.steps[0].text
+        const collapsed = block.meta ? `${block.summary} · ${block.meta}` : block.summary
+        return (
+          <div className="mt-3">
+            <button type="button" onClick={v.toggleTrace} className={`${ACT} text-left`}>
+              <span className="text-body italic leading-normal text-muted">
+                {v.traceOpen || streaming ? full : collapsed}
+              </span>
+            </button>
+          </div>
+        )
+      }
+      if (single) {
+        const st = block.steps[0]
+        return (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-ui text-text-2">
+            {st.toolIcon && (
+              <span className={st.node === 'danger' ? 'text-danger-text' : 'text-accent-text'}>
+                <Icon n={st.toolIcon} size={14} />
+              </span>
+            )}
+            <span>{st.title}</span>
+            {st.detail && <span className="text-muted">{st.detail}</span>}
+          </div>
+        )
+      }
       return (
         <div className="mt-3">
-          <button
-            type="button"
-            onClick={v.toggleTrace}
-            className="mb-3 inline-flex cursor-pointer items-center gap-2.5 rounded-sm border border-border bg-panel px-3 py-2 text-left text-ui text-text-2"
-          >
-            <span className="flex size-[18px] items-center justify-center rounded-full bg-accent-soft text-accent">
-              <Icon n="check" size={11} stroke={2.25} />
-            </span>
+          <button type="button" onClick={v.toggleTrace} className={`${ACT} mb-3 text-left text-ui text-text-2`}>
             <span className="text-text">{block.summary}</span>
             <span className="inline-flex items-center gap-1 text-meta text-faint">
               {v.traceOpen ? t('chat.traceHide') : block.meta}
@@ -279,6 +350,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
           <TraceView steps={block.steps} open={v.traceOpen || !!streaming} />
         </div>
       )
+    }
     case 'table':
       return (
         <div className="mt-4 overflow-hidden rounded-sm border border-border font-sans text-ui">
@@ -467,31 +539,6 @@ function EditForm({ message }: { message: Message }) {
   )
 }
 
-export function TypingIndicator({ label }: { label: string }) {
-  return (
-    <div className="mt-6 flex items-center gap-2.5">
-      <NovaThinking />
-      <span className="text-ui text-text-2">{label}</span>
-    </div>
-  )
-}
-
-function NovaThinking() {
-  const { t } = useTranslation()
-  return (
-    <span
-      role="img"
-      aria-label={t('chat.novaWorking')}
-      className="relative flex size-[22px] shrink-0 items-center justify-center"
-    >
-      <span className="absolute inset-0 rounded-full bg-accent-line animate-[pulseRing_1.6s_ease-out_infinite]" />
-      <span className="relative flex size-[22px] items-center justify-center rounded-full bg-accent text-bg animate-[breathe_2.4s_ease-in-out_infinite]">
-        <Icon n="nova" size={13} />
-      </span>
-    </span>
-  )
-}
-
 export function MessageView({
   message,
   state,
@@ -541,9 +588,8 @@ export function MessageView({
         </span>
         <span className={NOVA_TAG}>{message.who}</span>
         <VersionNav id={message.id} />
-        {state === 'streaming' && (
-          <span className="text-meta text-faint">{t('chat.streamReplying')}</span>
-        )}
+        {/* the ONE place a live status shows — never duplicated elsewhere */}
+        {typing && <span className="text-meta text-faint">{v.typingLabel}</span>}
         {v.msgUsage(message) && (
           <span className="font-mono text-meta text-faint">{v.msgUsage(message)}</span>
         )}
@@ -552,21 +598,7 @@ export function MessageView({
       {/* live thinking streams the trace OPEN; it collapses once the reply lands */}
       {trace && <BlockView block={trace} streaming={typing} />}
 
-      {state === 'streaming' ? (
-        <div className="mt-4">
-          <div className="mb-3 flex items-center gap-2.5">
-            <NovaThinking />
-            <span className="text-ui text-text-2">{t('chat.writingLabel')}</span>
-          </div>
-          <button
-            type="button"
-            onClick={v.setDone}
-            className={BTN_SECONDARY}
-          >
-            <Icon n="stop" size={13} fill="currentColor" stroke={0} /> {t('common.stop')}
-          </button>
-        </div>
-      ) : state === 'approval' && message.approval ? (
+      {state === 'approval' && message.approval ? (
         <ApprovalCard tool={message.approval.tool} command={message.approval.command} />
       ) : state === 'error' ? (
         <>

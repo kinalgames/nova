@@ -176,15 +176,14 @@ describe('T2 — live thinking trace', () => {
     await seed(linear())()
 
     await user.click(await screen.findByRole('button', { name: 'Tạo lại' }))
-    // while streaming the trace is FORCED open — traceOpen defaults to false,
-    // yet the live thought text must be visible
+    // while streaming, thinking-only renders as muted text ALONE — no card,
+    // no separate “Đang suy nghĩ…” label duplicating it
     expect(await screen.findByText('Suy luận bước một…')).toBeInTheDocument()
-    expect(screen.getByText('Đang suy nghĩ…')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Dừng/ }))
-    // stop() settles the aborted phase — the summary flips to “done” and the
-    // body collapses back behind the toggle (never a stale “Đang suy nghĩ…”)
-    expect(await screen.findByText('Quá trình suy nghĩ')).toBeInTheDocument()
+    // stop() settles the aborted phase — it collapses to the one-line summary
+    // (never a stale full thinking transcript sitting open)
+    expect(await screen.findByText('Quá trình suy nghĩ · 1 giây')).toBeInTheDocument()
     expect(screen.queryByText('Suy luận bước một…')).not.toBeInTheDocument()
   })
 })

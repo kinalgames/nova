@@ -3,7 +3,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Composer } from '../components/Composer'
 import { Icon } from '../components/Icon'
-import { MessageView, TypingIndicator } from '../components/MessageView'
+import { MessageView } from '../components/MessageView'
 import { ProviderNudge } from '../components/ProviderNudge'
 import type { MsgState, RespState } from '../state/types'
 
@@ -57,8 +57,6 @@ export function ConversationView() {
               )
             })}
 
-            {/* live "thinking" / writing indicator */}
-            {v.typing && <TypingIndicator label={v.typingLabel} />}
           </div>
         </div>
 

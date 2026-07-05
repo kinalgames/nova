@@ -75,17 +75,6 @@ describe('ConversationView — data-driven message blocks', () => {
 })
 
 describe('ConversationView — response states', () => {
-  it('streaming shows the live "writing" indicator and a stop control', async () => {
-    await renderApp((s) => s.set({ respState: 'stream' }))
-    expect(await screen.findByText(/Đang viết câu trả lời/)).toBeInTheDocument()
-    expect(screen.getByText('Dừng')).toBeInTheDocument()
-  })
-
-  it('streaming shows an animated Nova working indicator', async () => {
-    await renderApp((s) => s.set({ respState: 'stream' }))
-    expect(await screen.findByLabelText('Nova đang làm việc')).toBeInTheDocument()
-  })
-
   it('error shows the interrupted banner with a retry', async () => {
     // a REAL error is conv-scoped — errorConv must point at the open thread
     await renderApp((s) => s.set({ respState: 'error', errorConv: 'c1', errorAction: 'retry' }))
