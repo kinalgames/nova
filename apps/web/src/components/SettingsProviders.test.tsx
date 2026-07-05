@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { makeUser, renderApp } from '../test/util'
-import { addCredential, exchangeGeminiCode } from '../services/credentials'
+import { addCredential } from '../services/credentials'
 
 // the real product seals credentials server-side (BE3) — mock the transport
 // so the form flow runs against a deterministic server row
@@ -17,13 +17,6 @@ vi.mock('../services/credentials', async (importOriginal) => ({
   })),
   // boot hydration behaves like the hermetic 503 — keep the fixture profiles
   listCredentials: vi.fn(async () => null),
-  // D1 follow-up — the Gemini OAuth popup + exchange transport
-  startGeminiOAuth: vi.fn(async () => 'https://accounts.google.com/o/oauth2/v2/auth'),
-  exchangeGeminiCode: vi.fn(async () => ({
-    ok: true,
-    refreshToken: '1//exchanged-refresh',
-    email: 'toi@gmail.com',
-  })),
 }))
 
 beforeEach(() => {
@@ -70,61 +63,6 @@ describe('Settings → Providers — accordion + profiles', () => {
     expect(addCredential).toHaveBeenCalledWith('gemini', 'api_key', 'Khóa API', 'AIza-new-key-000')
     expect((await within(dialog).findAllByText('Chưa kiểm tra')).length).toBeGreaterThan(0)
     expect(within(dialog).getByText('…0-000')).toBeInTheDocument()
-  })
-
-  it('D1 follow-up — Gemini account kind runs the OAuth popup panel, not a manual paste', { timeout: 15_000 }, async () => {
-    const user = makeUser()
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
-    await openProviders()
-    const dialog = await screen.findByRole('dialog')
-    await expand(user, dialog, 'Gemini')
-    await user.click(within(dialog).getByRole('button', { name: 'Đăng nhập bằng tài khoản — Gemini' }))
-    // no manual credential field for this path — only the open-Google button
-    // and the paste-after-signin field
-    expect(within(dialog).queryByLabelText('API KEY — Gemini')).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Mở Google để đăng nhập' }))
-    expect(openSpy).toHaveBeenCalledWith(
-      'https://accounts.google.com/o/oauth2/v2/auth',
-      'nova-gemini-oauth',
-      'width=480,height=640',
-    )
-    const paste = within(dialog).getByLabelText('Dán địa chỉ sau khi đăng nhập — Gemini')
-    await user.type(
-      paste,
-      'http://localhost:58219/oauth2callback?state=x&code=4%2F0Ab_realcode&scope=email',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
-    // no name field to fill in — the signed-in Google email becomes the
-    // profile name automatically (never a token-tail hint the user can't read)
-    await waitFor(() =>
-      expect(addCredential).toHaveBeenCalledWith('gemini', 'account', 'toi@gmail.com', '1//exchanged-refresh'),
-    )
-    openSpy.mockRestore()
-  })
-
-  it('a failed exchange shows the reason under the paste field, in plain words', async () => {
-    const user = makeUser()
-    vi.mocked(exchangeGeminiCode).mockResolvedValueOnce({
-      ok: false,
-      code: 'oauth_exchange_failed',
-      detail: 'invalid_grant: code already used',
-    })
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
-    await openProviders()
-    const dialog = await screen.findByRole('dialog')
-    await expand(user, dialog, 'Gemini')
-    await user.click(within(dialog).getByRole('button', { name: 'Đăng nhập bằng tài khoản — Gemini' }))
-    await user.click(within(dialog).getByRole('button', { name: 'Mở Google để đăng nhập' }))
-    await user.type(
-      within(dialog).getByLabelText('Dán địa chỉ sau khi đăng nhập — Gemini'),
-      'http://localhost:58219/oauth2callback?code=stale-code',
-    )
-    await user.click(within(dialog).getByRole('button', { name: 'Thêm hồ sơ — Gemini' }))
-    await waitFor(() =>
-      expect(within(dialog).getByText(/invalid_grant: code already used/)).toBeInTheDocument(),
-    )
-    expect(addCredential).not.toHaveBeenCalled()
-    openSpy.mockRestore()
   })
 
   it('reorders priority with the arrows and removes a profile', async () => {
@@ -210,7 +148,7 @@ describe('Settings → Providers — accordion + profiles', () => {
     await user.click(within(dialog).getAllByRole('button', { name: 'Kết nối — Gemini' })[0])
     expect(store().v.settingsTab).toBe('providers')
     expect(store().s.openProvider).toBe('gemini')
-    // the config opens calm: two add paths, the form appears on pick
+    // the config opens calm: one add path (api_key only), the form appears on pick
     await user.click(await within(dialog).findByRole('button', { name: 'Thêm khóa API — Gemini' }))
     expect(await within(dialog).findByLabelText('API KEY — Gemini')).toBeInTheDocument()
   })

@@ -10,9 +10,15 @@ export type ProfileKind = 'account' | 'api_key'
 /** credential kinds each provider accepts, in the order the add-menu offers
  *  them — the single source for both the client menu and the proxy's
  *  validation. For ollama the api_key slot carries the endpoint URL. */
+// Gemini's 'account' kind (Google OAuth → Code Assist / cloudcode-pa) is
+// RETIRED (2026-07-05): Google sunset consumer-tier Code Assist access on
+// 2026-06-18, and separately treats third-party reuse of gemini-cli's OAuth
+// client as a Terms-of-Service violation — real accounts have been banned
+// for exactly this pattern. Gemini now ships api_key only. Claude's
+// 'account' kind (Claude Code setup-token) is unrelated and unaffected.
 export const providerAuth: Record<ProviderId, readonly ProfileKind[]> = {
   claude: ['account', 'api_key'],
-  gemini: ['account', 'api_key'],
+  gemini: ['api_key'],
   openai: ['api_key'],
   ollama: ['api_key'],
 }

@@ -116,14 +116,8 @@ export interface NovaStreamEvent {
 /** a credential that cannot possibly reach the provider — a 400, never a 502 */
 export class ProviderConfigError extends Error {}
 
-/** worker-level provider configuration (bindings/secrets an adapter may need).
- *  The gemini-cli OAuth client pair is PUBLIC (published in the gemini-cli
- *  repo) but lives in config — `.dev.vars` locally, `wrangler secret put` in
- *  prod — so no secret-shaped literal sits in source and secret scanning
- *  stays meaningful for real keys. */
+/** worker-level provider configuration (bindings/secrets an adapter may need). */
 export interface ProviderEnv {
-  GEMINI_OAUTH_CLIENT_ID?: string
-  GEMINI_OAUTH_CLIENT_SECRET?: string
   /** alternate API origins — set to a Cloudflare AI Gateway prefix when the
    *  provider rejects Workers egress IPs (Anthropic 403 “Request not
    *  allowed”). Absent = the provider's own origin. */

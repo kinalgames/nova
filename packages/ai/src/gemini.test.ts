@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  callGemini,
-  geminiRequest,
-  geminiThinkingConfig,
-  parseAccountCredential,
-  toNovaStream,
-} from './gemini'
+import { callGemini, geminiRequest, geminiThinkingConfig, toNovaStream } from './gemini'
 
 describe('B1 — binary parts ride as inline_data', () => {
   it('images/PDFs precede the text part; empty content still yields a part', () => {
@@ -93,11 +87,6 @@ import { ProviderConfigError } from './shared'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const oauthEnv = {
-  GEMINI_OAUTH_CLIENT_ID: 'test-id.apps.googleusercontent.com',
-  GEMINI_OAUTH_CLIENT_SECRET: 'test-oauth-secret',
-}
-
 const baseReq = {
   providerId: 'gemini' as const,
   model: 'gemini-2.5-flash',
@@ -145,113 +134,14 @@ describe('gemini adapter — api_key transport (official)', () => {
   })
 })
 
-describe('gemini adapter — account credential parsing', () => {
-  it('accepts a raw access token', () => {
-    expect(parseAccountCredential('ya29.abc')).toEqual({ accessToken: 'ya29.abc' })
-  })
-  it('accepts a raw refresh token (1//…)', () => {
-    expect(parseAccountCredential('1//0abc')).toEqual({ refreshToken: '1//0abc' })
-  })
-  it('accepts the oauth_creds.json blob and prefers the refresh token', () => {
-    const blob = JSON.stringify({ access_token: 'ya29.x', refresh_token: '1//0y', scope: 's' })
-    expect(parseAccountCredential(blob)).toEqual({ refreshToken: '1//0y' })
-  })
-  it('falls back to access_token when the blob has no refresh token', () => {
-    expect(parseAccountCredential('{"access_token":"ya29.z"}')).toEqual({ accessToken: 'ya29.z' })
-  })
-  it('rejects malformed JSON and empty blobs', () => {
-    expect(() => parseAccountCredential('{nope')).toThrow(ProviderConfigError)
-    expect(() => parseAccountCredential('{}')).toThrow(ProviderConfigError)
-    expect(() => parseAccountCredential('   ')).toThrow(ProviderConfigError)
-  })
-})
-
-describe('gemini adapter — account transport (Code Assist, experimental)', () => {
-  it('with an access token: discovers the project then streams via cloudcode-pa', async () => {
-    const fetchMock = vi.fn(async (url: string) => {
-      if (url.includes(':loadCodeAssist'))
-        return Response.json({ cloudaicompanionProject: 'proj-1' })
-      return new Response('', { status: 200 })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    const res = await callGemini({
-      ...baseReq,
-      profile: { kind: 'account', credential: 'ya29.token' },
-    })
-    expect(res.status).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    const [loadUrl, loadInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(loadUrl).toBe('https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist')
-    expect((loadInit.headers as Record<string, string>).authorization).toBe('Bearer ya29.token')
-    const [streamUrl, streamInit] = fetchMock.mock.calls[1] as unknown as [string, RequestInit]
-    expect(streamUrl).toBe(
-      'https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse',
-    )
-    const body = JSON.parse(streamInit.body as string) as Record<string, unknown>
-    expect(body.model).toBe('gemini-2.5-flash')
-    expect(body.project).toBe('proj-1')
-    expect((body.request as Record<string, unknown>).contents).toBeDefined()
-  })
-
-  it('with a refresh token: exchanges it via the configured OAuth client first', async () => {
-    const fetchMock = vi.fn(async (url: string) => {
-      if (url === 'https://oauth2.googleapis.com/token')
-        return Response.json({ access_token: 'ya29.fresh', expires_in: 3599 })
-      if (url.includes(':loadCodeAssist'))
-        return Response.json({ cloudaicompanionProject: 'proj-2' })
-      return new Response('', { status: 200 })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    const res = await callGemini(
-      { ...baseReq, profile: { kind: 'account', credential: '1//0refresh' } },
-      undefined,
-      oauthEnv,
-    )
-    expect(res.status).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-    const [, tokenInit] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    const form = new URLSearchParams(tokenInit.body as string)
-    expect(form.get('grant_type')).toBe('refresh_token')
-    expect(form.get('refresh_token')).toBe('1//0refresh')
-    expect(form.get('client_id')).toBe('test-id.apps.googleusercontent.com')
-    expect(form.get('client_secret')).toBe('test-oauth-secret')
-    const [, streamInit] = fetchMock.mock.calls[2] as unknown as [string, RequestInit]
-    expect((streamInit.headers as Record<string, string>).authorization).toBe('Bearer ya29.fresh')
-  })
-
-  it('a refresh token without the configured OAuth client is a config error, not a fetch', async () => {
+describe('gemini adapter — non-api_key profile is a config error', () => {
+  it('rejects an account-kind profile instead of falling back to any other transport', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     await expect(
-      callGemini({ ...baseReq, profile: { kind: 'account', credential: '1//0refresh' } }),
+      callGemini({ ...baseReq, profile: { kind: 'account', credential: 'ya29.token' } }),
     ).rejects.toThrow(ProviderConfigError)
     expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('surfaces a failed token refresh as the upstream response', async () => {
-    const fetchMock = vi.fn(async () =>
-      Response.json({ error: 'invalid_grant' }, { status: 400 }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-    const res = await callGemini(
-      { ...baseReq, profile: { kind: 'account', credential: '1//0expired' } },
-      undefined,
-      oauthEnv,
-    )
-    expect(res.status).toBe(400)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-  })
-
-  it('reports a clear error when the account has no Code Assist project yet', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ currentTier: {} }))
-    vi.stubGlobal('fetch', fetchMock)
-    const res = await callGemini({
-      ...baseReq,
-      profile: { kind: 'account', credential: 'ya29.token' },
-    })
-    expect(res.ok).toBe(false)
-    const body = (await res.json()) as { error: { message: string } }
-    expect(body.error.message).toContain('gemini-cli')
   })
 })
 
@@ -293,11 +183,11 @@ describe('gemini adapter — SSE transform to the Nova contract', () => {
     expect(events.at(-1)?.usage).toEqual({ inputTokens: 9, outputTokens: 5 })
   })
 
-  it('unwraps Code Assist chunks ({response:…}) and counts thought tokens as output', async () => {
+  it('counts thought tokens as output alongside candidate tokens', async () => {
     const events = await collect(
       toNovaStream(
         sse([
-          'data: {"response":{"candidates":[{"content":{"parts":[{"text":"ok"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"thoughtsTokenCount":4}}}',
+          'data: {"candidates":[{"content":{"parts":[{"text":"ok"}]}}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2,"thoughtsTokenCount":4}}',
         ]),
       ),
     )

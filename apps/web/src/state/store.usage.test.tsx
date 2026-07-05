@@ -37,7 +37,7 @@ describe('store — server month usage (T8)', () => {
   it('boot hydrates the server roll-up and Settings shows it over the local one', async () => {
     vi.mocked(fetchMonthUsage).mockResolvedValue([
       { providerId: 'openai', modelId: 'gpt-5.4-mini', kind: 'api_key', inTok: 1_000_000, outTok: 2_000_000 },
-      { providerId: 'gemini', modelId: 'gemini-3.5-flash', kind: 'account', inTok: 500, outTok: 700 },
+      { providerId: 'claude', modelId: 'claude-haiku-4-5', kind: 'account', inTok: 500, outTok: 700 },
     ])
     const { result } = await renderStore({ world: 'real' })
     await waitFor(() => expect(result.current.s.serverUsage).not.toBeNull())
