@@ -43,6 +43,17 @@ export const stagedKeyOf = (nav: NavState) => (nav.view === 'home' ? HOME_TRAY :
 
 export const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+
+/** show a toast, replacing any pending auto-dismiss timer for a previous one
+ *  — ONE shared timer so an ollama-pull toast and a share/account toast never
+ *  race each other's dismissal */
+export function showToast(set: (u: Updater) => void, msg: string): void {
+  clearTimeout(toastTimer)
+  set({ toast: msg })
+  toastTimer = setTimeout(() => set({ toast: null }), 2400)
+}
+
 // ids must be unique ACROSS SESSIONS: conversations and messages persist to
 // localStorage and sync through the DO, and a session-scoped counter reborn
 // at `f1` collided with persisted ids — one colliding MESSAGE id turns the

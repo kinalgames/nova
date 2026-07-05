@@ -91,7 +91,6 @@ import {
 } from './thread'
 import { describeUpload, downloadFile, downloadUrl } from '../services/files'
 import { fetchFileObjectUrl } from '../services/preview'
-import { listOllamaModels, pullOllamaModel } from '../services/ollama'
 import {
   ACCENT_DEFAULT,
   HOME_TRAY,
@@ -100,6 +99,7 @@ import {
   mergeMirror,
   pathToView,
   persistSliceOf,
+  showToast as showToastShared,
   snapshotOfThread,
   stagedKeyOf,
   uid,
@@ -107,12 +107,11 @@ import {
   type NavState,
   type Updater,
 } from './store-helpers'
+import { useOllamaActions } from './ollama-actions'
 
 export { HOME_TRAY }
 
 type Navigate = ReturnType<typeof useNavigate>
-
-let toastTimer: ReturnType<typeof setTimeout> | undefined
 
 // BE2 sync — module-level because there is a single store instance. `synced`
 // mirrors what the server holds so each persist push sends only the diff.
@@ -492,46 +491,7 @@ export function StoreProvider({
     [set],
   )
 
-  // B6c — the ollama catalog is whatever the user's endpoint serves; ask it
-  // (through the proxy) whenever an ollama profile exists
-  const hydrateOllama = useCallback(async () => {
-    const prof = (sRef.current.profiles.ollama ?? [])[0]
-    if (!prof || !HAS_API || !getToken()) return
-    const rows = await listOllamaModels(prof)
-    if (rows) set({ ollamaModels: rows })
-  }, [set])
-
-  useEffect(() => {
-    if ((s.profiles.ollama ?? []).length === 0) return
-    void hydrateOllama()
-  }, [s.profiles.ollama, hydrateOllama])
-
-  const pullOllama = useCallback(
-    (model: string) => {
-      const prof = (sRef.current.profiles.ollama ?? [])[0]
-      const name = model.trim()
-      if (!prof || !name || sRef.current.ollamaPull) return
-      set({ ollamaPull: { model: name, pct: null, status: '' } })
-      const toastLater = (msg: string) => {
-        clearTimeout(toastTimer)
-        set({ toast: msg })
-        toastTimer = setTimeout(() => set({ toast: null }), 2400)
-      }
-      void pullOllamaModel(prof, name, {
-        onProgress: (pct, status) => set({ ollamaPull: { model: name, pct, status } }),
-        onDone: () => {
-          set({ ollamaPull: null })
-          toastLater(i18n.t('settings.ollamaPullDone', { model: name }))
-          void hydrateOllama()
-        },
-        onError: (detail) => {
-          set({ ollamaPull: null })
-          toastLater(i18n.t('settings.ollamaPullFailed', { detail }))
-        },
-      })
-    },
-    [set, hydrateOllama],
-  )
+  const { hydrateOllama, pullOllama } = useOllamaActions(s.profiles.ollama, sRef, set)
 
   // T8: real mode also pulls the server-side month usage roll-up — the
   // Settings meter then reflects EVERY device, not just this one's threads
@@ -1681,11 +1641,7 @@ function deriveValues(
 
   const sortConvs = (list: NovaState['conversations']) =>
     [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-  const showToast = (msg: string) => {
-    clearTimeout(toastTimer)
-    set({ toast: msg })
-    toastTimer = setTimeout(() => set({ toast: null }), 2400)
-  }
+  const showToast = (msg: string) => showToastShared(set, msg)
   const mapConv = (c: NovaState['conversations'][number]) => {
     // bg-highlight only when this conversation is the one actually open; the
     // busy pulse follows the generating conversation across any route
