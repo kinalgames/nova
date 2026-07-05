@@ -580,7 +580,6 @@ describe('store — labels are unified (advanced no longer rebrands them)', () =
     expect(result.current.v.meterLabel).toBe('bộ nhớ')
     expect(result.current.v.modelMenuLabel).toBe('CHẾ ĐỘ TRỢ LÝ')
     expect(result.current.v.modelADesc).toBe('Trả lời sâu, cân nhắc kỹ')
-    expect(result.current.v.traceCaret).toBe('5 công cụ · 6.4 giây')
     expect(result.current.v.modelLabel).toBe('Nhanh')
     // ollama uses an endpoint field, not an API key
     const ollama = result.current.v.providers.find((p) => p.name.includes('máy'))

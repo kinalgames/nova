@@ -24,7 +24,7 @@ const NOVA_HEAD = 'mb-3 flex items-center gap-2'
 const NOVA_DOT = 'flex size-[22px] items-center justify-center rounded-full bg-accent text-bg'
 const NOVA_TAG = 'font-mono text-eyebrow tracking-[.12em] text-accent-text'
 const ACT = 'tap-sm inline-flex cursor-pointer items-center gap-1 border-none bg-transparent text-left'
-const NODE = 'absolute -left-[29px] top-0.5 size-[11px] rounded-full border-2 bg-bg'
+const NODE = 'absolute -left-[26.5px] top-0.5 size-[11px] rounded-full border-2 bg-bg'
 const NODE_TEXT = 'text-body text-text'
 const TOOL_TAG = 'inline-flex items-center gap-1 font-mono text-meta text-muted'
 const META_ROW = 'mt-1.5 flex items-center gap-2'
@@ -171,7 +171,7 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
         if (st.kind === 'think') {
           return (
             <div key={i} className="relative">
-              <span className="absolute -left-[29px] top-0.5 size-2.5 rounded-full border-2 border-dashed border-border bg-bg" />
+              <span className="absolute -left-[26px] top-0.5 size-2.5 rounded-full border-2 border-dashed border-border bg-bg" />
               <div className="text-body italic leading-normal text-muted">{st.text}</div>
             </div>
           )
@@ -179,7 +179,7 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
         if (st.kind === 'done') {
           return (
             <div key={i} className="relative">
-              <span className="absolute -left-[30px] top-px flex size-[13px] items-center justify-center rounded-full bg-accent text-bg">
+              <span className="absolute -left-[27.5px] top-px flex size-[13px] items-center justify-center rounded-full bg-accent text-bg">
                 <Icon n="check" size={9} stroke={2.5} />
               </span>
               <div className="text-ui font-medium text-text-2">

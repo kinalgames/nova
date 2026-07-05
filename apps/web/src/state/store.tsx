@@ -2493,12 +2493,6 @@ function deriveValues(
     errorDetail: s.errorDetail,
     errorRequestId: s.errorRequestId,
     errorAction: s.errorAction,
-    showTrace: rs === 'done' || rs === 'stream',
-    traceIconBg: 'var(--accent-soft)',
-    traceIconFg: accent,
-    traceSummary:
-      rs === 'stream' ? t('chat.traceSummaryStream') : t('chat.traceSummaryDone'),
-    traceCaret: s.traceOpen ? t('chat.traceHide') : rs === 'stream' ? '' : t('chat.traceCaretDone'),
     toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
     traceOpen: s.traceOpen,
     // composer

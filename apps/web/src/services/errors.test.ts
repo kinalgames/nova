@@ -58,4 +58,12 @@ describe('humanErrorDetail — dig edge shapes', () => {
   it('empty object falls back to the original message', () => {
     expect(humanErrorDetail('x', '{}', 500)).toBe('Có lỗi xảy ra khi kết nối · x: {}')
   })
+  it('malformed JSON that LOOKS like an object falls back to the raw string, not a crash', () => {
+    const body = '{not valid json'
+    expect(humanErrorDetail('x', body, 500)).toBe(`Có lỗi xảy ra khi kết nối · x: ${body}`)
+  })
+  it('a non-string, non-object error field (e.g. a bare number) yields no inner message', () => {
+    const body = JSON.stringify({ error: 42 })
+    expect(humanErrorDetail('x', body, 500)).toBe(`Có lỗi xảy ra khi kết nối · x: ${body}`)
+  })
 })

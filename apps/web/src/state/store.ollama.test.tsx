@@ -63,8 +63,11 @@ describe('store — dynamic ollama catalog (B6c)', () => {
     vi.mocked(listOllamaModels).mockClear()
     await act(async () => result.current.v.ollamaCatalog.pull('llama3.2'))
     // lifecycle finished: progress cleared, success toast, catalog re-asked
+    // (ollamaPull clear + toast set land in the same onDone tick, but under
+    // coverage instrumentation the two set() calls can surface across two
+    // separate render passes — wait for the toast itself too, not just pull)
     await waitFor(() => expect(result.current.s.ollamaPull).toBeNull())
-    expect(result.current.s.toast).toContain('llama3.2')
+    await waitFor(() => expect(result.current.s.toast).toContain('llama3.2'))
     expect(listOllamaModels).toHaveBeenCalledTimes(1)
     expect(pullOllamaModel).toHaveBeenCalledWith(
       expect.objectContaining({ credential: 'http://localhost:11434' }),
