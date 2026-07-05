@@ -574,7 +574,9 @@ describe('store — labels are unified (advanced no longer rebrands them)', () =
     const { result } = await setup()
     await act(async () => result.current.set({ advanced: true, activeSlot: 'fast' }))
     expect(result.current.v.bashLabel).toBe('Chạy lệnh')
-    expect(result.current.v.tokenLabel).toBe('còn 58%')
+    // fixture conversation carries no usage yet — 100% of the fast slot's
+    // (claude-haiku-4-5, 200k ctx) window is still free
+    expect(result.current.v.tokenLabel).toBe('còn 100%')
     expect(result.current.v.meterLabel).toBe('bộ nhớ')
     expect(result.current.v.modelMenuLabel).toBe('CHẾ ĐỘ TRỢ LÝ')
     expect(result.current.v.modelADesc).toBe('Trả lời sâu, cân nhắc kỹ')

@@ -324,7 +324,10 @@ function initialState(): NovaState {
     typingLabel: i18n.t('chat.thinkingLabel'),
     barOn: p.barOn ?? true,
     copied: false,
-    tokenPct: '42%',
+    // placeholder only — nothing reads this raw field directly; the real,
+    // rendered value is always recomputed in the derived VM below from actual
+    // usage vs. the active model's context window
+    tokenPct: '0%',
     profiles: p.profiles ?? { claude: [], gemini: [], openai: [], ollama: [] },
     autoRotate: p.autoRotate ?? true,
     stickyProfile: p.stickyProfile ?? {},
@@ -1950,6 +1953,13 @@ function deriveValues(
     usageOut += u.outputTokens
     usageCost += costOf(u)
   }
+  // % of the ACTIVE model's real context window used so far — the single
+  // source both the meter bar (fills as this grows) and its label (reads the
+  // complement, "remaining") derive from; never two independently-stated numbers
+  const usedPct = Math.min(
+    98,
+    Math.round(((usageIn + usageOut) / (findModel(s.slots[s.activeSlot]).ctx || 200_000)) * 100),
+  )
 
   // all-time totals per auth profile (every thread, every version) — shown in
   // Settings so the user sees what each profile has consumed — plus a
@@ -2954,16 +2964,26 @@ function deriveValues(
     activeCount,
     // real context indicator: this conversation's tokens against the ACTIVE
     // model's actual window (1M/200k/…) — honest numerator AND denominator.
-    // Dynamic models without a known window fall back to 200k.
-    tokenPct: `${Math.min(98, Math.round(((usageIn + usageOut) / (findModel(s.slots[s.activeSlot]).ctx || 200_000)) * 100))}%`,
-    tokenLabel: t('meter.tokenLabel'),
-    tokenDetail: usageIn + usageOut > 0
-      ? t('meter.usageDetail', {
-          inTok: fmtTokens(usageIn),
-          outTok: fmtTokens(usageOut),
-          cost: usageCost === 0 ? t('meter.costFree') : fmtCost(usageCost),
-        })
-      : t('meter.tokenDetail'),
+    // Dynamic models without a known window fall back to 200k. usedPct drives
+    // the bar's fill (grows with usage); the label reads the complementary
+    // REMAINING share, so both must derive from the SAME number — a second
+    // hardcoded string here is exactly the bug that shipped before ("58% left"
+    // never moved because it was a literal, not a computed value).
+    tokenPct: `${usedPct}%`,
+    tokenLabel: t('meter.tokenLabel', { pct: 100 - usedPct }),
+    tokenDetail: t('meter.usageDetail', {
+      inTok: fmtTokens(usageIn),
+      outTok: fmtTokens(usageOut),
+      // zero usage reads as "nothing spent yet" — NEVER "(Account)", which
+      // would falsely claim the reason is a subscription profile even when
+      // the active profile is a paid API key that simply hasn't been used
+      cost:
+        usageIn + usageOut === 0
+          ? t('meter.costNone')
+          : usageCost === 0
+            ? t('meter.costFree')
+            : fmtCost(usageCost),
+    }),
     copyLabel: s.copied ? t('common.copied') : t('common.copy'),
     copied: s.copied,
     quietClock: new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),

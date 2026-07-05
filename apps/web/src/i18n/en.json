@@ -217,10 +217,10 @@
   },
   "meter": {
     "label": "memory",
-    "tokenLabel": "58% left",
-    "tokenDetail": "84k / 200k tokens · 58% left",
+    "tokenLabel": "{{pct}}% left",
     "usageDetail": "{{inTok}} in · {{outTok}} out · {{cost}}",
-    "costFree": "free (Account)"
+    "costFree": "free (Account)",
+    "costNone": "nothing spent yet"
   },
   "topbar": {
     "focus": "Focus"

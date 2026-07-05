@@ -216,10 +216,10 @@
   },
   "meter": {
     "label": "bộ nhớ",
-    "tokenLabel": "còn 58%",
-    "tokenDetail": "84k / 200k token · còn 58%",
+    "tokenLabel": "còn {{pct}}%",
     "usageDetail": "{{inTok}} vào · {{outTok}} ra · {{cost}}",
-    "costFree": "miễn phí (Tài khoản)"
+    "costFree": "miễn phí (Tài khoản)",
+    "costNone": "chưa tốn phí"
   },
   "topbar": {
     "focus": "Tập trung"

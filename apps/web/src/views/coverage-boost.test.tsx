@@ -49,10 +49,12 @@ describe('preview — uploaded image (object URL)', () => {
 
 describe('top bar — token detail disclosure', () => {
   it('exposes the exact token count on the meter and reveals it on focus', async () => {
+    // the showcase conversation carries no usage yet — the meter must show
+    // the REAL zero, never a placeholder-shaped fake count
     await renderApp()
-    const meter = await screen.findByRole('button', { name: /84k \/ 200k token/ })
+    const meter = await screen.findByRole('button', { name: /0 vào · 0 ra/ })
     expect(meter).toBeInTheDocument()
     meter.focus()
-    expect(await screen.findByText('84k / 200k token · còn 58%')).toBeInTheDocument()
+    expect(await screen.findByText('0 vào · 0 ra · chưa tốn phí')).toBeInTheDocument()
   })
 })
