@@ -23,11 +23,9 @@ import {
   type ModelRef,
   type PresetId,
   type ProfileKind,
-  type ProviderId,
   type SlotId,
 } from '../data/defs'
 import type {
-  AuthProfile,
   Block,
   Message,
   MsgAttachment,
@@ -43,7 +41,7 @@ import {
   exportMarkdown,
   groupConvs,
 } from './organize'
-import { loadPersisted, PERSIST_KEY } from './persist'
+import { PERSIST_KEY } from './persist'
 import { HAS_API, streamChat } from '../services/llm'
 import {
   changePassword as changePasswordApi,
@@ -64,15 +62,6 @@ import { TOKEN_KEY } from '../services/token'
 import { generateTitle } from '../services/title'
 import { MAX_FILES, deleteFile, rejectUpload, uploadFile } from '../services/upload'
 import { createShare, revokeShare } from '../services/share'
-import {
-  addCredential,
-  deleteCredential,
-  listCredentials,
-  patchCredential,
-  pingCredential,
-  type ServerCredential,
-} from '../services/credentials'
-import { fetchMonthUsage } from '../services/usage'
 import { humanErrorDetail } from '../services/errors'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
@@ -103,13 +92,13 @@ import {
 } from './store-helpers'
 import { useOllamaActions } from './ollama-actions'
 import { useSyncEngine, __resetSync } from './sync-engine'
+import { useAccountHydration } from './account-hydration'
+import { createCredentialActions } from './credential-actions'
+import { createProjectActions } from './project-actions'
 
 export { HOME_TRAY, __resetSync }
 
 type Navigate = ReturnType<typeof useNavigate>
-
-// BE3: login also re-hydrates the server-side credential list
-let triggerCredHydrate: (() => void) | null = null
 
 /** debounce for the assistant-name server PATCH (see setAssistantName) */
 let nameSaveTimer: ReturnType<typeof setTimeout> | undefined
@@ -184,133 +173,9 @@ export function StoreProvider({
     }
   }, [set])
 
-  // BE3: real mode reads provider credentials from the server (sealed BYOK).
-  // The first hydration MIGRATES any client-held real profiles up once — the
-  // secret leaves the browser one last time, then only hints remain.
-  const hydrateCredentials = useCallback(async () => {
-    if (!HAS_API || !getToken()) return
-    let rows = await listCredentials()
-    if (!rows) return
-    if (rows.length === 0) {
-      const local = sRef.current.profiles
-      let migrated = false
-      for (const pid of Object.keys(local) as ProviderId[]) {
-        for (const f of local[pid] ?? []) {
-          if (!f.server && f.credential.trim()) {
-            await addCredential(pid, f.kind, f.name, f.credential)
-            migrated = true
-          }
-        }
-      }
-      if (migrated) rows = (await listCredentials()) ?? []
-    }
-    const fromServer = (r: ServerCredential): AuthProfile => ({
-      id: r.id,
-      name: r.name,
-      kind: r.kind,
-      credential: r.hint,
-      status: r.status,
-      server: true,
-    })
-    const profiles: NovaState['profiles'] = { claude: [], gemini: [], openai: [], ollama: [] }
-    for (const r of rows) profiles[r.providerId]?.push(fromServer(r))
-    set({ profiles })
-  }, [set])
-
-  // Social OAuth lands with a fresh token but NOTHING persisted about the
-  // account — boot resolves the session user once and adopts it (and heals
-  // stale info for every login kind). Mirrors submitAuth's account guard.
-  const hydrateUser = useCallback(async () => {
-    if (!HAS_API || !getToken()) return
-    const me = await fetchMe()
-    if (!me) return
-    const prev = sRef.current
-    if (prev.accountId && prev.accountId !== me.id) {
-      // a DIFFERENT account used this device — never mix two users' local data
-      try {
-        localStorage.removeItem(PERSIST_KEY)
-      } catch {
-        /* ignore */
-      }
-      __resetSync()
-      set(() => ({
-        ...initialState(),
-        accountId: me.id,
-        userName: me.name,
-        userEmail: me.email,
-        ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-        hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
-      }))
-    } else {
-      set({
-        accountId: me.id,
-        userName: me.name,
-        userEmail: me.email,
-        ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-        hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
-      })
-    }
-  }, [set])
-
-  /** adopt a signed-in profile into local state — resets the device when a
-   *  DIFFERENT account was here before (never mix two users' local data) */
-  const adoptAccount = useCallback(
-    (me: SessionUser) => {
-      const persisted = loadPersisted()
-      if (persisted.accountId && persisted.accountId !== me.id) {
-        try {
-          localStorage.removeItem(PERSIST_KEY)
-        } catch {
-          /* ignore */
-        }
-        __resetSync()
-        set(() => ({
-          ...initialState(),
-          accountId: me.id,
-          userName: me.name,
-          userEmail: me.email,
-          ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-          hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
-        }))
-      } else {
-        set({
-          accountId: me.id,
-          userName: me.name,
-          userEmail: me.email,
-          ...(me.assistantName ? { assistantName: me.assistantName } : {}),
-          hasPassword: me.hasPassword ?? false, emailVerified: me.emailVerified ?? false,
-        })
-      }
-    },
-    [set],
-  )
+  const { adoptAccount, hydrateAfterLogin } = useAccountHydration(sRef, set)
 
   const { hydrateOllama, pullOllama } = useOllamaActions(s.profiles.ollama, sRef, set)
-
-  // T8: real mode also pulls the server-side month usage roll-up — the
-  // Settings meter then reflects EVERY device, not just this one's threads
-  const hydrateUsage = useCallback(async () => {
-    if (!HAS_API || !getToken()) return
-    const rows = await fetchMonthUsage()
-    if (rows) set({ serverUsage: rows })
-  }, [set])
-
-  useEffect(() => {
-    triggerCredHydrate = () => {
-      void hydrateCredentials()
-      void hydrateUsage()
-    }
-    // microtask: runs right after this commit (deterministic, unlike a
-    // setTimeout macrotask) so the async hydrate never sets state mid-render
-    queueMicrotask(() => {
-      void hydrateUser()
-      void hydrateCredentials()
-      void hydrateUsage()
-    })
-    return () => {
-      triggerCredHydrate = null
-    }
-  }, [hydrateCredentials, hydrateUsage, hydrateUser])
 
 
 
@@ -1274,8 +1139,9 @@ export function StoreProvider({
         ollamaRefresh: hydrateOllama,
         ollamaPullStart: pullOllama,
         hydrateSync,
+        hydrateAfterLogin,
       }),
-    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama, hydrateSync],
+    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama, hydrateSync, hydrateAfterLogin],
   )
 
   const store: Store = useMemo(
@@ -1319,6 +1185,7 @@ function deriveValues(
     ollamaRefresh: () => Promise<void>
     ollamaPullStart: (model: string) => void
     hydrateSync: () => () => void
+    hydrateAfterLogin: () => void
   },
 ) {
   const {
@@ -1327,6 +1194,7 @@ function deriveValues(
     ollamaRefresh,
     ollamaPullStart,
     hydrateSync,
+    hydrateAfterLogin,
     send,
     stop,
     copyCode,
@@ -1363,78 +1231,16 @@ function deriveValues(
   const currentProjectName = viewProject?.name ?? t('projects.defaultName')
 
   // ----- project CRUD (fake store — no backend) -----
-  const createProject = (name: string, description: string, accent?: string) => {
-    const id = uid()
-    set((x) => ({
-      projects: [
-        ...x.projects,
-        {
-          id,
-          name,
-          description,
-          accent: accent ?? ACCENT_DEFAULT,
-          presets: { ...x.presetDefault },
-          files: [],
-        },
-      ],
-    }))
-    goTo('/projects/$projectId', { projectId: id })
-  }
-  const editProject = (id: string, patch: { name?: string; description?: string; accent?: string }) =>
-    set((x) => ({ projects: x.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
-  const addProjectFile = (projectId: string, file: File) => {
-    const { kind, size, url } = describeUpload(file)
-    const item = { id: uid(), kind, name: file.name, meta: size, url }
-    set((x) => ({
-      projects: x.projects.map((p) =>
-        p.id === projectId ? { ...p, files: [...(p.files ?? []), item] } : p,
-      ),
-    }))
-  }
-  const removeProjectFile = (projectId: string, fileId: string) =>
-    set((x) => ({
-      projects: x.projects.map((p) =>
-        p.id === projectId
-          ? { ...p, files: (p.files ?? []).filter((f) => f.id !== fileId) }
-          : p,
-      ),
-    }))
-  const deleteProject = (id: string) => {
-    set((x) => ({
-      projects: x.projects.filter((p) => p.id !== id),
-      // never orphan conversations — reassign them to the default project
-      conversations: x.conversations.map((c) =>
-        c.projectId === id ? { ...c, projectId: 'chung' } : c,
-      ),
-    }))
-    goTo('/projects')
-  }
-  const moveConv = (convId: string, projectId: string) =>
-    set((x) => ({
-      conversations: x.conversations.map((c) => (c.id === convId ? { ...c, projectId } : c)),
-    }))
-  const toggleProjectPreset = (projectId: string, pid: PresetId) =>
-    set((x) => ({
-      projects: x.projects.map((p) =>
-        p.id === projectId ? { ...p, presets: { ...p.presets, [pid]: !p.presets[pid] } } : p,
-      ),
-    }))
-  const startChat = (projectId: string) => {
-    // a conversation is born on the FIRST MESSAGE, not on intent — “new chat”
-    // only opens the home composer scoped to the project, so empty Untitled
-    // rows never pile up in the sidebar
-    set({
-      homeProject: projectId,
-      respState: 'done',
-      errorDetail: null,
-      errorRequestId: null,
-      errorAction: null,
-      errorConv: null,
-      palette: false,
-      drawerOpen: false,
-    })
-    goTo('/new')
-  }
+  const {
+    createProject,
+    editProject,
+    addProjectFile,
+    removeProjectFile,
+    deleteProject,
+    moveConv,
+    toggleProjectPreset,
+    startChat,
+  } = createProjectActions(set, goTo)
 
   const sortConvs = (list: NovaState['conversations']) =>
     [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
@@ -1685,124 +1491,7 @@ function deriveValues(
   // — auth profiles: ordered by rotation priority within each provider —
   const setSlot = (slot: SlotId, refM: ModelRef) =>
     set((x) => ({ slots: { ...x.slots, [slot]: refM } }))
-  const addProfile = (providerId: ProviderId, kind: ProfileKind, name: string, credential: string) => {
-    const fallbackName = kind === 'account' ? t('settings.kindAccount') : t('settings.kindApiKey')
-    // real mode with a session seals the credential server-side — the browser
-    // keeps only the returned hint
-    if (HAS_API && getToken()) {
-      void addCredential(providerId, kind, name.trim() || fallbackName, credential.trim()).then(
-        (row) => {
-          if (!row) return
-          set((x) => ({
-            profiles: {
-              ...x.profiles,
-              [providerId]: [
-                ...(x.profiles[providerId] ?? []),
-                {
-                  id: row.id,
-                  name: row.name,
-                  kind: row.kind,
-                  credential: row.hint,
-                  status: row.status,
-                  server: true,
-                } satisfies AuthProfile,
-              ],
-            },
-          }))
-        },
-      )
-      return
-    }
-    const prof: AuthProfile = {
-      id: uid(),
-      name: name.trim() || fallbackName,
-      kind,
-      credential: credential.trim(),
-      status: 'untested',
-    }
-    set((x) => ({
-      profiles: { ...x.profiles, [providerId]: [...(x.profiles[providerId] ?? []), prof] },
-    }))
-  }
-
-  const removeProfile = (providerId: ProviderId, profileId: string) => {
-    const row = s.profiles[providerId]?.find((f) => f.id === profileId)
-    if (row?.server) void deleteCredential(profileId) // optimistic — list re-syncs on next boot
-    return set((x) => {
-      const sticky = { ...x.stickyProfile }
-      if (sticky[providerId] === profileId) delete sticky[providerId]
-      return {
-        profiles: {
-          ...x.profiles,
-          [providerId]: (x.profiles[providerId] ?? []).filter((f) => f.id !== profileId),
-        },
-        stickyProfile: sticky,
-      }
-    })
-  }
-  const moveProfile = (providerId: ProviderId, profileId: string, delta: -1 | 1) =>
-    set((x) => {
-      const list = [...(x.profiles[providerId] ?? [])]
-      const i = list.findIndex((f) => f.id === profileId)
-      const j = i + delta
-      if (i < 0 || j < 0 || j >= list.length) return {}
-      ;[list[i], list[j]] = [list[j], list[i]]
-      // server-backed rows persist the new rotation order (priority = index)
-      list.forEach((f, idx) => {
-        if (f.server) void patchCredential(f.id, { priority: idx })
-      })
-      return { profiles: { ...x.profiles, [providerId]: list } }
-    })
-  const testProfile = (providerId: ProviderId, profileId: string) => {
-    // a server-backed credential gets a REAL probe: a 1-token chat through
-    // the stored id against the provider's cheapest model
-    const row = s.profiles[providerId]?.find((f) => f.id === profileId)
-    if (row?.server && HAS_API) {
-      set({ testingProfile: profileId })
-      const model = findProvider(providerId).models.at(-1)?.id ?? ''
-      void pingCredential(profileId, providerId, model).then(({ status, detail, code, httpStatus }) => {
-        void patchCredential(profileId, { status })
-        set((x) => ({
-          testingProfile: null,
-          // the failure REASON stays visible under the row, in plain words
-          // (technical tail kept small) — “Thất bại” without a why is a dead end
-          testDetail:
-            status === 'active' || !detail
-              ? null
-              : { id: profileId, msg: humanErrorDetail(code ?? 'error', detail, httpStatus) },
-          profiles: {
-            ...x.profiles,
-            [providerId]: (x.profiles[providerId] ?? []).map((f) =>
-              f.id === profileId ? { ...f, status, limitedUntil: undefined } : f,
-            ),
-          },
-        }))
-      })
-      return
-    }
-    set({ testingProfile: profileId })
-    setTimeout(() => {
-      set((x) => ({
-        testingProfile: null,
-        profiles: {
-          ...x.profiles,
-          [providerId]: (x.profiles[providerId] ?? []).map((f) =>
-            f.id === profileId
-              ? {
-                  ...f,
-                  // fake check: accounts always connect; keys need plausible length
-                  status:
-                    f.kind === 'account' || f.credential.trim().length > 4
-                      ? ('active' as const)
-                      : ('error' as const),
-                  limitedUntil: undefined,
-                }
-              : f,
-          ),
-        },
-      }))
-    }, 900)
-  }
+  const { addProfile, removeProfile, moveProfile, testProfile } = createCredentialActions(s, set, t)
   const providers = provDefs.map((p) => {
     const profs = s.profiles[p.id] ?? []
     const current = pickProfile(profs, s.stickyProfile[p.id], s.autoRotate)
@@ -2291,7 +1980,7 @@ function deriveValues(
       if (me) adoptAccount(me)
       // start syncing this user's op-log immediately — no reload needed
       hydrateSync()
-      triggerCredHydrate?.()
+      hydrateAfterLogin()
       // onboarding is keyed on assistantName, NOT the signup/login branch: a
       // user who abandoned onboarding (name still null) must be RESUMED into
       // it on their next email login, exactly as social login already does
@@ -2311,7 +2000,7 @@ function deriveValues(
       const me = await fetchMe()
       if (me) adoptAccount(me)
       hydrateSync()
-      triggerCredHydrate?.()
+      hydrateAfterLogin()
       // a first-ever social account has no assistant name yet — onboarding
       navigate(me && me.assistantName === null ? { to: '/onboarding' } : { to: '/' })
       return null
