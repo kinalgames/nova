@@ -1,8 +1,74 @@
-# Session handoff — 2026-07-07 (citations native, round-2 UI fixes, store.tsx architecture refactor)
+# Session handoff — 2026-07-07 (responsive/hardcode audit, citations native, round-2 UI fixes, store.tsx architecture refactor)
 
 Đọc file này ĐẦU TIÊN ở session kế. Section mới nhất ở trên cùng; các section cũ
 (2026-07-05 trở xuống) vẫn còn giá trị lịch sử/cảnh báo (đặc biệt phần Gemini
 OAuth đã gỡ bỏ — ĐỪNG tái xây).
+
+## Phiên 2026-07-07 (tiếp) — audit toàn diện hardcode + đồng bộ responsive PC/tablet/mobile
+
+commit `45121dd`, deployed dev + production, verified live (CSS bundle qua
+curl + real-browser Playwright computed-style check against the exact
+deployed `dist/` via `vite preview`, 4 viewport widths straddling the
+breakpoint: 375/800/960/1280).
+
+**Root cause found**: cả app dùng MỘT breakpoint nhị phân JS
+(`isMobile = s.vw < 880` trong `deriveValues`, `state/store.tsx`) điều khiển
+7 cặp giá trị inline-style (`heroSize/pageTitle/homePad/convPad/pagePad/
+sugCols/paletteTop`) — không có tầng CSS thật, Tailwind không thấy được
+quyết định layout này nên không thể có tầng "tablet" riêng, chỉ mobile/
+desktop nhị phân. Đây khớp đúng complaint gốc của user.
+
+**Fix**: thêm named breakpoint Tailwind v4 `--breakpoint-desktop: 55rem`
+(= 880px, GIỮ NGUYÊN threshold cũ, zero behavior change) vào `index.css`
+(`@theme` block riêng, tách khỏi `@theme inline` vì breakpoint là giá trị
+tĩnh không dùng `var()`). Migrate cả 7 giá trị sang class thật:
+`text-[Npx] desktop:text-[Npx]`, `p-[…] desktop:p-[…]`, `grid-cols-1
+desktop:grid-cols-2`, `top-[7%] desktop:top-[20%]` — trong 6 file consumer
+(`CommandPalette.tsx`, `HomeView.tsx`, `ConversationView.tsx`,
+`ProjectConfigView.tsx`, `ProjectView.tsx`, `ProjectsView.tsx`). Xoá 7 field
+chết khỏi VM.
+
+**Đã audit và XÁC NHẬN legitimate (không phải bug, không đổi)**:
+Sidebar rail vs MobileDrawer, TopBar hamburger, SettingsDialog layout đều
+dùng `v.isMobile`/`v.isDesktop`/`v.showSidebar` để MOUNT/UNMOUNT toàn bộ
+cây component khác nhau theo form factor — đây là structural React pattern
+đúng đắn (không thể biểu diễn bằng CSS `hidden`/`block` vì sẽ để lại
+interactive element chết trong tab order), KHÔNG migrate.
+
+**Fix phụ (cùng đợt audit)**:
+- Gộp 2 gradient hardcode lặp 3 lần (avatar, image-placeholder) thành
+  token `--gradient-avatar`/`--gradient-image-placeholder` trong
+  `index.css`. Ở 2 chỗ gradient là MỘT NHÁNH của toggle runtime (`src ?
+  url(...) : gradient` — `Composer.tsx` StagedItem, `MessageView.tsx`
+  ImageTile), nhánh gradient giờ là Tailwind class tĩnh, nhánh url() vẫn
+  inline style — đúng nguyên tắc "tĩnh → class, động → inline style", và
+  tránh được 1 jsdom quirk: cập nhật `style.background` rời khỏi giá trị
+  chứa `var()` sang giá trị khác không phản ánh vào DOM trong test env
+  (unit test `MessageView.test.tsx`/`Composer.test.tsx` từng fail vì lý
+  do này khi gradient còn ở dạng inline-style ternary chứa `var()`).
+- Thêm `max-w-[90vw]` cho 2 HoverCard.Content cỡ cố định (`CitationMark.tsx`,
+  `MessageView.tsx` SourcesBlock) — Radix chỉ tự đổi VỊ TRÍ theo
+  collision, không tự co KÍCH THƯỚC, nên trên điện thoại hẹp content có
+  thể tràn viewport.
+
+**Gate**: typecheck/lint (0 error, 7 warning cũ) clean; unit 58 files pass;
+coverage 96.16/90.31/96.35/97.92 (floor 95/90/94/96); build clean; e2e
+26/26 (kể cả mobile-viewport suite).
+
+**Lưu ý cho phiên sau — 1 vulnerability pre-existing, KHÔNG liên quan đợt
+này**: `npm audit` báo 4 moderate qua `esbuild` (dev-server only) ←
+`drizzle-kit` (CLI migration tool, KHÔNG chạy trong Worker runtime, chỉ
+dùng lúc dev/build cục bộ) — fix cần `npm audit fix --force` hạ cấp
+`drizzle-kit` (breaking change), CHƯA làm, cần user quyết định trước khi
+touch.
+
+**Audit coi như ĐỦ cho đợt này** — đã quét: hardcoded hex colors (chỉ còn
+Google logo SVG, hợp lệ — brand mark chính thức), rgba() overlays (hợp lệ,
+theme-independent by design), z-index ladder (khớp tài liệu), hardcoded UI
+strings bypass i18n (KHÔNG có), fixed-width container thiếu `max-w`
+safety (2 chỗ tìm thấy + fix), responsive breakpoint (root cause tìm thấy
++ fix). Nếu phát hiện thêm điểm hardcode khác ở phiên sau, tiếp tục theo
+cùng kỷ luật: audit → fix → gate → deploy → verify live → doc.
 
 ## Phiên 2026-07-07 — citations native + round-2 UI fixes + refactor store.tsx
 
