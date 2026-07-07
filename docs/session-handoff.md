@@ -1,7 +1,86 @@
-# Session handoff — 2026-07-05 (AI Gateway, prompt caching, Gemini OAuth: shipped THEN removed, trace UI redesign)
+# Session handoff — 2026-07-07 (citations native, round-2 UI fixes, store.tsx architecture refactor)
 
-Đọc file này ĐẦU TIÊN ở session kế. Trạng thái repo, quyết định đã chốt,
-TODO theo thứ tự, và bẫy đã cắn.
+Đọc file này ĐẦU TIÊN ở session kế. Section mới nhất ở trên cùng; các section cũ
+(2026-07-05 trở xuống) vẫn còn giá trị lịch sử/cảnh báo (đặc biệt phần Gemini
+OAuth đã gỡ bỏ — ĐỪNG tái xây).
+
+## Phiên 2026-07-07 — citations native + round-2 UI fixes + refactor store.tsx
+
+**1. Round 2 UI fixes** (theo phản hồi trực tiếp của user, đã deploy commit
+`6c322a2` + `b311756`): done-step không hiện khi chain thiếu lead-text (tách
+điều kiện `doneEligible` độc lập với `isChain`), chain summary dài tới 5
+dòng (cap `LEAD_MAX=120`, không bao giờ truncate nội dung thật — chỉ đổi
+cách hiển thị), duplicate "Nova Nova đang suy nghĩ" (i18n key tự chứa chữ
+"Nova"), sidebar thiếu bg cho active conv (`bg: isActive ? 'var(--hover-1)' :
+'transparent'`), **logo tự vẽ SVG lạ đã REVERT** về dùng lại crescent-mark
+CSS có sẵn (component `NovaMark`, tái sử dụng pattern đã tồn tại ở
+Sidebar/MobileDrawer/Auth.tsx trước khi redesign), **font "xấu, khó đọc,
+quá to" đã fix**: Geist Sans thiếu nguyên âm có dấu tiếng Việt → fallback
+PER-GLYPH sang Inter giữa chừng câu (trộn 2 font trong 1 từ) — đã chuyển
+hẳn sang Inter làm font chính (bỏ Geist Sans), cỡ chữ reply riêng biệt
+`--text-reply` (không dùng chung `--text-lead` với composer/tagline nữa) hiện
+**14px** (đã qua 2 vòng chỉnh: 18→13→14 theo phản hồi trực tiếp).
+
+**2. Citations native — SHIPPED** (commit `5fe8916`): thay vì dạy model
+cite theo format `[N]` rồi tự regex-parse (bị REJECT ngay khi thiết kế —
+user: "trích dẫn là tính năng built in của model"), dùng đúng cơ chế NATIVE
+của từng provider:
+- Anthropic: `citations_delta` (`delta.citation.cited_text` verbatim, không
+  cần offset — adapter tự định vị bằng forward-search cursor trong block).
+- OpenAI: `response.output_text.annotation.added`'s `start_index/end_index`
+  (field đã có sẵn upstream nhưng chưa capture — giờ đã thêm vào type).
+- Gemini: `groundingMetadata.groundingSupports[]` map qua index GỐC của
+  `groundingChunks` (một chunk thiếu uri bị skip mà KHÔNG lệch số thứ tự
+  đã dùng cho sources).
+
+Contract chung mới trong `packages/ai/src/shared.ts`: event `citation` với
+`citeStart/citeEnd` (offset vào MỘT dòng text liên tục tích lũy từ
+`block_delta` cả turn), `citeSource` (khớp `NovaSource.n`), `citeText`
+(verbatim khi provider gửi kèm). Client: `state/store.tsx` remap offset khi
+text thật hiển thị khác với raw stream (chain mode drop lead-in); remark
+plugin mới `services/remarkCitations.ts` tách text node thành
+[before, cited-span, marker, after] — cited text LUÔN giữ nguyên vẹn, marker
+chỉ là footnote thêm sau, KHÔNG bao giờ thay thế nội dung; span chéo
+formatting boundary (ví dụ **bold**) bị bỏ qua thay vì split sai.
+`components/CitationMark.tsx` hiện popover (favicon+title+host+quote) qua
+`@radix-ui/react-hover-card` (pattern đã có sẵn ở TopBar.tsx). Sources block
+gộp từ chip rải rác thành 1 trigger "N nguồn". Favicon qua proxy
+`apps/api/src/favicon.ts` (Cache API, KHÔNG KV — zero-provisioning),
+sessionless (img tag không mang bearer token được).
+
+**3. Refactor kiến trúc `state/store.tsx`** (user phát hiện: "code không có
+cấu trúc nào cả, 1 file dài vài ngàn dòng" — đúng, xác minh qua `wc -l`:
+3058 dòng, gấp ~3.5 lần file lớn thứ nhì). Đã tách **8 module** (commit
+`21184c2` → `b42aac6`), **store.tsx còn 2166 dòng (-29%)**:
+
+| Module | Nội dung |
+|---|---|
+| `state/store-helpers.ts` | Pure helpers: init state, persist, routing, format, showToast, abortedUploads |
+| `state/ollama-actions.ts` | `useOllamaActions` — catalog + pull |
+| `state/sync-engine.ts` | `useSyncEngine` — persist+push+pull+WebSocket multi-device |
+| `state/account-hydration.ts` | `useAccountHydration` — credentials/user/usage boot khi login |
+| `state/credential-actions.ts` | `createCredentialActions` — CRUD hồ sơ provider |
+| `state/project-actions.ts` | `createProjectActions` — CRUD project |
+| `state/conversation-delete.ts` | `useConversationDelete` — xóa/undo conv |
+| `state/usage-meter.ts` | `computeUsageMeter` — pure, cost/usage accounting |
+
+**Cố ý DỪNG LẠI** (không phải bỏ sót): Settings/model VM và sidebar/routing
+VM vẫn nằm trong `deriveValues` — khác 8 module trên (là ACTIONS có ranh
+giới rõ), 2 phần này là VM-DERIVATION đan xen chặt với hàng chục biến cục
+bộ chia sẻ khác trong `deriveValues` (`accent`, `viewProject`, `t`...) — tách
+tiếp cần truyền 8-10 tham số/hàm, rủi ro cao hơn lợi ích. User đã xác nhận
+dừng ở đây qua AskUser.
+
+**Gotcha mới**: ESLint rule `react-hooks/immutability` (React Compiler-era)
+báo lỗi CỨNG khi mutate `.current` của 1 ref TRUYỀN VÀO từ tham số (thay vì
+được tạo bằng `useRef` NGAY trong hàm mutate nó) — gặp khi tách
+`conversation-delete.ts` (`delTimers`). Fix: hook tự `useRef` riêng + cleanup
+effect riêng, không chia sẻ ref với component cha. Đã lưu ability
+`react-ref-ownership-lint` — xem trước khi tách hook hoặc bất kỳ hook nào cần ref.
+
+Verified: gate đầy đủ xanh sau MỖI bước tách (typecheck/lint/coverage
+96.16/90.35/96.35/97.92/build/e2e 26/26), đã deploy dev+prod, verify live qua
+CSS bundle + curl healthz.
 
 ## Trace timeline UI đã REDESIGN hoàn toàn (2026-07-05, sau chain-action)
 
