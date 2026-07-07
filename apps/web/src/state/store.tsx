@@ -73,9 +73,6 @@ import {
   type ServerCredential,
 } from '../services/credentials'
 import { fetchMonthUsage } from '../services/usage'
-import { pullOps, pushOps, startLiveSync, SYNC_SRC } from '../services/sync'
-import type { SyncOp } from '@nova/shared'
-import { diffRecords, fromRecords, toRecords, type SyncRecord } from './syncmap'
 import { humanErrorDetail } from '../services/errors'
 import { BUILD_ID, newerBuildAvailable, UPDATE_POLL_MS } from '../services/update'
 import {
@@ -83,7 +80,6 @@ import {
   appendChild,
   appendToLeaf,
   emptyThread,
-  sanitizeThreads,
   selectSibling,
   siblingInfo,
   updateMessage,
@@ -96,9 +92,7 @@ import {
   HOME_TRAY,
   fmtTokens,
   initialState,
-  mergeMirror,
   pathToView,
-  persistSliceOf,
   showToast as showToastShared,
   snapshotOfThread,
   stagedKeyOf,
@@ -108,31 +102,12 @@ import {
   type Updater,
 } from './store-helpers'
 import { useOllamaActions } from './ollama-actions'
+import { useSyncEngine, __resetSync } from './sync-engine'
 
-export { HOME_TRAY }
+export { HOME_TRAY, __resetSync }
 
 type Navigate = ReturnType<typeof useNavigate>
 
-// BE2 sync — module-level because there is a single store instance. `synced`
-// mirrors what the server holds so each persist push sends only the diff.
-let syncedRecords: SyncRecord[] | null = null
-let syncPushTimer: ReturnType<typeof setTimeout> | undefined
-// B7 — the op-log position this client has fully applied; frames whose
-// `from` matches apply in place, anything ahead triggers a delta pull
-let syncCursor = 0
-let syncPullInFlight = false
-const syncReady = () => Boolean(HAS_API && getToken())
-
-/** test-only: reset the module-level sync mirror between renders */
-export function __resetSync() {
-  syncedRecords = null
-  syncCursor = 0
-  syncPullInFlight = false
-  clearTimeout(syncPushTimer)
-}
-
-/** registered by the provider so login can start syncing WITHOUT a reload */
-let triggerSyncHydrate: (() => void) | null = null
 // BE3: login also re-hydrates the server-side credential list
 let triggerCredHydrate: (() => void) | null = null
 
@@ -193,57 +168,7 @@ export function StoreProvider({
     setS((prev) => ({ ...prev, ...(typeof u === 'function' ? u(prev) : u) }))
   }, [])
 
-  // persist a slice of settings
-  useEffect(() => {
-    // sRef (not s) so the dependency list stays the explicit persisted fields
-    const p = persistSliceOf(sRef.current)
-    try {
-      localStorage.setItem(PERSIST_KEY, JSON.stringify(p))
-    } catch {
-      /* ignore */
-    }
-    // BE2: mirror the change to the per-user op-log (debounced diff push).
-    // Only after the boot pull primed `syncedRecords` — never race hydration.
-    if (syncReady() && syncedRecords !== null) {
-      clearTimeout(syncPushTimer)
-      const snapshot = p
-      syncPushTimer = setTimeout(() => {
-        const next = toRecords(snapshot)
-        const ops = diffRecords(syncedRecords ?? [], next)
-        if (ops.length === 0) return
-        void pushOps(ops).then((seq) => {
-          if (seq !== null) {
-            syncedRecords = next
-            syncCursor = Math.max(syncCursor, seq)
-          }
-        })
-      }, 800)
-    }
-  }, [
-    s.theme,
-    s.advanced,
-    s.accent,
-    s.userName,
-    s.userEmail,
-    s.accountId,
-    s.assistantName,
-    s.focusDur,
-    s.barOn,
-    s.thinkingLevel,
-    s.activeSlot,
-    s.slots,
-    s.profiles,
-    s.autoRotate,
-    s.stickyProfile,
-    s.tools,
-    s.styles,
-    s.systemPrompt,
-    s.projects,
-    s.presetDefault,
-    s.conversations,
-    s.activeConv,
-    s.threads,
-  ])
+  const { hydrateSync } = useSyncEngine(s, sRef, set)
 
   // resize tracking — rAF-throttled so a drag-resize never storms re-renders
   useEffect(() => {
@@ -258,137 +183,6 @@ export function StoreProvider({
       window.removeEventListener('resize', onResize)
     }
   }, [set])
-
-  // B7 — merge a batch of remote ops into live state. The record MIRROR
-  // updates FIRST (synchronously): the persist-effect diffs against it, so a
-  // pre-updated mirror means the applied batch never echoes back up.
-  const applyRemoteOps = useCallback(
-    (ops: SyncOp[]) => {
-      if (ops.length === 0) return
-      syncedRecords = mergeMirror(syncedRecords, ops)
-      const puts = ops
-        .filter((o) => o.kind === 'put')
-        .map((o) => ({ table: o.table, id: o.id, value: o.value }))
-      const delConvs = new Set(
-        ops.filter((o) => o.kind === 'del' && o.table === 'conversation').map((o) => o.id),
-      )
-      const delThreads = new Set(
-        ops.filter((o) => o.kind === 'del' && o.table === 'thread').map((o) => o.id),
-      )
-      const delProjects = new Set(
-        ops.filter((o) => o.kind === 'del' && o.table === 'project').map((o) => o.id),
-      )
-      const slice = fromRecords(puts)
-      set((x) => {
-        const threads = { ...x.threads, ...(slice.threads ?? {}) }
-        for (const id of delConvs) delete threads[id]
-        for (const id of delThreads) delete threads[id]
-        return {
-          ...('theme' in slice ? { theme: slice.theme } : {}),
-          userName: slice.userName ?? x.userName,
-          userEmail: slice.userEmail ?? x.userEmail,
-          accountId: slice.accountId ?? x.accountId,
-          assistantName: slice.assistantName ?? x.assistantName,
-          activeSlot: slice.activeSlot ?? x.activeSlot,
-          slots: slice.slots ?? x.slots,
-          profiles: slice.profiles ?? x.profiles,
-          autoRotate: slice.autoRotate ?? x.autoRotate,
-          stickyProfile: slice.stickyProfile ?? x.stickyProfile,
-          styles: slice.styles ?? x.styles,
-          systemPrompt: slice.systemPrompt ?? x.systemPrompt,
-          tools: slice.tools ?? x.tools,
-          presetDefault: slice.presetDefault ?? x.presetDefault,
-          projects: (slice.projects ?? x.projects).filter((p) => !delProjects.has(p.id)),
-          conversations: (slice.conversations ?? x.conversations).filter(
-            (k) => !delConvs.has(k.id),
-          ),
-          threads: sanitizeThreads(threads),
-        }
-      })
-    },
-    [set],
-  )
-
-  // B7 — catch up from the cursor (single-flight; frames during the pull
-  // re-trigger via their own gap check)
-  const pullDelta = useCallback(() => {
-    if (syncPullInFlight) return
-    syncPullInFlight = true
-    void pullOps(syncCursor).then((res) => {
-      syncPullInFlight = false
-      if (!res) return
-      applyRemoteOps(res.ops)
-      syncCursor = Math.max(syncCursor, res.seq)
-    })
-  }, [applyRemoteOps])
-
-  // BE2: hydrate from the per-user op-log once a session exists. Server state
-  // wins for records it has; a fresh server gets the local data pushed up
-  // (that IS the localStorage import path).
-  const hydrateSync = useCallback(() => {
-    if (!syncReady()) return () => {}
-    let stop = false
-    void pullOps(0).then((res) => {
-      if (stop || !res) return
-      if (res.ops.length > 0) {
-        syncedRecords = []
-        applyRemoteOps(res.ops)
-        syncCursor = Math.max(syncCursor, res.seq)
-      } else {
-        // empty server → import everything local
-        const local = toRecords(persistSliceOf(sRef.current))
-        syncedRecords = []
-        void pushOps(diffRecords([], local)).then((seq) => {
-          if (seq !== null) {
-            syncedRecords = local
-            syncCursor = Math.max(syncCursor, seq)
-          }
-        })
-      }
-    })
-    return () => {
-      stop = true
-    }
-  }, [applyRemoteOps])
-
-  useEffect(() => {
-    triggerSyncHydrate = hydrateSync
-    const cancel = hydrateSync()
-    return () => {
-      triggerSyncHydrate = null
-      cancel()
-    }
-  }, [hydrateSync])
-
-  // B7 — live sync: one hibernating WebSocket to the user's DO. In-order
-  // frames apply directly; anything ahead of the cursor pulls the delta; our
-  // own pushes come back tagged src === SYNC_SRC and only advance the cursor.
-  useEffect(() => {
-    // start at MOUNT in any API-backed world: the manager itself waits for a
-    // token (gating on login-derived state here once left the socket dead —
-    // no dep changed after sign-in, so the effect never re-ran)
-    if (!HAS_API) return
-    return startLiveSync({
-      onFrame: (f) => {
-        if (f.type === 'hello') {
-          if (f.seq > syncCursor) pullDelta()
-          return
-        }
-        if (f.src === SYNC_SRC) {
-          if (f.from === syncCursor) syncCursor = f.seq
-          else if (f.seq > syncCursor) pullDelta()
-          return
-        }
-        if (f.from === syncCursor) {
-          applyRemoteOps(f.ops)
-          syncCursor = f.seq
-        } else if (f.seq > syncCursor) {
-          pullDelta()
-        }
-      },
-    })
-    // s.accountId: login/logout flips syncReady — reconnect under the new identity
-  }, [s.accountId, applyRemoteOps, pullDelta])
 
   // BE3: real mode reads provider credentials from the server (sealed BYOK).
   // The first hydration MIGRATES any client-held real profiles up once — the
@@ -1479,8 +1273,9 @@ export function StoreProvider({
         adoptAccount,
         ollamaRefresh: hydrateOllama,
         ollamaPullStart: pullOllama,
+        hydrateSync,
       }),
-    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama],
+    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama, hydrateSync],
   )
 
   const store: Store = useMemo(
@@ -1523,6 +1318,7 @@ function deriveValues(
     adoptAccount: (me: SessionUser) => void
     ollamaRefresh: () => Promise<void>
     ollamaPullStart: (model: string) => void
+    hydrateSync: () => () => void
   },
 ) {
   const {
@@ -1530,6 +1326,7 @@ function deriveValues(
     goTo,
     ollamaRefresh,
     ollamaPullStart,
+    hydrateSync,
     send,
     stop,
     copyCode,
@@ -2493,7 +2290,7 @@ function deriveValues(
       const me = await fetchMe()
       if (me) adoptAccount(me)
       // start syncing this user's op-log immediately — no reload needed
-      triggerSyncHydrate?.()
+      hydrateSync()
       triggerCredHydrate?.()
       // onboarding is keyed on assistantName, NOT the signup/login branch: a
       // user who abandoned onboarding (name still null) must be RESUMED into
@@ -2513,7 +2310,7 @@ function deriveValues(
       if (out !== 'ok') return out
       const me = await fetchMe()
       if (me) adoptAccount(me)
-      triggerSyncHydrate?.()
+      hydrateSync()
       triggerCredHydrate?.()
       // a first-ever social account has no assistant name yet — onboarding
       navigate(me && me.assistantName === null ? { to: '/onboarding' } : { to: '/' })
