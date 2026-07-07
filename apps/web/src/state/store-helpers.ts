@@ -20,6 +20,12 @@ import type { SyncOp } from '@nova/shared'
 
 export const ACCENT_DEFAULT = 'var(--accent)'
 
+/** tray items removed while their upload was still in flight — when the
+ *  upload lands, its fresh server file is garbage and gets deleted (module
+ *  set: immune to React state-commit timing). Shared across the upload,
+ *  conversation-delete, and project-file-remove call sites. */
+export const abortedUploads = new Set<string>()
+
 /** staged-attachments bucket for the Home composer — Home gets its own tray
  * so a brand-new chat never inherits another conversation's files */
 export const HOME_TRAY = '__home__'
