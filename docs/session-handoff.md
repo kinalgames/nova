@@ -1,8 +1,62 @@
-# Session handoff — 2026-07-07 (responsive/hardcode audit, citations native, round-2 UI fixes, store.tsx architecture refactor)
+# Session handoff — 2026-07-07 (perf: message re-render fix, dialog close-button audit, responsive/hardcode audit, citations native, round-2 UI fixes, store.tsx architecture refactor)
 
 Đọc file này ĐẦU TIÊN ở session kế. Section mới nhất ở trên cùng; các section cũ
 (2026-07-05 trở xuống) vẫn còn giá trị lịch sử/cảnh báo (đặc biệt phần Gemini
 OAuth đã gỡ bỏ — ĐỪNG tái xây).
+
+## Phiên 2026-07-07 (tiếp nữa) — fix perf: message bubbles re-render trên mọi token stream
+
+User báo "scroll, layout, perf, nháy/giật ui, nút close, giao diện dialog" cần
+soát + fix hết. Đã xử lý 2 việc, commit `69bdb81` + `efa9553`, deploy dev+prod:
+
+**1. `CheatsheetDialog` thiếu nút close** — dialog DUY NHẤT trong app không có nút
+X (chỉ đóng qua Esc/tap-ra-ngoài, cả hai đều vô hình, Esc không tồn tại trên
+cảm ứng). Đã thêm nút X giống mọi dialog khác.
+
+**2. ROOT CAUSE perf/jank thật (không phải đoán)**: toàn app dùng MỘT React
+Context (`Ctx` trong `state/store.tsx`) chứa object `v` được build lại TOÀN BỘ
+trên MỖI `set()` call (vì `deriveValues`'s `useMemo` phụ thuộc vào `s` — toàn bộ
+state). `MessageView` (và 9 sub-component bên trong: ImageTile, SourcesBlock,
+BlockView, ActionRow, VersionNav...) gọi `useStore()` trực tiếp — nghĩa là
+**MỌI tin nhắn trong MỌI cuộc trò chuyện re-render trên MỌI token Nova gõ
+ra**, cộng thêm mọi thay đổi state không liên quan ở bất kỳ đâu trong app
+(hover sidebar, toggle dark mode, mở Settings). Càng cuộc trò chuyện dài, càng
+nặng — rất có thể là nguồn gốc thật của "nháy/giật".
+
+**Fix (2 phần)**:
+1. 9 action bị rebuild mới mỗi lần gọi `deriveValues` (toggleTrace, previewFile,
+   setDone, approveTool, denyTool, startEdit, cancelEdit, saveEdit, openSettings)
+   đã chuyển thành `useCallback` ở top-level `StoreProvider`, đọc state hiện
+   tại qua `sRef` thay vì closure-over-`s` — giống pattern đã có sẵn
+   (regenerate/selectVersion/copyMessage/setFeedback).
+2. `MessageActionsCtx` MỚI (stable, useMemo trên 14 callback ở trên) —
+   `MessageView` + sub-component dùng `useMessageActions()` thay vì `useStore()`.
+   Dữ liệu hiển thị (traceOpen, copied, errorDetail...) qua prop `data:
+   MessageViewData` mà `ConversationView` build 1 LẦN bằng `useMemo` (share cho
+   mọi message) + 3 primitive riêng từng message (usageLabel, versionIndex,
+   versionCount). `MessageView` bọc `React.memo`.
+
+**Đã verify BẰNG SỐ THẬT** (không chỉ suy luận): gắn render counter tạm vào
+`MessageView`, build, chạy trên preview server thật — 4 tin nhắn trên màn
+→ 4 render lúc load (đúng, 1 mỗi tin), sau đó **thu gọn sidebar (thay đổi
+state KHÔNG liên quan) → 0 render thêm** (trước fix sẽ là 4). Đã gỡ counter
+trước khi commit.
+
+**Gate**: typecheck/lint 0 error; 74/74 file test, 710/710 unit test pass
+(KHÔNG regression); coverage 96.15/90.28/96.36/97.96 (floor 95/90/94/96); build
+clean; e2e 26/26.
+
+**CHƯA LÀM (nếu còn thời gian/phiên sau)**: scroll physics chi tiết hơn (chưa
+đo thời gian frame thực tế khi scroll trong lúc stream), animation dialog
+(mới kiểm tra không có console error khi resize/mở/đóng, chưa đo timing chi
+tiết), layout shift từ font-swap (đã xác nhận `font-display: swap` có sẵn,
+chấp nhận đây là trade-off bình thường, không phải bug). Nếu user báo lại
+cảm giác giật/nháy SAU fix này, đây là manh mối quan trọng — root cause khác
+với context re-render đã fix.
+
+**Lưu ý pre-existing, không thuộc phạm vi này**: `npm audit` báo 4 moderate
+qua `esbuild`←`drizzle-kit` (dev-tooling only, không chạy trong Worker runtime)
+— cần `npm audit fix --force` (breaking change), chưa làm, cần user quyết định.
 
 ## Phiên 2026-07-07 (tiếp) — audit toàn diện hardcode + đồng bộ responsive PC/tablet/mobile
 
