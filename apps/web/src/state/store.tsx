@@ -122,6 +122,39 @@ export function useStore(): Store {
   return c
 }
 
+/** Stable action bundle for message-list rendering. Split from the main
+ *  Store context on purpose: every field here is a useCallback that reads
+ *  current state through a ref rather than closing over a render's `s`, so
+ *  this object's REFERENCE never changes across StoreProvider re-renders.
+ *  MessageView (React.memo'd) subscribes to this instead of useStore(), so
+ *  it does not re-render on every streamed token or unrelated state change
+ *  elsewhere in the app — only when its own `message`/`state`/`typing`
+ *  props actually change. See StoreProvider's `messageActions` useMemo. */
+export interface MessageActions {
+  previewFile: (f: MsgAttachment) => void
+  toggleTrace: () => void
+  copyCode: () => void
+  approveTool: () => void
+  denyTool: () => void
+  setDone: () => void
+  startEdit: (id: string) => void
+  cancelEdit: () => void
+  saveEdit: (text: string) => void
+  openSettings: (tab: SettingsTab) => void
+  regenerate: (id: string) => void
+  selectVersion: (id: string, delta: number) => void
+  copyMessage: (id: string) => void
+  setFeedback: (id: string, val: 'up' | 'down') => void
+}
+
+const MessageActionsCtx = createContext<MessageActions | null>(null)
+
+export function useMessageActions(): MessageActions {
+  const c = useContext(MessageActionsCtx)
+  if (!c) throw new Error('useMessageActions must be used within StoreProvider')
+  return c
+}
+
 export function StoreProvider({
   children,
   initial,
@@ -1017,6 +1050,44 @@ export function StoreProvider({
 
   const { delConv, undoDelete } = useConversationDelete(sRef, navRef, set, goTo)
 
+  // ---- message-list actions, hoisted to stable useCallback refs --------
+  // these back MessageActionsCtx (see below): a stable object so per-message
+  // React.memo components never re-render just because SOME OTHER part of
+  // the store changed (e.g. a streamed token elsewhere, a sidebar hover).
+  // Each reads current state via sRef rather than closing over a render's s.
+  const toggleTrace = useCallback(() => set((x) => ({ traceOpen: !x.traceOpen })), [set])
+  const previewFile = useCallback(
+    (f: MsgAttachment) =>
+      set({
+        preview: {
+          kind: f.open ?? f.kind,
+          name: f.name,
+          ...(f.url ? { url: f.url } : {}),
+          ...(f.fileId ? { fileId: f.fileId } : {}),
+          ...(f.meta ? { meta: f.meta } : {}),
+        },
+      }),
+    [set],
+  )
+  const setDone = useCallback(() => set({ respState: 'done' }), [set])
+  const approveTool = useCallback(() => set({ respState: 'done' }), [set])
+  const denyTool = useCallback(() => set({ respState: 'done' }), [set])
+  const startEdit = useCallback((id: string) => set({ editingMsg: id }), [set])
+  const cancelEdit = useCallback(() => set({ editingMsg: null }), [set])
+  const saveEdit = useCallback(
+    (text: string) => {
+      if (sRef.current.editingMsg) editMessage(sRef.current.editingMsg, text)
+    },
+    [editMessage],
+  )
+  const openSettings = useCallback(
+    (tab: SettingsTab) => {
+      set({ palette: false, drawerOpen: false })
+      navigate({ to: '.', search: (prev) => ({ ...prev, settings: tab }) })
+    },
+    [set, navigate],
+  )
+
   // prefers-color-scheme tracking (for theme: auto)
   useEffect(() => {
     const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
@@ -1056,7 +1127,6 @@ export function StoreProvider({
         nav,
         navigate,
         t,
-        editMessage,
         regenerate,
         selectVersion,
         copyMessage,
@@ -1066,8 +1136,17 @@ export function StoreProvider({
         ollamaPullStart: pullOllama,
         hydrateSync,
         hydrateAfterLogin,
+        toggleTrace,
+        previewFile,
+        setDone,
+        approveTool,
+        denyTool,
+        startEdit,
+        cancelEdit,
+        saveEdit,
+        openSettings,
       }),
-    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, editMessage, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama, hydrateSync, hydrateAfterLogin],
+    [s, set, go, goTo, send, stop, copyCode, dark, delConv, undoDelete, nav, navigate, t, regenerate, selectVersion, copyMessage, setFeedback, adoptAccount, hydrateOllama, pullOllama, hydrateSync, hydrateAfterLogin, toggleTrace, previewFile, setDone, approveTool, denyTool, startEdit, cancelEdit, saveEdit, openSettings],
   )
 
   const store: Store = useMemo(
@@ -1075,12 +1154,51 @@ export function StoreProvider({
     [s, set, v, addUpload],
   )
 
+  const messageActions: MessageActions = useMemo(
+    () => ({
+      previewFile,
+      toggleTrace,
+      copyCode,
+      approveTool,
+      denyTool,
+      setDone,
+      startEdit,
+      cancelEdit,
+      saveEdit,
+      openSettings,
+      regenerate,
+      selectVersion,
+      copyMessage,
+      setFeedback,
+    }),
+    [
+      previewFile,
+      toggleTrace,
+      copyCode,
+      approveTool,
+      denyTool,
+      setDone,
+      startEdit,
+      cancelEdit,
+      saveEdit,
+      openSettings,
+      regenerate,
+      selectVersion,
+      copyMessage,
+      setFeedback,
+    ],
+  )
+
   // expose the live store to tests (no-op in production where onStore is unset).
   // Called during render rather than in an effect so capture does not depend on
   // effect-flush timing, which router transitions can disrupt across tests.
   onStore?.(store)
 
-  return <Ctx.Provider value={store}>{children}</Ctx.Provider>
+  return (
+    <Ctx.Provider value={store}>
+      <MessageActionsCtx.Provider value={messageActions}>{children}</MessageActionsCtx.Provider>
+    </Ctx.Provider>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -1102,7 +1220,7 @@ function deriveValues(
     nav: NavState
     navigate: Navigate
     t: TFunction
-    editMessage: (id: string, text: string) => void
+
     regenerate: (id: string) => void
     selectVersion: (id: string, delta: number) => void
     copyMessage: (id: string) => void
@@ -1112,6 +1230,15 @@ function deriveValues(
     ollamaPullStart: (model: string) => void
     hydrateSync: () => () => void
     hydrateAfterLogin: () => void
+    toggleTrace: () => void
+    previewFile: (f: MsgAttachment) => void
+    setDone: () => void
+    approveTool: () => void
+    denyTool: () => void
+    startEdit: (id: string) => void
+    cancelEdit: () => void
+    saveEdit: (text: string) => void
+    openSettings: (tab: SettingsTab) => void
   },
 ) {
   const {
@@ -1131,12 +1258,20 @@ function deriveValues(
     nav,
     navigate,
     t,
-    editMessage,
     regenerate,
     selectVersion,
     copyMessage,
     setFeedback,
     adoptAccount,
+    toggleTrace,
+    previewFile,
+    setDone,
+    approveTool,
+    denyTool,
+    startEdit,
+    cancelEdit,
+    saveEdit,
+    openSettings,
   } = extra
   const activeConv = nav.activeConv
   const activeConvObj = s.conversations.find((c) => c.id === activeConv)
@@ -1582,10 +1717,7 @@ function deriveValues(
       set({ palette: false, drawerOpen: false })
       navigate({ to: '.', search: (prev) => ({ ...prev, settings: 'providers' }) })
     },
-    openSettings: (tab: SettingsTab) => {
-      set({ palette: false, drawerOpen: false })
-      navigate({ to: '.', search: (prev) => ({ ...prev, settings: tab }) })
-    },
+    openSettings,
     closeSettings: () =>
       navigate({
         to: '.',
@@ -1694,7 +1826,7 @@ function deriveValues(
     errorDetail: s.errorDetail,
     errorRequestId: s.errorRequestId,
     errorAction: s.errorAction,
-    toggleTrace: () => set((x) => ({ traceOpen: !x.traceOpen })),
+    toggleTrace,
     traceOpen: s.traceOpen,
     // composer
     chatProject: activeProject?.name ?? t('projects.defaultName'),
@@ -1724,16 +1856,7 @@ function deriveValues(
       set({ preview: { kind: f.kind, name: f.name, url: f.url, ...(f.fileId ? { fileId: f.fileId } : {}) } }),
     // real message attachment — carries fileId so Preview fetches the actual
     // bytes/text; a local url (staged blob) is used directly when present
-    previewFile: (f: MsgAttachment) =>
-      set({
-        preview: {
-          kind: f.open ?? f.kind,
-          name: f.name,
-          ...(f.url ? { url: f.url } : {}),
-          ...(f.fileId ? { fileId: f.fileId } : {}),
-          ...(f.meta ? { meta: f.meta } : {}),
-        },
-      }),
+    previewFile,
     preview: s.preview,
     hasPreview: !!s.preview,
     previewName: s.preview?.name || '',
@@ -1886,9 +2009,9 @@ function deriveValues(
     // approval
     respApproval: rs === 'approval',
     // clears any transient response state (stop a stream view, dismiss a card)
-    setDone: () => set({ respState: 'done' }),
-    approveTool: () => set({ respState: 'done' }),
-    denyTool: () => set({ respState: 'done' }),
+    setDone,
+    approveTool,
+    denyTool,
     isEmptyChat: activeThread.length === 0,
     // thinking
     thinkingLevel: s.thinkingLevel,
@@ -2070,11 +2193,9 @@ function deriveValues(
     setFeedback,
     regenerate,
     editingMsg: s.editingMsg,
-    startEdit: (id: string) => set({ editingMsg: id }),
-    cancelEdit: () => set({ editingMsg: null }),
-    saveEdit: (text: string) => {
-      if (s.editingMsg) editMessage(s.editingMsg, text)
-    },
+    startEdit,
+    cancelEdit,
+    saveEdit,
     typing: s.typing,
     typingLabel: s.typingLabel,
     activeCount,

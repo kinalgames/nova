@@ -1,9 +1,9 @@
-import { Fragment, Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, Suspense, lazy, memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import * as HoverCard from '@radix-ui/react-hover-card'
 import { useTranslation } from 'react-i18next'
 import { API_BASE } from '../services/llm'
 import { getToken } from '../services/token'
-import { useStore } from '../state/store'
+import { useMessageActions, type MessageActions } from '../state/store'
 import { Icon } from './Icon'
 import { NovaMark } from './NovaMark'
 import { GrowingTextarea } from './GrowingTextarea'
@@ -51,24 +51,22 @@ const TONE: Record<string, string> = {
   accent: 'text-accent-text',
 }
 
-type V = ReturnType<typeof useStore>['v']
-
 /** open a preview for a block reference (source chip / action) — the item
  *  carries no server file, so Preview renders what it can (or “unavailable”) */
-function openPreview(v: V, kind: PreviewKind, name = '') {
-  v.previewFile({ kind, name, open: kind })
+function openPreview(previewFile: MessageActions['previewFile'], kind: PreviewKind, name = '') {
+  previewFile({ kind, name, open: kind })
 }
 
-function runAction(v: V, action: MsgAction['action']) {
-  if (action === 'copy') v.copyCode()
-  else openPreview(v, action)
+function runAction(actions: MessageActions, action: MsgAction['action']) {
+  if (action === 'copy') actions.copyCode()
+  else openPreview(actions.previewFile, action)
 }
 
 /** the sources block: one "N nguồn" trigger instead of a spread-out chip row
  *  — opens a small list with a favicon + real title per source. Controlled
  *  (not hover-only) so a TAP opens it too, matching TopBar's usage meter. */
 function SourcesBlock({ items }: { items: Extract<Block, { type: 'sources' }>['items'] }) {
-  const { v } = useStore()
+  const { previewFile } = useMessageActions()
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   return (
@@ -98,7 +96,7 @@ function SourcesBlock({ items }: { items: Extract<Block, { type: 'sources' }>['i
                 // real web citations open the page; legacy preview items keep
                 // opening the in-app preview
                 onClick={() =>
-                  s.url ? window.open(s.url, '_blank', 'noopener') : openPreview(v, s.open ?? 'md')
+                  s.url ? window.open(s.url, '_blank', 'noopener') : openPreview(previewFile, s.open ?? 'md')
                 }
                 className="flex w-full cursor-pointer items-start gap-2.5 rounded-xs px-2.5 py-2 text-left outline-none hover:bg-hover-1"
               >
@@ -165,7 +163,7 @@ function inline(s: string): ReactNode[] {
  *  after a reload the bytes come back through an authenticated fetch (a
  *  plain <img src> cannot carry the bearer). Demo items keep the gradient. */
 function ImageTile({ f }: { f: MsgAttachment }) {
-  const { v } = useStore()
+  const { previewFile } = useMessageActions()
   const [fetched, setFetched] = useState<string | null>(null)
   useEffect(() => {
     if (!f.fileId || f.url) return
@@ -195,7 +193,7 @@ function ImageTile({ f }: { f: MsgAttachment }) {
     <button
       type="button"
       onClick={() =>
-        src ? window.open(src, '_blank', 'noopener') : openPreview(v, f.open ?? 'image')
+        src ? window.open(src, '_blank', 'noopener') : openPreview(previewFile, f.open ?? 'image')
       }
       className={`relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-edge-soft text-left ${src ? '' : 'bg-[var(--gradient-image-placeholder)]'}`}
       style={src ? { background: `center/cover url(${src})` } : undefined}
@@ -209,11 +207,11 @@ function ImageTile({ f }: { f: MsgAttachment }) {
 }
 
 function FilePill({ f }: { f: MsgAttachment }) {
-  const { v } = useStore()
+  const { previewFile } = useMessageActions()
   if (f.image) return <ImageTile f={f} />
   const b = FILE_BADGE[f.kind] ?? FILE_BADGE.pdf
   return (
-    <button type="button" onClick={() => v.previewFile(f)} className={FILE_PILL}>
+    <button type="button" onClick={() => previewFile(f)} className={FILE_PILL}>
       <span className={`flex h-[30px] w-[26px] shrink-0 items-center justify-center rounded-xs font-mono text-micro ${b.cls}`}>
         {b.label}
       </span>
@@ -265,8 +263,7 @@ function TimelineRail() {
   )
 }
 
-function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
-  const { v } = useStore()
+function TraceView({ steps, open, advanced }: { steps: TraceStep[]; open: boolean; advanced: boolean }) {
   if (!open) return null
   return (
     <div className="relative mb-1.5 flex flex-col gap-4 pl-5">
@@ -306,12 +303,12 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
             <div className={NODE_TEXT}>
               {st.title} {st.detail && <span className="text-muted">{st.detail}</span>}
             </div>
-            {st.quote && v.advanced && (
+            {st.quote && advanced && (
               <div className="mt-1.5 border-l-2 border-border pl-3 text-ui italic leading-normal text-text-2">
                 {st.quote}
               </div>
             )}
-            {st.code && v.advanced && (
+            {st.code && advanced && (
               <div className="mt-2 overflow-hidden rounded-sm bg-code-bg">
                 <div className="px-3 py-2.5 font-mono text-meta leading-relaxed text-code-fg">
                   {st.code.map((line, li) => (
@@ -323,7 +320,7 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
                 </div>
               </div>
             )}
-            {st.tool && v.advanced && (
+            {st.tool && advanced && (
               <div className={`${META_ROW} flex-wrap`}>
                 <span className={`${TOOL_TAG} whitespace-nowrap`}>
                   {st.toolIcon && <Icon n={st.toolIcon} size={13} />} {st.tool}
@@ -343,8 +340,22 @@ function TraceView({ steps, open }: { steps: TraceStep[]; open: boolean }) {
   )
 }
 
-function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) {
-  const { v } = useStore()
+function BlockView({
+  block,
+  streaming,
+  traceOpen,
+  advanced,
+  copied,
+  copyLabel,
+}: {
+  block: Block
+  streaming?: boolean
+  traceOpen: boolean
+  advanced: boolean
+  copied: boolean
+  copyLabel: string
+}) {
+  const actions = useMessageActions()
   const { t } = useTranslation()
   switch (block.type) {
     case 'text':
@@ -385,9 +396,9 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
         const collapsed = block.meta ? `${block.summary} · ${block.meta}` : block.summary
         return (
           <div className="mt-3">
-            <button type="button" onClick={v.toggleTrace} className={`${ACT} text-left`}>
+            <button type="button" onClick={actions.toggleTrace} className={`${ACT} text-left`}>
               <span className="text-body italic leading-normal text-muted">
-                {v.traceOpen || streaming ? full : collapsed}
+                {traceOpen || streaming ? full : collapsed}
               </span>
             </button>
           </div>
@@ -409,14 +420,14 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
       }
       return (
         <div className="mt-3">
-          <button type="button" onClick={v.toggleTrace} className={`${ACT} mb-3 text-left text-ui text-text-2`}>
+          <button type="button" onClick={actions.toggleTrace} className={`${ACT} mb-3 text-left text-ui text-text-2`}>
             <span className="text-text">{block.summary}</span>
             <span className="inline-flex items-center gap-1 text-meta text-faint">
-              {v.traceOpen ? t('chat.traceHide') : block.meta}
-              <Icon n="caret" size={12} className={v.traceOpen ? 'rotate-180' : undefined} />
+              {traceOpen ? t('chat.traceHide') : block.meta}
+              <Icon n="caret" size={12} className={traceOpen ? 'rotate-180' : undefined} />
             </span>
           </button>
-          <TraceView steps={block.steps} open={v.traceOpen || !!streaming} />
+          <TraceView steps={block.steps} open={traceOpen || !!streaming} advanced={advanced} />
         </div>
       )
     }
@@ -448,9 +459,9 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
       return (
         <div className="mt-4 flex flex-wrap gap-4 text-small text-muted">
           {block.items.map((a, i) => (
-            <button key={i} type="button" onClick={() => runAction(v, a.action)} className={ACT}>
-              <Icon n={a.action === 'copy' && v.copied ? 'check' : a.icon} size={14} />{' '}
-              {a.action === 'copy' ? v.copyLabel : a.label}
+            <button key={i} type="button" onClick={() => runAction(actions, a.action)} className={ACT}>
+              <Icon n={a.action === 'copy' && copied ? 'check' : a.icon} size={14} />{' '}
+              {a.action === 'copy' ? copyLabel : a.label}
             </button>
           ))}
         </div>
@@ -459,7 +470,7 @@ function BlockView({ block, streaming }: { block: Block; streaming?: boolean }) 
 }
 
 function ApprovalCard({ tool, command }: { tool: string; command: string }) {
-  const { v } = useStore()
+  const { approveTool, denyTool } = useMessageActions()
   const { t } = useTranslation()
   return (
     <div className="mt-4 overflow-hidden rounded-md border border-border bg-panel">
@@ -473,10 +484,10 @@ function ApprovalCard({ tool, command }: { tool: string; command: string }) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2.5 px-4 py-3">
-        <button type="button" onClick={v.approveTool} className={BTN_PRIMARY}>
+        <button type="button" onClick={approveTool} className={BTN_PRIMARY}>
           {t('chat.approvalAllow')}
         </button>
-        <button type="button" onClick={v.denyTool} className="cursor-pointer rounded-sm border border-border bg-transparent px-4 py-2 text-left text-ui text-muted">
+        <button type="button" onClick={denyTool} className="cursor-pointer rounded-sm border border-border bg-transparent px-4 py-2 text-left text-ui text-muted">
           {t('chat.approvalDeny')}
         </button>
         <span className="text-meta text-muted">{t('chat.approvalNote')}</span>
@@ -486,20 +497,19 @@ function ApprovalCard({ tool, command }: { tool: string; command: string }) {
 }
 
 /** ‹ i/n › version switcher — rendered only at real forks */
-function VersionNav({ id }: { id: string }) {
-  const { v } = useStore()
+function VersionNav({ id, index, count }: { id: string; index?: number; count?: number }) {
+  const { selectVersion } = useMessageActions()
   const { t } = useTranslation()
-  const info = v.versions[id]
-  if (!info || info.count < 2) return null
+  if (index === undefined || count === undefined || count < 2) return null
   const btn =
     'tap-sm flex cursor-pointer items-center justify-center border-none bg-transparent px-0.5 text-faint outline-none hover:text-text-2 disabled:cursor-default disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
   return (
     <span className="inline-flex items-center gap-0.5 font-mono text-eyebrow text-faint">
-      <button type="button" aria-label={t('chat.prevVersion')} disabled={info.index <= 1} onClick={() => v.selectVersion(id, -1)} className={btn}>
+      <button type="button" aria-label={t('chat.prevVersion')} disabled={index <= 1} onClick={() => selectVersion(id, -1)} className={btn}>
         ‹
       </button>
-      {info.index}/{info.count}
-      <button type="button" aria-label={t('chat.nextVersion')} disabled={info.index >= info.count} onClick={() => v.selectVersion(id, 1)} className={btn}>
+      {index}/{count}
+      <button type="button" aria-label={t('chat.nextVersion')} disabled={index >= count} onClick={() => selectVersion(id, 1)} className={btn}>
         ›
       </button>
     </span>
@@ -507,10 +517,10 @@ function VersionNav({ id }: { id: string }) {
 }
 
 /** per-message actions — hover-revealed, always visible on the last message */
-function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) {
-  const { v } = useStore()
+function ActionRow({ message, isLast, copiedMsg }: { message: Message; isLast?: boolean; copiedMsg: string | null }) {
+  const { copyMessage, startEdit, regenerate, setFeedback } = useMessageActions()
   const { t } = useTranslation()
-  const copied = v.copiedMsg === message.id
+  const copied = copiedMsg === message.id
   const btn =
     'tap-sm flex cursor-pointer items-center justify-center rounded-sm border-none bg-transparent p-1 text-faint outline-none hover:text-text-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
   return (
@@ -519,23 +529,23 @@ function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) 
         isLast ? '' : 'touch-show opacity-0 transition-opacity group-hover/msg:opacity-100 group-focus-within/msg:opacity-100'
       }`}
     >
-      <button type="button" aria-label={t('common.copy')} onClick={() => v.copyMessage(message.id)} className={btn}>
+      <button type="button" aria-label={t('common.copy')} onClick={() => copyMessage(message.id)} className={btn}>
         <Icon n={copied ? 'check' : 'copy'} size={14} />
       </button>
       {message.role === 'user' ? (
-        <button type="button" aria-label={t('chat.edit')} onClick={() => v.startEdit(message.id)} className={btn}>
+        <button type="button" aria-label={t('chat.edit')} onClick={() => startEdit(message.id)} className={btn}>
           <Icon n="write" size={14} />
         </button>
       ) : (
         <>
-          <button type="button" aria-label={t('chat.regenerate')} onClick={() => v.regenerate(message.id)} className={btn}>
+          <button type="button" aria-label={t('chat.regenerate')} onClick={() => regenerate(message.id)} className={btn}>
             <Icon n="retry" size={14} />
           </button>
           <button
             type="button"
             aria-label={t('chat.good')}
             aria-pressed={message.feedback === 'up'}
-            onClick={() => v.setFeedback(message.id, 'up')}
+            onClick={() => setFeedback(message.id, 'up')}
             className={`${btn} ${message.feedback === 'up' ? 'text-accent-text' : ''}`}
           >
             <Icon n="thumbUp" size={14} />
@@ -544,7 +554,7 @@ function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) 
             type="button"
             aria-label={t('chat.bad')}
             aria-pressed={message.feedback === 'down'}
-            onClick={() => v.setFeedback(message.id, 'down')}
+            onClick={() => setFeedback(message.id, 'down')}
             className={`${btn} ${message.feedback === 'down' ? 'text-accent-text' : ''}`}
           >
             <Icon n="thumbDown" size={14} />
@@ -557,7 +567,7 @@ function ActionRow({ message, isLast }: { message: Message; isLast?: boolean }) 
 
 /** inline edit-and-rerun for a user message */
 function EditForm({ message }: { message: Message }) {
-  const { v } = useStore()
+  const { cancelEdit, saveEdit } = useMessageActions()
   const { t } = useTranslation()
   const orig = message.blocks.find((b) => b.type === 'text')
   const [val, setVal] = useState(orig && orig.type === 'text' ? orig.text : '')
@@ -572,14 +582,14 @@ function EditForm({ message }: { message: Message }) {
       <div className="mt-2 flex justify-end gap-2">
         <button
           type="button"
-          onClick={v.cancelEdit}
+          onClick={cancelEdit}
           className="cursor-pointer rounded-sm border border-border bg-transparent px-3 py-1.5 text-small text-muted"
         >
           {t('common.cancel')}
         </button>
         <button
           type="button"
-          onClick={() => v.saveEdit(val)}
+          onClick={() => saveEdit(val)}
           disabled={!val.trim()}
           className={BTN_PRIMARY}
         >
@@ -590,11 +600,50 @@ function EditForm({ message }: { message: Message }) {
   )
 }
 
-export function MessageView({
+/**
+ * Fields shared by EVERY message bubble in the conversation (trace toggle,
+ * copy-transient state, error detail, ...). ConversationView builds ONE of
+ * these per render via useMemo, keyed on the underlying primitives — so the
+ * SAME object reference passes to every <MessageView>, and React.memo's
+ * shallow prop comparison only sees a "changed" data prop when one of these
+ * specific fields actually changed, never on an unrelated streamed token.
+ */
+export interface MessageViewData {
+  /** show extra technical detail (trace quote/code/tool rows) */
+  advanced: boolean
+  /** the ONE global "trace expanded" toggle */
+  traceOpen: boolean
+  /** "plan.md copied" transient state for the actions block's copy button */
+  copied: boolean
+  copyLabel: string
+  /** id of the message a copy just landed on, for its own action-row icon */
+  copiedMsg: string | null
+  /** id of the message currently being edited (null = none) */
+  editingMsg: string | null
+  typingLabel: string
+  errorAction: 'providers' | 'retry' | null
+  errorDetail: string | null | undefined
+  errorRequestId: string | null | undefined
+}
+
+/**
+ * One message bubble. Memoized: every field it reads beyond `message` comes
+ * in as a primitive prop (see MessageViewData) or through the separately
+ * memoized MessageActionsCtx, so a sibling message's bubble does NOT
+ * re-render on every streamed token of the message that's actively
+ * answering, nor on unrelated state changes elsewhere in the app (sidebar,
+ * settings, other conversations). Only this message's own data and the
+ * message object itself can invalidate the memo.
+ */
+export const MessageView = memo(function MessageView({
   message,
   state,
   typing,
   isLast,
+  data,
+  usageLabel,
+  versionIndex,
+  versionCount,
 }: {
   message: Message
   /** overrides the message's render state (error card / approval / stream) */
@@ -603,8 +652,16 @@ export function MessageView({
   typing?: boolean
   /** last visible message — its actions stay visible without hover */
   isLast?: boolean
+  /** shared across all messages — see MessageViewData */
+  data: MessageViewData
+  /** pre-formatted token/cost line for THIS message, or null — per-message,
+   *  passed separately from `data` so it stays a plain comparable primitive */
+  usageLabel: string | null
+  /** version-switcher position for THIS message's fork, if any — per-message */
+  versionIndex: number | undefined
+  versionCount: number | undefined
 }) {
-  const { v } = useStore()
+  const { openSettings, regenerate, setDone } = useMessageActions()
   const { t } = useTranslation()
   const isUser = message.role === 'user'
   const trace = message.blocks.find((b) => b.type === 'trace')
@@ -615,16 +672,23 @@ export function MessageView({
       <div className="group/msg mb-8 mt-8 first:mt-0">
         <div className={`${USER_LABEL} flex items-center gap-2`}>
           <span>{message.who}</span>
-          <VersionNav id={message.id} />
+          <VersionNav id={message.id} index={versionIndex} count={versionCount} />
         </div>
-        {v.editingMsg === message.id ? (
+        {data.editingMsg === message.id ? (
           <EditForm key={message.id} message={message} />
         ) : (
           <>
             {message.blocks.map((b, i) => (
-              <BlockView key={i} block={b} />
+              <BlockView
+                key={i}
+                block={b}
+                traceOpen={data.traceOpen}
+                advanced={data.advanced}
+                copied={data.copied}
+                copyLabel={data.copyLabel}
+              />
             ))}
-            <ActionRow message={message} isLast={isLast} />
+            <ActionRow message={message} isLast={isLast} copiedMsg={data.copiedMsg} />
           </>
         )}
       </div>
@@ -636,23 +700,39 @@ export function MessageView({
       <div className={NOVA_HEAD}>
         <NovaMark size={22} on="--bg" />
         <span className={NOVA_TAG}>{message.who}</span>
-        <VersionNav id={message.id} />
+        <VersionNav id={message.id} index={versionIndex} count={versionCount} />
         {/* the ONE place a live status shows — never duplicated elsewhere */}
-        {typing && <span className="text-meta text-faint">{v.typingLabel}</span>}
-        {v.msgUsage(message) && (
-          <span className="font-mono text-meta text-faint">{v.msgUsage(message)}</span>
+        {typing && <span className="text-meta text-faint">{data.typingLabel}</span>}
+        {usageLabel && (
+          <span className="font-mono text-meta text-faint">{usageLabel}</span>
         )}
       </div>
 
       {/* live thinking streams the trace OPEN; it collapses once the reply lands */}
-      {trace && <BlockView block={trace} streaming={typing} />}
+      {trace && (
+        <BlockView
+          block={trace}
+          streaming={typing}
+          traceOpen={data.traceOpen}
+          advanced={data.advanced}
+          copied={data.copied}
+          copyLabel={data.copyLabel}
+        />
+      )}
 
       {state === 'approval' && message.approval ? (
         <ApprovalCard tool={message.approval.tool} command={message.approval.command} />
       ) : state === 'error' ? (
         <>
           {answer.slice(0, 1).map((b, i) => (
-            <BlockView key={i} block={b} />
+            <BlockView
+              key={i}
+              block={b}
+              traceOpen={data.traceOpen}
+              advanced={data.advanced}
+              copied={data.copied}
+              copyLabel={data.copyLabel}
+            />
           ))}
           <div className="mt-4 flex flex-wrap items-start gap-3 rounded-md border border-danger-line bg-danger-bg px-4 py-3">
             <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-danger-strong text-small text-on-ink">
@@ -660,21 +740,21 @@ export function MessageView({
             </span>
             <div className="min-w-0 flex-1 basis-[14rem]">
               <div className="text-body text-text">
-                {v.errorAction === 'providers' ? t('chat.noProviderTitle') : t('chat.errorTitle')}
+                {data.errorAction === 'providers' ? t('chat.noProviderTitle') : t('chat.errorTitle')}
               </div>
               <div className="mt-0.5 text-ui leading-normal text-danger-text">
                 {/* the SPECIFIC error when present; a generic fallback otherwise */}
-                {v.errorDetail ?? t('chat.errorBody')}
+                {data.errorDetail ?? t('chat.errorBody')}
                 {/* B4 — correlation id: quote this to match server logs */}
-                {v.errorRequestId && (
-                  <div className="mt-1 font-mono text-eyebrow text-muted">req {v.errorRequestId}</div>
+                {data.errorRequestId && (
+                  <div className="mt-1 font-mono text-eyebrow text-muted">req {data.errorRequestId}</div>
                 )}
               </div>
             </div>
-            {v.errorAction === 'providers' ? (
+            {data.errorAction === 'providers' ? (
               <button
                 type="button"
-                onClick={() => v.openSettings('providers')}
+                onClick={() => openSettings('providers')}
                 className={`${BTN_PRIMARY} shrink-0`}
               >
                 <Icon n="plus" size={14} /> {t('chat.addProviderCta')}
@@ -682,7 +762,7 @@ export function MessageView({
             ) : (
               <button
                 type="button"
-                onClick={() => (v.errorAction === 'retry' ? v.regenerate(message.id) : v.setDone())}
+                onClick={() => (data.errorAction === 'retry' ? regenerate(message.id) : setDone())}
                 className={`${BTN_PRIMARY} shrink-0`}
               >
                 <Icon n="retry" size={14} /> {t('common.retry')}
@@ -693,11 +773,19 @@ export function MessageView({
       ) : (
         <>
           {answer.map((b, i) => (
-            <BlockView key={i} block={b} streaming={typing && i === answer.length - 1 && b.type === 'text'} />
+            <BlockView
+              key={i}
+              block={b}
+              streaming={typing && i === answer.length - 1 && b.type === 'text'}
+              traceOpen={data.traceOpen}
+              advanced={data.advanced}
+              copied={data.copied}
+              copyLabel={data.copyLabel}
+            />
           ))}
-          {!typing && <ActionRow message={message} isLast={isLast} />}
+          {!typing && <ActionRow message={message} isLast={isLast} copiedMsg={data.copiedMsg} />}
         </>
       )}
     </div>
   )
-}
+})

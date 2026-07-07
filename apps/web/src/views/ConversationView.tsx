@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore } from '../state/store'
 import { Composer } from '../components/Composer'
 import { Icon } from '../components/Icon'
-import { MessageView } from '../components/MessageView'
+import { MessageView, type MessageViewData } from '../components/MessageView'
 import { NovaMark } from '../components/NovaMark'
 import { ProviderNudge } from '../components/ProviderNudge'
 import type { MsgState, RespState } from '../state/types'
@@ -32,6 +32,36 @@ export function ConversationView() {
     if (el) el.scrollTop = el.scrollHeight
     setAway(false)
   }
+  // ONE object shared by every message bubble below — memoized on the
+  // underlying primitives so its reference stays stable across a streamed
+  // token's re-render (which touches only v.sent), letting React.memo'd
+  // MessageView instances for OTHER messages skip re-rendering entirely.
+  const messageData: MessageViewData = useMemo(
+    () => ({
+      advanced: v.advanced,
+      traceOpen: v.traceOpen,
+      copied: v.copied,
+      copyLabel: v.copyLabel,
+      copiedMsg: v.copiedMsg,
+      editingMsg: v.editingMsg,
+      typingLabel: v.typingLabel,
+      errorAction: v.errorAction,
+      errorDetail: v.errorDetail,
+      errorRequestId: v.errorRequestId,
+    }),
+    [
+      v.advanced,
+      v.traceOpen,
+      v.copied,
+      v.copyLabel,
+      v.copiedMsg,
+      v.editingMsg,
+      v.typingLabel,
+      v.errorAction,
+      v.errorDetail,
+      v.errorRequestId,
+    ],
+  )
   return (
     <div className="view absolute inset-0 flex">
       <div className="flex min-w-0 flex-1 flex-col">
@@ -53,8 +83,19 @@ export function ConversationView() {
                   ? respToState(v.respState)
                   : undefined
               const typing = isLast && isAssistant && v.typing
+              const versionInfo = v.versions[m.id]
               return (
-                <MessageView key={m.id} message={m} state={state} typing={typing} isLast={isLast} />
+                <MessageView
+                  key={m.id}
+                  message={m}
+                  state={state}
+                  typing={typing}
+                  isLast={isLast}
+                  data={messageData}
+                  usageLabel={v.msgUsage(m)}
+                  versionIndex={versionInfo?.index}
+                  versionCount={versionInfo?.count}
+                />
               )
             })}
 
