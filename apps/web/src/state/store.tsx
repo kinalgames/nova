@@ -14,7 +14,6 @@ import type { TFunction } from 'i18next'
 import i18n from '../i18n'
 import {
   findModel,
-  findModelById,
   findProvider,
   presetDefs,
   profileStatusMap,
@@ -97,6 +96,7 @@ import { useAccountHydration } from './account-hydration'
 import { createCredentialActions } from './credential-actions'
 import { createProjectActions } from './project-actions'
 import { useConversationDelete } from './conversation-delete'
+import { computeUsageMeter, fmtCost } from './usage-meter'
 
 export { HOME_TRAY, __resetSync }
 
@@ -1295,75 +1295,18 @@ function deriveValues(
     for (const msg of activeThread) versions[msg.id] = siblingInfo(activeThreadTree, msg.id)
   const activeStaged = s.staged[stagedKeyOf(nav)] ?? []
 
-  // usage accounting — account profiles cost 0, keys/endpoints are metered by
-  // the model's per-1M pricing
-  const allProfiles = Object.values(s.profiles).flat()
-  const costOf = (u: NonNullable<Message['usage']>): number => {
-    const prof = allProfiles.find((f) => f.id === u.profileId)
-    if (prof && prof.kind === 'account') return 0
-    const md = findModelById(u.modelId)
-    return md ? (u.inputTokens * md.inPrice + u.outputTokens * md.outPrice) / 1e6 : 0
-  }
-  const fmtCost = (c: number) => (c < 0.0001 ? '<$0.0001' : `$${c.toFixed(4)}`)
-
-  // conversation-level roll-up for the meter
-  let usageIn = 0
-  let usageOut = 0
-  let usageCost = 0
-  for (const m of activeThread) {
-    const u = m.usage
-    if (!u) continue
-    usageIn += u.inputTokens
-    usageOut += u.outputTokens
-    usageCost += costOf(u)
-  }
-  // % of the ACTIVE model's real context window used so far — the single
-  // source both the meter bar (fills as this grows) and its label (reads the
-  // complement, "remaining") derive from; never two independently-stated numbers
-  const usedPct = Math.min(
-    98,
-    Math.round(((usageIn + usageOut) / (findModel(s.slots[s.activeSlot]).ctx || 200_000)) * 100),
-  )
-
-  // all-time totals per auth profile (every thread, every version) — shown in
-  // Settings so the user sees what each profile has consumed — plus a
-  // current-calendar-month roll-up across everything
-  const profileTotals: Record<string, { inTok: number; outTok: number; cost: number }> = {}
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime()
-  let monthIn = 0
-  let monthOut = 0
-  let monthCost = 0
-  for (const th of Object.values(s.threads))
-    for (const m of Object.values(th.byId)) {
-      const u = m.usage
-      if (!u) continue
-      if ((u.at ?? 0) >= monthStart) {
-        monthIn += u.inputTokens
-        monthOut += u.outputTokens
-        monthCost += costOf(u)
-      }
-      if (!u.profileId) continue
-      const agg = (profileTotals[u.profileId] ??= { inTok: 0, outTok: 0, cost: 0 })
-      agg.inTok += u.inputTokens
-      agg.outTok += u.outputTokens
-      agg.cost += costOf(u)
-    }
-  // T8: the server roll-up (all devices) beats the local one when present
-  const serverMonth = (() => {
-    if (!s.serverUsage || s.serverUsage.length === 0) return null
-    let inTok = 0
-    let outTok = 0
-    let cost = 0
-    for (const r of s.serverUsage) {
-      inTok += r.inTok
-      outTok += r.outTok
-      if (r.kind !== 'account') {
-        const md = findModelById(r.modelId)
-        if (md) cost += (r.inTok * md.inPrice + r.outTok * md.outPrice) / 1e6
-      }
-    }
-    return { inTok, outTok, cost }
-  })()
+  const {
+    costOf,
+    usageIn,
+    usageOut,
+    usageCost,
+    usedPct,
+    profileTotals,
+    monthIn,
+    monthOut,
+    monthCost,
+    serverMonth,
+  } = computeUsageMeter(s, activeThread)
 
 
   const tk: (keyof NovaState['tools'])[] = ['web', 'fetch', 'files', 'bash']
