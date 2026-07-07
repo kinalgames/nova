@@ -34,7 +34,7 @@ describe('<Preview> — sources', () => {
   it('an image reference without bytes keeps a soft placeholder', async () => {
     await renderApp((s) => s.v.previewFile({ kind: 'image', name: 'cu.png', open: 'image' }))
     const dialog = await screen.findByRole('dialog')
-    expect(dialog.querySelector('[class*="linear-gradient"]')).toBeInTheDocument()
+    expect(dialog.querySelector('[class*="gradient-image-placeholder"]')).toBeInTheDocument()
   })
 
   it('clicking the dark backdrop (not the media) closes the preview', async () => {

@@ -243,7 +243,7 @@ export function Preview() {
               ) : (
                 // an image reference without bytes (legacy row) — soft placeholder
                 <div
-                  className={`h-[min(560px,70vh)] w-[min(820px,90vw)] rounded-md bg-[linear-gradient(135deg,#E7C9A8,#C98F86_55%,#7E6E92)] ${POP}`}
+                  className={`h-[min(560px,70vh)] w-[min(820px,90vw)] rounded-md bg-[var(--gradient-image-placeholder)] ${POP}`}
                 />
               )
             ) : (

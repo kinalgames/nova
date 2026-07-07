@@ -32,7 +32,7 @@ export function ProjectConfigView() {
 
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
-      <div className="w-[640px] max-w-full" style={{ padding: v.pagePad }}>
+      <div className="w-[640px] max-w-full p-[28px_18px_40px] desktop:p-[44px_16px_50px]">
         <Link
           to="/projects/$projectId"
           params={{ projectId: id }}
@@ -43,7 +43,7 @@ export function ProjectConfigView() {
 
         <div className="mb-1.5 flex items-center gap-3">
           <span className="size-3 shrink-0 rounded-xs" style={{ background: v.viewProjectAccent }} />
-          <div className="font-display tracking-[-.01em]" style={{ fontSize: v.pageTitle }}>
+          <div className="text-[34px] desktop:text-[44px] font-display tracking-[-.01em]">
             {t('projects.config.title')}
           </div>
         </div>

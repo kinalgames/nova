@@ -297,7 +297,7 @@ export function Sidebar() {
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-sm border-none bg-transparent px-2.5 py-2"
               style={{ justifyContent: v.railJustify }}
             >
-              <div className="size-[26px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
+              <div className="size-[26px] shrink-0 rounded-full bg-[var(--gradient-avatar)]" />
               {v.sidebarExpanded && (
                 <>
                   <div className="min-w-0 flex-1 text-left">
@@ -311,7 +311,7 @@ export function Sidebar() {
           <DropdownMenu.Portal>
             <DropdownMenu.Content side="top" align="start" sideOffset={8} className={MENU_CONTENT}>
               <div className="flex items-center gap-2.5 px-2.5 py-2">
-                <div className="size-[30px] flex-shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
+                <div className="size-[30px] flex-shrink-0 rounded-full bg-[var(--gradient-avatar)]" />
                 <div className="min-w-0">
                   <div className="text-ui text-text">{v.userName}</div>
                   <div className="text-meta text-muted">{t('user.plan')}</div>

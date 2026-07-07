@@ -89,7 +89,7 @@ function SourcesBlock({ items }: { items: Extract<Block, { type: 'sources' }>['i
             side="bottom"
             align="start"
             sideOffset={8}
-            className="z-[80] max-h-[320px] w-[300px] overflow-y-auto rounded-sm border border-border bg-panel p-1.5 shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
+            className="z-[80] max-h-[320px] w-[300px] max-w-[90vw] overflow-y-auto rounded-sm border border-border bg-panel p-1.5 shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
           >
             {items.map((s, i) => (
               <button
@@ -197,12 +197,8 @@ function ImageTile({ f }: { f: MsgAttachment }) {
       onClick={() =>
         src ? window.open(src, '_blank', 'noopener') : openPreview(v, f.open ?? 'image')
       }
-      className="relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-edge-soft text-left"
-      style={{
-        background: src
-          ? `center/cover url(${src})`
-          : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)',
-      }}
+      className={`relative h-[104px] w-[150px] cursor-pointer overflow-hidden rounded-md border border-edge-soft text-left ${src ? '' : 'bg-[var(--gradient-image-placeholder)]'}`}
+      style={src ? { background: `center/cover url(${src})` } : undefined}
     >
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-[linear-gradient(transparent,rgba(0,0,0,.45))] px-2 py-1.5">
         <span className="min-w-0 truncate text-eyebrow text-white">{f.name}</span>

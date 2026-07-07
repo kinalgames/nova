@@ -88,7 +88,7 @@ describe('B1 — real image tiles', () => {
       s.set({ activeConv: 'c1', threads: { c1: fromLinear([imgMsg({})]) } }),
     )
     const tile = await screen.findByRole('button', { name: /chart\.png/ })
-    expect(tile.getAttribute('style')).toContain('linear-gradient')
+    expect(tile.className).toContain('gradient-image-placeholder')
     await user.click(tile)
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })

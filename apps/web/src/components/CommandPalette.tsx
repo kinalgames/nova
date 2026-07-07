@@ -48,8 +48,7 @@ export function CommandPalette() {
         <Dialog.Overlay className="fixed inset-0 z-40 animate-[dim_120ms_ease] bg-scrim" />
         <Dialog.Content
           aria-describedby={undefined}
-          style={{ top: v.paletteTop }}
-          className="fixed left-1/2 z-40 w-[560px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] overflow-hidden rounded-lg border border-border bg-panel shadow-overlay outline-none"
+          className="fixed left-1/2 top-[7%] desktop:top-[20%] z-40 w-[560px] max-w-[94vw] -translate-x-1/2 animate-[fadeUp_150ms_var(--ease-paper)] overflow-hidden rounded-lg border border-border bg-panel shadow-overlay outline-none"
         >
           <VisuallyHidden asChild>
             <Dialog.Title>{t('palette.title')}</Dialog.Title>

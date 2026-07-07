@@ -27,9 +27,6 @@ function StagedItem({ f }: { f: StagedFile }) {
   const { v } = useStore()
   const { t } = useTranslation()
   if (f.kind === 'image') {
-    const bg = f.url
-      ? `center/cover url(${f.url})`
-      : 'linear-gradient(135deg,#E7C9A8,#C98F86 55%,#7E6E92)'
     return (
       <div className="relative size-[54px] shrink-0">
         <button
@@ -39,8 +36,8 @@ function StagedItem({ f }: { f: StagedFile }) {
           onClick={() => v.openStaged(f)}
           className={`block size-[54px] cursor-pointer rounded-sm border p-0 ${
             f.error ? 'border-danger-line' : 'border-edge-soft'
-          }`}
-          style={{ background: bg }}
+          } ${f.url ? '' : 'bg-[var(--gradient-image-placeholder)]'}`}
+          style={f.url ? { background: `center/cover url(${f.url})` } : undefined}
         />
         {f.progress !== undefined && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-sm bg-[rgba(0,0,0,.45)] font-mono text-micro text-white">

@@ -322,7 +322,7 @@ function Account() {
   return (
     <>
       <div className="flex items-center gap-3 px-0.5 py-3">
-        <div className="size-[38px] shrink-0 rounded-full bg-[linear-gradient(135deg,#E0A06B,var(--accent))]" />
+        <div className="size-[38px] shrink-0 rounded-full bg-[var(--gradient-avatar)]" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-body">{v.userName}</div>
           <div className="truncate text-small text-muted">{v.userEmail} · {t('user.plan')}</div>

@@ -1966,14 +1966,6 @@ function deriveValues(
     showComposerHint: true,
     // bottom bar
     showBar: s.showShortcutsBar && s.barOn && !s.quiet && isDesktop,
-    // sizing
-    heroSize: isMobile ? '38px' : '52px',
-    pageTitle: isMobile ? '34px' : '44px',
-    homePad: isMobile ? '28px 18px 40px' : '40px 16px 48px',
-    convPad: isMobile ? '24px 18px 24px' : '36px 16px 26px',
-    pagePad: isMobile ? '28px 18px 40px' : '44px 16px 50px',
-    sugCols: isMobile ? '1fr' : '1fr 1fr',
-    paletteTop: isMobile ? '7%' : '20%',
     // data
     suggestions,
     providers,

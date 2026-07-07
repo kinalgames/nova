@@ -12,9 +12,9 @@ export function ProjectsView() {
   const [creating, setCreating] = useState(false)
   return (
     <div className="view absolute inset-0 flex justify-center overflow-y-auto">
-      <div className="w-[720px] max-w-full" style={{ padding: v.pagePad }}>
+      <div className="w-[720px] max-w-full p-[28px_18px_40px] desktop:p-[44px_16px_50px]">
         <div className="mb-2 flex items-end justify-between gap-3">
-          <div className="font-display tracking-[-.01em]" style={{ fontSize: v.pageTitle }}>
+          <div className="text-[34px] desktop:text-[44px] font-display tracking-[-.01em]">
             {t('projects.title')}
           </div>
           <button

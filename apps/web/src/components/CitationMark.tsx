@@ -55,7 +55,7 @@ export function CitationMark({
         <HoverCard.Content
           side="top"
           sideOffset={8}
-          className="z-[80] w-[280px] rounded-sm border border-border bg-panel p-3 shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
+          className="z-[80] w-[280px] max-w-[90vw] rounded-sm border border-border bg-panel p-3 shadow-overlay animate-[fadeUp_140ms_var(--ease-paper)]"
         >
           <div className="flex items-start gap-2.5">
             <img
